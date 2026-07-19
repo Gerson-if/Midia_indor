@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Painel — {{ APP_NAME }}{% endblock %}</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: { colors: { ink:'#0A0E16', inksoft:'#0E141D', panel:'#131A24', panel2:'#1A2330', line:'#232C3B', amber:'#FFB020', cyan:'#37D6C7', hi:'#ECEEF2', mid:'#AEB6C2', low:'#6C7686' }, fontFamily: { display:['Space Grotesk','sans-serif'], body:['IBM Plex Sans','sans-serif'], mono:['JetBrains Mono','monospace'] }}}}
+</script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<style>
+  .nav-item{ display:flex; align-items:center; gap:.75rem; padding:.65rem .85rem; border-radius:10px; color:var(--text-mid); font-size:.875rem; transition:background .15s,color .15s; }
+  .nav-item:hover{ background:rgba(255,255,255,.04); color:var(--text-hi); }
+  .nav-item.active{ background:var(--panel2); color:var(--amber); }
+  .badge{ background:#ef4444; color:#fff; font-size:.65rem; padding:.1rem .45rem; border-radius:999px; }
+</style>
+{% block extra_head %}{% endblock %}
+</head>
+<body class="font-body bg-ink text-hi">
+<div class="flex min-h-screen">
+  <aside class="w-64 border-r border-line flex flex-col shrink-0 bg-inksoft">
+    <div class="flex items-center gap-3 px-6 h-16 border-b border-line">
+      <span class="w-8 h-8 rounded-md flex items-center justify-center text-ink font-bold" style="background-color: var(--amber)">N</span>
+      <span class="font-display font-semibold">Admin Panel</span>
+    </div>
+    <nav class="flex-1 p-4 space-y-1">
+      <a href="{{ url_for('admin.dashboard') }}" class="nav-item {{ 'active' if request.endpoint == 'admin.dashboard' }}">Dashboard</a>
+      <a href="{{ url_for('admin.proposals_list') }}" class="nav-item justify-between {{ 'active' if request.endpoint in ['admin.proposals_list','admin.proposal_detail'] }}">
+        <span>Solicitações</span>
+        {% if new_proposals_count and new_proposals_count > 0 %}<span class="badge">{{ new_proposals_count }}</span>{% endif %}
+      </a>
+      <p class="text-[11px] font-mono uppercase tracking-wider text-low px-3 pt-4 pb-1">Conteúdo do site</p>
+      <a href="{{ url_for('admin.settings_manage') }}" class="nav-item {{ 'active' if request.endpoint == 'admin.settings_manage' }}">Hero &amp; Empresa</a>
+      <a href="{{ url_for('admin.services_manage') }}" class="nav-item {{ 'active' if request.endpoint == 'admin.services_manage' }}">Vantagens</a>
+      <a href="{{ url_for('admin.gallery_manage') }}" class="nav-item {{ 'active' if request.endpoint == 'admin.gallery_manage' }}">Galeria</a>
+      <a href="{{ url_for('admin.testimonials_manage') }}" class="nav-item {{ 'active' if request.endpoint == 'admin.testimonials_manage' }}">Depoimentos</a>
+      <a href="{{ url_for('admin.partners_manage') }}" class="nav-item {{ 'active' if request.endpoint == 'admin.partners_manage' }}">Parceiros</a>
+      {% if current_user.is_admin %}
+      <p class="text-[11px] font-mono uppercase tracking-wider text-low px-3 pt-4 pb-1">Sistema</p>
+      <a href="{{ url_for('admin.users_manage') }}" class="nav-item {{ 'active' if request.endpoint == 'admin.users_manage' }}">Usuários</a>
+      {% endif %}
+    </nav>
+    <div class="p-4 border-t border-line text-xs text-low">
+      <p class="text-mid">{{ current_user.name }}</p>
+      <p class="font-mono">{{ current_user.role.value }}</p>
+    </div>
+  </aside>
+
+  <div class="flex-1 flex flex-col">
+    <header class="h-16 border-b border-line flex items-center justify-between px-8 bg-ink">
+      <p class="text-sm font-mono" style="color: var(--cyan)">Bem-vindo, {{ current_user.name }}</p>
+      <div class="flex items-center gap-4">
+        <a href="{{ url_for('main.index') }}" target="_blank" class="text-xs text-mid hover:text-hi">Ver site &rarr;</a>
+        <a href="{{ url_for('auth.logout') }}" class="btn btn-ghost !py-1.5 !px-4 text-xs text-red-400 !border-red-400/30 hover:bg-red-500/10">Encerrar Sessão</a>
+      </div>
+    </header>
+
+    <main class="flex-1 p-8 overflow-y-auto">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="mb-6 space-y-2">
+            {% for category, message in messages %}
+              <div class="card px-4 py-3 text-sm border-l-4 {{ 'border-l-red-500' if category=='danger' else ('border-l-amber-400' if category=='warning' else ('border-l-cyan-400' if category=='info' else 'border-l-green-500')) }}">
+                {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      {% block admin_content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% block scripts %}{% endblock %}
+</body>
+</html>

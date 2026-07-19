@@ -1,0 +1,66 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Usuários — {{ APP_NAME }}{% endblock %}
+{% block admin_content %}
+<h2 class="font-display text-2xl mb-6">Usuários do Painel</h2>
+<div class="grid lg:grid-cols-3 gap-6">
+  <div class="card p-6">
+    <h3 class="font-display text-lg mb-4">Novo usuário</h3>
+    <form method="POST" class="space-y-4">
+      {{ form.hidden_tag() }}
+      <div>
+        {{ form.name.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ form.name(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+      </div>
+      <div>
+        {{ form.email.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ form.email(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+      </div>
+      <div>
+        {{ form.role.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ form.role(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+      </div>
+      <div>
+        {{ form.password.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ form.password(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+        {% for e in form.password.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+      </div>
+      <label class="flex items-center gap-2 text-xs text-mid">{{ form.is_active() }} Ativo</label>
+      <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">Criar usuário</button>
+    </form>
+  </div>
+
+  <div class="lg:col-span-2 card overflow-hidden self-start">
+    <table class="w-full text-sm text-left">
+      <thead>
+        <tr class="text-xs font-mono uppercase text-low border-b border-line bg-ink">
+          <th class="px-4 py-3">Nome</th>
+          <th class="px-4 py-3">E-mail</th>
+          <th class="px-4 py-3">Papel</th>
+          <th class="px-4 py-3">Último acesso</th>
+          <th class="px-4 py-3 text-right">Ação</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr class="border-b border-line hover:bg-panel2">
+          <td class="px-4 py-3 font-semibold text-white">{{ u.name }}</td>
+          <td class="px-4 py-3 text-mid">{{ u.email }}</td>
+          <td class="px-4 py-3 text-mid font-mono text-xs">{{ u.role.value }}</td>
+          <td class="px-4 py-3 text-mid text-xs">{{ u.last_login_at.strftime('%d/%m/%Y %H:%M') if u.last_login_at else "nunca" }}</td>
+          <td class="px-4 py-3 text-right">
+            {% if u.id != current_user.id %}
+            <form method="POST" action="{{ url_for('admin.user_delete', user_id=u.id) }}" onsubmit="return confirm('Excluir este usuário?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="text-red-400 hover:text-red-300 text-xs">Excluir</button>
+            </form>
+            {% else %}
+            <span class="text-low text-xs">você</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

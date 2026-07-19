@@ -1,0 +1,96 @@
+# =============================================================
+# Docker Compose — Nexo Mídia
+# Uso:
+#   docker compose -f deploy/docker/docker-compose.yml --env-file .env up -d --build
+#
+# Serviços:
+#   - db:  PostgreSQL 16 (produção)
+#   - web: Flask + Gunicorn
+#   - nginx: reverse proxy (opcional; comente se usar Nginx do host)
+# =============================================================
+name: midia-indoor
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-nexo_midia}
+      POSTGRES_USER: ${POSTGRES_USER:-nexo_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nexo_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    networks:
+      - internal
+
+  web:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      FLASK_ENV: production
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-nexo_user}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-nexo_midia}
+      RATELIMIT_STORAGE_URI: redis://redis:6379/0
+      BEHIND_PROXY: "1"
+      SECRET_KEY: ${SECRET_KEY:?defina SECRET_KEY no .env}
+      SECURITY_PASSWORD_SALT: ${SECURITY_PASSWORD_SALT:?defina SECURITY_PASSWORD_SALT no .env}
+      COMPANY_NAME: ${COMPANY_NAME:-Nexo Mídia}
+      COMPANY_WHATSAPP: ${COMPANY_WHATSAPP:-5567999990000}
+      COMPANY_EMAIL: ${COMPANY_EMAIL:-}
+      COMPANY_PHONE: ${COMPANY_PHONE:-}
+      COMPANY_ADDRESS: ${COMPANY_ADDRESS:-}
+      FORCE_HTTPS: ${FORCE_HTTPS:-1}
+      LOG_TO_STDOUT: "1"
+    volumes:
+      - uploads_data:/app/app/static/uploads
+      - logs_data:/app/logs
+    expose:
+      - "8000"
+    networks:
+      - internal
+      - edge
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ../nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - uploads_data:/opt/midia-indoor/app/static/uploads:ro
+      - certbot_www:/var/www/certbot:ro
+      - certbot_certs:/etc/letsencrypt:ro
+    networks:
+      - edge
+
+volumes:
+  db_data:
+  uploads_data:
+  logs_data:
+  certbot_www:
+  certbot_certs:
+
+networks:
+  internal:
+  edge:

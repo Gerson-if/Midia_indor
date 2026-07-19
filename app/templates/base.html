@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}{{ settings.company_name if settings else APP_NAME }} — Mídia Indoor Digital{% endblock %}</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: { colors: { ink: '#0A0E16', inksoft:'#0E141D', panel:'#131A24', panel2:'#1A2330', line:'#232C3B', amber:'#FFB020', cyan:'#37D6C7', hi:'#ECEEF2', mid:'#AEB6C2', low:'#6C7686' }, fontFamily: { display: ['Space Grotesk','sans-serif'], body: ['IBM Plex Sans','sans-serif'], mono: ['JetBrains Mono','monospace'] } } } }
+</script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+{% block extra_head %}{% endblock %}
+</head>
+<body class="font-body antialiased bg-ink text-hi">
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="fixed top-4 right-4 z-[100] space-y-2 max-w-sm">
+      {% for category, message in messages %}
+        <div class="card px-4 py-3 text-sm border-l-4 {{ 'border-l-red-500' if category=='danger' else ('border-l-amber-400' if category=='warning' else ('border-l-cyan-400' if category=='info' else 'border-l-green-500')) }}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+{% block content %}{% endblock %}
+{% block scripts %}{% endblock %}
+</body>
+</html>

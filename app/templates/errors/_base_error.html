@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Erro {{ code }} — {{ APP_NAME }}{% endblock %}
+{% block content %}
+<div class="min-h-screen flex items-center justify-center px-4">
+  <div class="card p-10 max-w-md w-full text-center border border-line">
+    <p class="font-mono text-6xl font-bold mb-4" style="color: var(--amber)">{{ code }}</p>
+    <h1 class="font-display text-2xl font-semibold text-hi mb-3">{{ title }}</h1>
+    <p class="text-mid text-sm mb-8">{{ message }}</p>
+    <a href="{{ url_for('main.index') }}" class="btn btn-primary px-6 py-3" style="background-color: var(--amber)">Voltar ao site</a>
+  </div>
+</div>
+{% endblock %}

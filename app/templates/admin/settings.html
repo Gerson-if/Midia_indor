@@ -1,0 +1,86 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Configurações — {{ APP_NAME }}{% endblock %}
+{% block admin_content %}
+<h2 class="font-display text-2xl mb-6">Configurações do Site</h2>
+<form method="POST" enctype="multipart/form-data" class="grid lg:grid-cols-2 gap-6">
+  {{ form.hidden_tag() }}
+  {{ form.version_id() }}
+
+  <div class="card p-6 space-y-4">
+    <h3 class="font-display text-lg text-hi mb-2">Dados da Empresa</h3>
+    <div>
+      {{ form.company_name.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ form.company_name(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+    </div>
+    <div>
+      {{ form.company_description.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ form.company_description(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", rows="2") }}
+    </div>
+    <div>
+      {{ form.company_whatsapp.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ form.company_whatsapp(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", placeholder="Ex.: 5567999990000") }}
+      <p class="text-[11px] text-low mt-1">Somente números, com DDI 55 e DDD. Usado no botão flutuante do site.</p>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        {{ form.company_email.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ form.company_email(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+      </div>
+      <div>
+        {{ form.company_phone.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ form.company_phone(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+      </div>
+    </div>
+    <div>
+      {{ form.company_address.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ form.company_address(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        {{ form.color_primary.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ form.color_primary(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", type="color") }}
+      </div>
+      <div>
+        {{ form.color_secondary.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ form.color_secondary(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", type="color") }}
+      </div>
+    </div>
+  </div>
+
+  <div class="card p-6 space-y-4">
+    <h3 class="font-display text-lg text-hi mb-2">Seção Hero (topo do site)</h3>
+    <div>
+      {{ form.hero_title.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ form.hero_title(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+    </div>
+    <div>
+      {{ form.hero_subtitle.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ form.hero_subtitle(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", rows="2") }}
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        {{ form.hero_cta_primary_label.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ form.hero_cta_primary_label(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+      </div>
+      <div>
+        {{ form.hero_cta_secondary_label.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ form.hero_cta_secondary_label(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+      </div>
+    </div>
+    <div>
+      {{ form.hero_overlay_opacity.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ form.hero_overlay_opacity(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", step="0.05") }}
+    </div>
+    <div>
+      {{ form.hero_video.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ form.hero_video(class_="w-full text-xs text-mid") }}
+      {% if settings.hero_video_path %}<p class="text-[11px] text-low mt-1">Vídeo atual: {{ settings.hero_video_path }}</p>{% endif %}
+      {% for e in form.hero_video.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+    </div>
+  </div>
+
+  <div class="lg:col-span-2">
+    <button type="submit" class="btn btn-primary px-8 py-3 text-sm" style="background-color: var(--amber)">Salvar Configurações</button>
+  </div>
+</form>
+{% endblock %}

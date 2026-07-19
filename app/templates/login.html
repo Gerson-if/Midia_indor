@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Login Administrativo — {{ APP_NAME }}{% endblock %}
+{% block extra_head %}
+<style> body { display:flex; align-items:center; justify-content:center; min-height:100vh; } </style>
+{% endblock %}
+{% block content %}
+<div class="card p-8 w-full max-w-sm bg-panel border border-line shadow-2xl relative overflow-hidden mx-4">
+  <div class="absolute inset-0 opacity-10" style="background:radial-gradient(circle at top, var(--amber) 0%, transparent 70%)"></div>
+  <div class="relative z-10">
+    <div class="flex justify-center mb-6">
+      <span class="w-12 h-12 rounded-lg flex items-center justify-center text-ink font-display font-bold text-2xl" style="background-color: #FFB020">N</span>
+    </div>
+    <h2 class="font-display text-2xl text-center mb-6 text-white">Acesso ao Painel</h2>
+
+    <form method="POST" action="{{ url_for('auth.login') }}" class="space-y-5" novalidate>
+      {{ form.hidden_tag() }}
+      <div>
+        <label class="block text-xs font-mono uppercase text-low mb-1">E-mail</label>
+        {{ form.email(class_="w-full bg-panel2 border border-line rounded-lg px-4 py-3 text-sm focus:outline-none text-white transition-colors", placeholder="seu@email.com", autofocus=true) }}
+        {% for e in form.email.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+      </div>
+      <div>
+        <label class="block text-xs font-mono uppercase text-low mb-1">Senha</label>
+        {{ form.password(class_="w-full bg-panel2 border border-line rounded-lg px-4 py-3 text-sm focus:outline-none text-white transition-colors", placeholder="••••••••") }}
+        {% for e in form.password.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+      </div>
+      <label class="flex items-center gap-2 text-xs text-mid">
+        {{ form.remember_me() }} Manter conectado
+      </label>
+
+      <button type="submit" class="btn btn-primary w-full justify-center py-3 text-base text-ink font-bold" style="background-color: #FFB020">Entrar</button>
+      <a href="{{ url_for('main.index') }}" class="block text-center text-xs text-mid hover:text-white mt-4">&larr; Voltar ao site</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

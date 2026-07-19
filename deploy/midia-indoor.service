@@ -1,0 +1,37 @@
+# =============================================================
+# Serviço systemd — Nexo Mídia (Gunicorn)
+# Instale em /etc/systemd/system/midia-indoor.service
+#
+#   sudo cp deploy/midia-indoor.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now midia-indoor
+#   sudo systemctl status midia-indoor
+#   sudo journalctl -u midia-indoor -f
+# =============================================================
+[Unit]
+Description=Nexo Midia - Flask + Gunicorn (mídia indoor digital)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/midia-indoor
+EnvironmentFile=/opt/midia-indoor/.env
+ExecStart=/opt/midia-indoor/venv/bin/gunicorn -c deploy/gunicorn.conf.py wsgi:app
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+KillMode=mixed
+
+# ---- Hardening (defesa em profundidade a nível de SO) ----
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/opt/midia-indoor/app/static/uploads /opt/midia-indoor/logs /opt/midia-indoor/instance
+
+[Install]
+WantedBy=multi-user.target

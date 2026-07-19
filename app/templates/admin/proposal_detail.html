@@ -1,0 +1,92 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Solicitação {{ proposal.public_ref }} — {{ APP_NAME }}{% endblock %}
+{% block admin_content %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <a href="{{ url_for('admin.proposals_list') }}" class="text-xs text-mid hover:text-hi">&larr; Voltar para solicitações</a>
+    <h2 class="font-display text-2xl mt-1">Solicitação <span class="font-mono text-low text-lg">#{{ proposal.public_ref }}</span></h2>
+  </div>
+  <a href="{{ url_for('admin.proposal_whatsapp_redirect', proposal_id=proposal.id) }}" target="_blank"
+     class="inline-flex items-center gap-2 bg-[#25D366] text-white px-6 py-3 rounded-full font-bold text-sm hover:scale-105 transition-transform shadow-lg">
+    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 21.171l-2.072.54 1.1-1.996a9.949 9.949 0 0 1-1.488-5.32c0-5.514 4.486-10 10-10s10 4.486 10 10-4.486 10-10 10a9.932 9.932 0 0 1-5.46-1.62l-2.08.396zm8.125-14.496C18.066 4.542 15.228 3.33 12 3.33c-4.664 0-8.455 3.79-8.455 8.455 0 1.558.423 3.064 1.22 4.385l-1.34 3.96 4.095-1.074a8.414 8.414 0 0 0 4.48 1.28h.003c4.665 0 8.456-3.79 8.456-8.456 0-2.26-.88-4.386-2.298-6.205z"/></svg>
+    Contatar via WhatsApp
+  </a>
+</div>
+
+<div class="grid lg:grid-cols-3 gap-6">
+  <!-- Coluna principal: dados do cliente e da solicitação -->
+  <div class="lg:col-span-2 space-y-6">
+    <div class="card p-6">
+      <h3 class="font-display text-lg text-hi mb-4">Dados do Cliente</h3>
+      <dl class="grid sm:grid-cols-2 gap-4 text-sm">
+        <div><dt class="text-low font-mono text-xs uppercase">Nome</dt><dd class="text-white font-semibold">{{ proposal.name }}</dd></div>
+        <div><dt class="text-low font-mono text-xs uppercase">E-mail</dt><dd class="text-mid">{{ proposal.email }}</dd></div>
+        <div><dt class="text-low font-mono text-xs uppercase">Telefone</dt><dd class="text-mid">{{ proposal.phone }}</dd></div>
+        <div><dt class="text-low font-mono text-xs uppercase">Empresa</dt><dd class="text-mid">{{ proposal.company_name or "—" }}</dd></div>
+        <div><dt class="text-low font-mono text-xs uppercase">Segmento</dt><dd class="text-mid">{{ proposal.segment or "—" }}</dd></div>
+        <div><dt class="text-low font-mono text-xs uppercase">Faixa de investimento</dt><dd class="text-mid">{{ proposal.budget_range or "—" }}</dd></div>
+        <div class="sm:col-span-2"><dt class="text-low font-mono text-xs uppercase">Locais de interesse</dt><dd class="text-mid">{{ proposal.preferred_locations or "—" }}</dd></div>
+      </dl>
+    </div>
+
+    <div class="card p-6">
+      <h3 class="font-display text-lg text-hi mb-3">Mensagem enviada</h3>
+      <p class="text-mid text-sm leading-relaxed whitespace-pre-line">{{ proposal.message or "Nenhuma mensagem adicional enviada." }}</p>
+    </div>
+
+    <div class="card p-6">
+      <h3 class="font-display text-lg text-hi mb-4">Histórico da solicitação</h3>
+      <ul class="space-y-3">
+        <li class="text-sm text-mid border-l-2 pl-3" style="border-color: var(--cyan)">
+          <span class="text-xs font-mono text-low">{{ proposal.created_at.strftime('%d/%m/%Y %H:%M') }}</span> —
+          Solicitação recebida via {{ proposal.source }} (IP {{ proposal.ip_address or "desconhecido" }})
+        </li>
+        {% for h in history %}
+        <li class="text-sm text-mid border-l-2 pl-3 border-line">
+          <span class="text-xs font-mono text-low">{{ h.created_at.strftime('%d/%m/%Y %H:%M') }}</span> —
+          {{ h.description or h.action }} {% if h.user %}<span class="text-low">por {{ h.user.name }}</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <!-- Coluna lateral: status e notas internas -->
+  <div class="space-y-6">
+    <div class="card p-6">
+      <h3 class="font-display text-lg text-hi mb-4">Status</h3>
+      <form method="POST" action="{{ url_for('admin.proposal_update_status', proposal_id=proposal.id) }}" class="space-y-4">
+        {{ form.hidden_tag() }}
+        {{ form.version_id() }}
+        <div>
+          <label class="block text-xs font-mono uppercase text-low mb-1">Status atual</label>
+          {{ form.status(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm text-hi focus:outline-none") }}
+        </div>
+        <div>
+          <label class="block text-xs font-mono uppercase text-low mb-1">Notas internas</label>
+          {{ form.internal_notes(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm text-hi focus:outline-none", rows="5", placeholder="Observações visíveis apenas para a equipe...") }}
+        </div>
+        <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">Salvar alterações</button>
+      </form>
+    </div>
+
+    <div class="card p-6 text-sm">
+      <h3 class="font-display text-lg text-hi mb-3">Contato</h3>
+      {% if proposal.contacted_at %}
+        <p class="text-mid">Contatado em <span class="text-white">{{ proposal.contacted_at.strftime('%d/%m/%Y %H:%M') }}</span></p>
+        <p class="text-mid">Por <span class="text-white">{{ proposal.contacted_by.name if proposal.contacted_by else "—" }}</span></p>
+      {% else %}
+        <p class="text-low">Ainda não contatado.</p>
+      {% endif %}
+    </div>
+
+    {% if current_user.is_admin %}
+    <form method="POST" action="{{ url_for('admin.proposal_delete', proposal_id=proposal.id) }}"
+          onsubmit="return confirm('Tem certeza que deseja excluir esta solicitação? Esta ação não pode ser desfeita.');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-ghost w-full justify-center py-2.5 text-sm text-red-400 !border-red-400/30 hover:bg-red-500/10">Excluir solicitação</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

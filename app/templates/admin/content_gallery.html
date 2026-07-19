@@ -1,0 +1,57 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Galeria — {{ APP_NAME }}{% endblock %}
+{% block admin_content %}
+<h2 class="font-display text-2xl mb-6">Galeria (Seção "Nossos Pontos")</h2>
+<div class="grid lg:grid-cols-3 gap-6">
+  <div class="card p-6">
+    <h3 class="font-display text-lg mb-4">Novo ponto</h3>
+    <form method="POST" enctype="multipart/form-data" class="space-y-4">
+      {{ form.hidden_tag() }}
+      <div>
+        {{ form.title.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ form.title(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+        {% for e in form.title.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+      </div>
+      <div>
+        {{ form.category.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ form.category(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", placeholder="Ex.: Academias, Elevadores...") }}
+        {% for e in form.category.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+      </div>
+      <div>
+        {{ form.image.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ form.image(class_="w-full text-xs text-mid") }}
+      </div>
+      <div class="flex items-center gap-4">
+        <div class="flex-1">
+          {{ form.display_order.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+          {{ form.display_order(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+        </div>
+        <label class="flex items-center gap-2 text-xs text-mid mt-5">{{ form.is_active() }} Ativo</label>
+      </div>
+      <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">Adicionar</button>
+    </form>
+  </div>
+
+  <div class="lg:col-span-2 grid sm:grid-cols-2 gap-3">
+    {% for item in items %}
+    <div class="card p-4 flex items-center gap-4">
+      {% if item.image_path %}
+      <img src="{{ url_for('static', filename=item.image_path) }}" class="w-14 h-14 rounded-lg object-cover shrink-0">
+      {% else %}
+      <div class="w-14 h-14 rounded-lg bg-panel2 shrink-0"></div>
+      {% endif %}
+      <div class="flex-1 min-w-0">
+        <p class="font-semibold text-white truncate text-sm">{{ item.title }}</p>
+        <p class="text-xs" style="color: var(--amber)">{{ item.category }}</p>
+      </div>
+      <form method="POST" action="{{ url_for('admin.gallery_delete', item_id=item.id) }}" onsubmit="return confirm('Excluir este item?');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="text-red-400 hover:text-red-300 text-xs">Excluir</button>
+      </form>
+    </div>
+    {% else %}
+    <p class="text-mid text-sm">Nenhum item cadastrado.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
