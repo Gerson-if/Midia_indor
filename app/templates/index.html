@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ settings.company_name }} — Mídia Indoor Digital{% endblock %}
 {% block extra_head %}
-<link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+<link href="{{ url_for('static', filename='vendor/aos/aos.css') }}" rel="stylesheet">
 <style>
   :root { --amber: {{ settings.color_primary }}; --cyan: {{ settings.color_secondary }}; }
   .whatsapp-pulse { animation: wp-pulse 2s infinite; }
@@ -14,6 +14,9 @@
   .card-img-wrapper img { width: 100%; height: 160px; object-fit: cover; transition: transform 0.5s ease; }
   .group:hover .card-img-wrapper img { transform: scale(1.1); }
   .field-error { color: #f87171; font-size: .75rem; margin-top: .25rem; }
+  .hp-field { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  input:invalid, textarea:invalid { box-shadow: none; } /* evita highlight nativo agressivo antes do usuário interagir */
+  input.border-red-500, textarea.border-red-500 { border-color: #f87171 !important; }
 </style>
 {% endblock %}
 
@@ -143,25 +146,33 @@
         </p>
         {% endif %}
 
-        <form class="space-y-4" method="POST" action="{{ url_for('main.submit_proposal') }}" novalidate>
+        {% if form.errors %}
+        <p class="text-red-400 text-sm mb-4 font-mono text-center border border-red-500/30 bg-red-500/10 rounded-lg py-3">
+          Verifique os campos destacados abaixo antes de enviar.
+        </p>
+        {% endif %}
+
+        <form class="space-y-4" method="POST" action="{{ url_for('main.submit_proposal') }}#contato" id="proposal-form">
           {{ form.hidden_tag() }}
-          {# honeypot anti-spam, oculto via CSS, nunca preenchido por humanos #}
-          <div style="position:absolute; left:-9999px;" aria-hidden="true">{{ form.website() }}</div>
+          {# honeypot anti-spam: nome pouco comum p/ autofill, fora da tela, nunca preenchido por humanos #}
+          <div class="hp-field" aria-hidden="true">
+            {{ form.confirm_hp(autocomplete="off", tabindex="-1") }}
+          </div>
 
           <div>
-            {{ form.name(class_="w-full bg-panel2 border border-line rounded-lg px-4 py-3 text-sm text-hi focus:outline-none", placeholder="Seu Nome") }}
+            {{ form.name(class_="w-full bg-panel2 border rounded-lg px-4 py-3 text-sm text-hi focus:outline-none " ~ ("border-red-500" if form.name.errors else "border-line"), placeholder="Seu Nome", required=true, minlength="2", autocomplete="name") }}
             {% for e in form.name.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
           </div>
           <div>
-            {{ form.email(class_="w-full bg-panel2 border border-line rounded-lg px-4 py-3 text-sm text-hi focus:outline-none", placeholder="Seu E-mail") }}
+            {{ form.email(class_="w-full bg-panel2 border rounded-lg px-4 py-3 text-sm text-hi focus:outline-none " ~ ("border-red-500" if form.email.errors else "border-line"), placeholder="Seu E-mail", required=true, type="email", autocomplete="email") }}
             {% for e in form.email.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
           </div>
           <div>
-            {{ form.phone(class_="w-full bg-panel2 border border-line rounded-lg px-4 py-3 text-sm text-hi focus:outline-none", placeholder="Telefone/WhatsApp") }}
+            {{ form.phone(class_="w-full bg-panel2 border rounded-lg px-4 py-3 text-sm text-hi focus:outline-none " ~ ("border-red-500" if form.phone.errors else "border-line"), placeholder="Telefone/WhatsApp", required=true, type="tel", autocomplete="tel", minlength="8") }}
             {% for e in form.phone.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
           </div>
           <div>
-            {{ form.company_name(class_="w-full bg-panel2 border border-line rounded-lg px-4 py-3 text-sm text-hi focus:outline-none", placeholder="Empresa (opcional)") }}
+            {{ form.company_name(class_="w-full bg-panel2 border border-line rounded-lg px-4 py-3 text-sm text-hi focus:outline-none", placeholder="Empresa (opcional)", autocomplete="organization") }}
           </div>
           <div>
             {{ form.message(class_="w-full bg-panel2 border border-line rounded-lg px-4 py-3 text-sm text-hi focus:outline-none", placeholder="Conte um pouco sobre sua necessidade (opcional)", rows="3") }}
@@ -221,7 +232,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+<script src="{{ url_for('static', filename='vendor/aos/aos.js') }}" defer></script>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     AOS.init({ once: true, duration: 800 });

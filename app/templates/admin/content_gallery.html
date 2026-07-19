@@ -3,23 +3,32 @@
 {% block admin_content %}
 <h2 class="font-display text-2xl mb-6">Galeria (Seção "Nossos Pontos")</h2>
 <div class="grid lg:grid-cols-3 gap-6">
-  <div class="card p-6">
-    <h3 class="font-display text-lg mb-4">Novo ponto</h3>
-    <form method="POST" enctype="multipart/form-data" class="space-y-4">
+  <div class="card p-6" id="form-card">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-display text-lg">{{ "Editando ponto" if editing else "Novo ponto" }}</h3>
+      {% if editing %}
+      <a href="{{ url_for('admin.gallery_manage') }}" class="text-xs text-mid hover:text-hi">Cancelar</a>
+      {% endif %}
+    </div>
+    <form method="POST" action="{{ url_for('admin.gallery_edit', item_id=editing.id) if editing else url_for('admin.gallery_manage') }}" enctype="multipart/form-data" class="space-y-4">
       {{ form.hidden_tag() }}
       <div>
         {{ form.title.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-        {{ form.title(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+        {{ form.title(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", required=true) }}
         {% for e in form.title.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
       </div>
       <div>
         {{ form.category.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-        {{ form.category(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", placeholder="Ex.: Academias, Elevadores...") }}
+        {{ form.category(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", placeholder="Ex.: Academias, Elevadores...", required=true) }}
         {% for e in form.category.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
       </div>
       <div>
         {{ form.image.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {% if editing and editing.image_path %}
+        <img src="{{ url_for('static', filename=editing.image_path) }}" class="w-20 h-20 rounded-lg object-cover mb-2">
+        {% endif %}
         {{ form.image(class_="w-full text-xs text-mid") }}
+        <p class="text-[11px] text-low mt-1">{{ "Envie uma imagem apenas se quiser substituir a atual." if editing else "Opcional. A imagem é otimizada e redimensionada automaticamente." }}</p>
       </div>
       <div class="flex items-center gap-4">
         <div class="flex-1">
@@ -28,13 +37,15 @@
         </div>
         <label class="flex items-center gap-2 text-xs text-mid mt-5">{{ form.is_active() }} Ativo</label>
       </div>
-      <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">Adicionar</button>
+      <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">
+        {{ "Salvar alterações" if editing else "Adicionar" }}
+      </button>
     </form>
   </div>
 
   <div class="lg:col-span-2 grid sm:grid-cols-2 gap-3">
     {% for item in items %}
-    <div class="card p-4 flex items-center gap-4">
+    <div class="card p-4 flex items-center gap-4 {{ 'ring-1 ring-amber-400/50' if editing and editing.id == item.id }}">
       {% if item.image_path %}
       <img src="{{ url_for('static', filename=item.image_path) }}" class="w-14 h-14 rounded-lg object-cover shrink-0">
       {% else %}
@@ -44,10 +55,13 @@
         <p class="font-semibold text-white truncate text-sm">{{ item.title }}</p>
         <p class="text-xs" style="color: var(--amber)">{{ item.category }}</p>
       </div>
-      <form method="POST" action="{{ url_for('admin.gallery_delete', item_id=item.id) }}" onsubmit="return confirm('Excluir este item?');">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="text-red-400 hover:text-red-300 text-xs">Excluir</button>
-      </form>
+      <div class="flex items-center gap-2 shrink-0">
+        <a href="{{ url_for('admin.gallery_edit', item_id=item.id) }}#form-card" class="hover:text-white text-xs px-1" style="color: var(--cyan)">Editar</a>
+        <form method="POST" action="{{ url_for('admin.gallery_delete', item_id=item.id) }}" onsubmit="return confirm('Excluir este item?');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="text-red-400 hover:text-red-300 text-xs">Excluir</button>
+        </form>
+      </div>
     </div>
     {% else %}
     <p class="text-mid text-sm">Nenhum item cadastrado.</p>

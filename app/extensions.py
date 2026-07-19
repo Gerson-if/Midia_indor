@@ -5,6 +5,7 @@ Mantidas em módulo separado para evitar imports circulares entre
 app/__init__.py, os blueprints e os models.
 """
 from flask_bcrypt import Bcrypt
+from flask_compress import Compress
 from flask_login import LoginManager
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -19,6 +20,7 @@ bcrypt = Bcrypt()
 csrf = CSRFProtect()
 login_manager = LoginManager()
 talisman = Talisman()
+compress = Compress()
 
 limiter = Limiter(
     key_func=get_remote_address,

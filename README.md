@@ -262,6 +262,36 @@ ou webroot e monte os volumes indicados no `docker-compose.yml`
 - **Erros padronizados**: JSON consistente em `/api/*`, páginas HTML
   amigáveis nas demais rotas; nenhum stack trace exposto em produção.
 
+## Performance
+
+- **CSS compilado estaticamente**: nada de compilar Tailwind em tempo real
+  no navegador (o CDN oficial do Tailwind não é recomendado para produção
+  por isso). O CSS final (`app/static/css/tailwind.min.css`) já vem
+  pronto e minificado.
+- **Bibliotecas hospedadas localmente**: AOS e Chart.js não dependem de
+  CDNs externos (`unpkg`, `jsdelivr`), eliminando requisições externas e
+  pontos de falha.
+- **Compressão automática**: Flask-Compress comprime as respostas (gzip).
+- **Imagens otimizadas automaticamente no upload**: toda imagem enviada é
+  redimensionada conforme o contexto de uso (logo de parceiro não precisa
+  da mesma resolução de uma foto de galeria) e convertida para WEBP.
+- **Workers do Gunicorn com padrão conservador**: evita sobrecarregar
+  VPS pequenas por padrão (ajustável via `GUNICORN_WORKERS`).
+
+## Painel administrativo
+
+Todas as seções de conteúdo (Vantagens, Galeria, Depoimentos, Parceiros)
+possuem CRUD completo: **Criar, Listar, Editar e Excluir**. Clique em
+"Editar" em qualquer item da lista para carregar o formulário já
+preenchido.
+
+A tela de Configurações do site (`/admin/configuracoes`) tem um painel de
+**pré-visualização ao vivo** do Hero (título, subtítulo, cores, vídeo) que
+atualiza conforme você digita, sem precisar salvar.
+
+O Dashboard exibe gráficos reais (Chart.js) de solicitações recebidas nos
+últimos 14 dias e de distribuição por status.
+
 ## API
 
 Endpoints REST em `/api/v1`, prontos para futuras integrações (CRM, app

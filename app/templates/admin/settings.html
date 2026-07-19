@@ -1,86 +1,246 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}Configurações — {{ APP_NAME }}{% endblock %}
+
 {% block admin_content %}
-<h2 class="font-display text-2xl mb-6">Configurações do Site</h2>
-<form method="POST" enctype="multipart/form-data" class="grid lg:grid-cols-2 gap-6">
-  {{ form.hidden_tag() }}
-  {{ form.version_id() }}
+<div class="flex items-center justify-between mb-6">
+  <h2 class="font-display text-2xl font-semibold">Configurações do Site</h2>
+  <a href="{{ url_for('main.index') }}" target="_blank" class="btn btn-ghost !py-2 !px-4 text-xs flex items-center gap-2">
+    Abrir site em nova aba <span aria-hidden="true">&rarr;</span>
+  </a>
+</div>
 
-  <div class="card p-6 space-y-4">
-    <h3 class="font-display text-lg text-hi mb-2">Dados da Empresa</h3>
-    <div>
-      {{ form.company_name.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-      {{ form.company_name(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
-    </div>
-    <div>
-      {{ form.company_description.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-      {{ form.company_description(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", rows="2") }}
-    </div>
-    <div>
-      {{ form.company_whatsapp.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-      {{ form.company_whatsapp(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", placeholder="Ex.: 5567999990000") }}
-      <p class="text-[11px] text-low mt-1">Somente números, com DDI 55 e DDD. Usado no botão flutuante do site.</p>
-    </div>
-    <div class="grid grid-cols-2 gap-3">
+<div class="grid lg:grid-cols-5 gap-6">
+  <form method="POST" enctype="multipart/form-data" class="lg:col-span-3 grid md:grid-cols-2 gap-6" id="settings-form">
+    {{ form.hidden_tag() }}
+    
+    <!-- Formulário: Dados da Empresa -->
+    <div class="card p-6 space-y-4 md:col-span-1 border border-line bg-panel rounded-xl shadow-sm">
+      <h3 class="font-display text-lg font-medium text-hi mb-2">Dados da Empresa</h3>
+      
       <div>
-        {{ form.company_email.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-        {{ form.company_email(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+        {{ form.company_name.label(class_="block text-[11px] font-mono uppercase text-low mb-1 tracking-wider") }}
+        {{ form.company_name(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all", required=true, id="f_company_name") }}
       </div>
+      
       <div>
-        {{ form.company_phone.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-        {{ form.company_phone(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+        {{ form.company_description.label(class_="block text-[11px] font-mono uppercase text-low mb-1 tracking-wider") }}
+        {{ form.company_description(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all", rows="2") }}
+      </div>
+      
+      <div>
+        {{ form.company_whatsapp.label(class_="block text-[11px] font-mono uppercase text-low mb-1 tracking-wider") }}
+        {{ form.company_whatsapp(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all", placeholder="Ex.: 5567999990000", required=true) }}
+        <p class="text-[11px] text-low mt-1.5">Somente números, com DDI 55 e DDD. Usado no botão flutuante.</p>
+        {% for e in form.company_whatsapp.errors %}<p class="text-red-500 text-xs mt-1">{{ e }}</p>{% endfor %}
+      </div>
+      
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          {{ form.company_email.label(class_="block text-[11px] font-mono uppercase text-low mb-1 tracking-wider") }}
+          {{ form.company_email(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all", type="email") }}
+        </div>
+        <div>
+          {{ form.company_phone.label(class_="block text-[11px] font-mono uppercase text-low mb-1 tracking-wider") }}
+          {{ form.company_phone(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all") }}
+        </div>
+      </div>
+      
+      <div>
+        {{ form.company_address.label(class_="block text-[11px] font-mono uppercase text-low mb-1 tracking-wider") }}
+        {{ form.company_address(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all") }}
+      </div>
+      
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          {{ form.color_primary.label(class_="block text-[11px] font-mono uppercase text-low mb-1 tracking-wider") }}
+          {{ form.color_primary(class_="w-full bg-panel2 border border-line rounded-lg h-10 p-1 cursor-pointer focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all", type="color", id="f_color_primary") }}
+        </div>
+        <div>
+          {{ form.color_secondary.label(class_="block text-[11px] font-mono uppercase text-low mb-1 tracking-wider") }}
+          {{ form.color_secondary(class_="w-full bg-panel2 border border-line rounded-lg h-10 p-1 cursor-pointer focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all", type="color", id="f_color_secondary") }}
+        </div>
       </div>
     </div>
-    <div>
-      {{ form.company_address.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-      {{ form.company_address(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
-    </div>
-    <div class="grid grid-cols-2 gap-3">
-      <div>
-        {{ form.color_primary.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-        {{ form.color_primary(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", type="color") }}
-      </div>
-      <div>
-        {{ form.color_secondary.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-        {{ form.color_secondary(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", type="color") }}
-      </div>
-    </div>
-  </div>
 
-  <div class="card p-6 space-y-4">
-    <h3 class="font-display text-lg text-hi mb-2">Seção Hero (topo do site)</h3>
-    <div>
-      {{ form.hero_title.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-      {{ form.hero_title(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
-    </div>
-    <div>
-      {{ form.hero_subtitle.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-      {{ form.hero_subtitle(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", rows="2") }}
-    </div>
-    <div class="grid grid-cols-2 gap-3">
+    <!-- Formulário: Seção Hero -->
+    <div class="card p-6 space-y-4 md:col-span-1 border border-line bg-panel rounded-xl shadow-sm">
+      <h3 class="font-display text-lg font-medium text-hi mb-2">Seção Hero (Topo)</h3>
+      
       <div>
-        {{ form.hero_cta_primary_label.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-        {{ form.hero_cta_primary_label(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+        {{ form.hero_title.label(class_="block text-[11px] font-mono uppercase text-low mb-1 tracking-wider") }}
+        {{ form.hero_title(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all", id="f_hero_title") }}
       </div>
+      
       <div>
-        {{ form.hero_cta_secondary_label.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-        {{ form.hero_cta_secondary_label(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+        {{ form.hero_subtitle.label(class_="block text-[11px] font-mono uppercase text-low mb-1 tracking-wider") }}
+        {{ form.hero_subtitle(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all", rows="2", id="f_hero_subtitle") }}
+      </div>
+      
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          {{ form.hero_cta_primary_label.label(class_="block text-[11px] font-mono uppercase text-low mb-1 tracking-wider") }}
+          {{ form.hero_cta_primary_label(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all", id="f_cta_primary") }}
+        </div>
+        <div>
+          {{ form.hero_cta_secondary_label.label(class_="block text-[11px] font-mono uppercase text-low mb-1 tracking-wider") }}
+          {{ form.hero_cta_secondary_label(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all", id="f_cta_secondary") }}
+        </div>
+      </div>
+      
+      <div>
+        {{ form.hero_overlay_opacity.label(class_="block text-[11px] font-mono uppercase text-low mb-1 tracking-wider") }}
+        <div class="flex items-center gap-3">
+          {{ form.hero_overlay_opacity(class_="w-full accent-primary", type="range", step="0.05", min="0", max="1", id="f_overlay") }}
+          <span id="overlay-value-display" class="text-xs font-mono text-low w-8 text-right"></span>
+        </div>
+      </div>
+      
+      <div class="pt-2 border-t border-line">
+        {{ form.hero_video.label(class_="block text-[11px] font-mono uppercase text-low mb-1 tracking-wider") }}
+        {{ form.hero_video(class_="w-full text-xs text-mid file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:bg-panel2 file:text-hi hover:file:bg-line transition-all") }}
+        
+        {% if settings and settings.hero_video_path %}
+          <p class="text-[11px] text-green-500/80 mt-2 font-medium">✓ Vídeo atual em uso (enviar um novo substitui).</p>
+        {% else %}
+          <p class="text-[11px] text-low mt-2">Nenhum vídeo enviado — exibindo cores de fundo.</p>
+        {% endif %}
+        
+        {% for e in form.hero_video.errors %}<p class="text-red-500 text-xs mt-1">{{ e }}</p>{% endfor %}
       </div>
     </div>
-    <div>
-      {{ form.hero_overlay_opacity.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-      {{ form.hero_overlay_opacity(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", step="0.05") }}
-    </div>
-    <div>
-      {{ form.hero_video.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-      {{ form.hero_video(class_="w-full text-xs text-mid") }}
-      {% if settings.hero_video_path %}<p class="text-[11px] text-low mt-1">Vídeo atual: {{ settings.hero_video_path }}</p>{% endif %}
-      {% for e in form.hero_video.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
-    </div>
-  </div>
 
+    <!-- Botão Salvar -->
+    <div class="md:col-span-2 mt-2">
+      <button type="submit" class="w-full sm:w-auto px-8 py-3 rounded-lg text-sm font-medium text-black transition-opacity hover:opacity-90" style="background-color: var(--amber, #f59e0b)">
+        Salvar Configurações
+      </button>
+    </div>
+  </form>
+
+  <!-- Painel de Pré-visualização ao vivo -->
   <div class="lg:col-span-2">
-    <button type="submit" class="btn btn-primary px-8 py-3 text-sm" style="background-color: var(--amber)">Salvar Configurações</button>
+    <div class="card overflow-hidden sticky top-6 border border-line rounded-xl shadow-sm bg-panel">
+      
+      <div class="px-4 py-3 border-b border-line bg-panel2 flex items-center justify-between">
+        <h3 class="font-display text-sm font-medium text-hi">Pré-visualização do Hero</h3>
+        <span class="text-[10px] font-mono text-low bg-line/50 px-2 py-0.5 rounded-full">Atualiza ao digitar</span>
+      </div>
+      
+      <!-- Container do Hero (Proporção corrigida com z-index) -->
+      <div id="hero-preview" class="relative aspect-[9/12] sm:aspect-video overflow-hidden bg-black isolate">
+        
+        <!-- Fundo de Cor (Z-0) -->
+        <div id="preview-bg" class="absolute inset-0 z-0"></div>
+        
+        <!-- Vídeo (Z-10, sobrepõe a cor se existir) -->
+        {% if settings and settings.hero_video_path %}
+          <video id="preview-video" src="{{ url_for('static', filename=settings.hero_video_path) }}" autoplay loop muted playsinline class="absolute inset-0 w-full h-full object-cover z-10"></video>
+        {% endif %}
+        
+        <!-- Overlay de Escurecimento (Z-20) -->
+        <div id="preview-overlay" class="absolute inset-0 bg-black z-20 transition-opacity duration-200"></div>
+        
+        <!-- Conteúdo de Texto (Z-30) -->
+        <div class="absolute inset-0 flex flex-col items-center justify-center text-center p-6 z-30">
+          <h4 id="preview-title" data-placeholder="Título do Hero" class="font-display text-xl sm:text-2xl font-bold text-white mb-2 leading-tight drop-shadow-md"></h4>
+          <p id="preview-subtitle" data-placeholder="Subtítulo atraente para seu negócio" class="text-white/90 text-xs sm:text-sm mb-5 max-w-xs drop-shadow"></p>
+          
+          <div class="flex flex-wrap justify-center gap-2">
+            <span id="preview-cta-primary" data-placeholder="Ação Principal" class="text-[11px] font-bold px-5 py-2.5 rounded-full text-black shadow-lg transition-colors"></span>
+            <span id="preview-cta-secondary" data-placeholder="Saber Mais" class="text-[11px] font-bold px-5 py-2.5 rounded-full bg-white/10 text-white border border-white/30 backdrop-blur-sm"></span>
+          </div>
+        </div>
+        
+      </div>
+      
+      <!-- Detalhes no Rodapé do Preview -->
+      <div class="p-4 bg-panel space-y-2 text-xs text-mid border-t border-line">
+        <p class="flex items-center gap-2">
+          <span class="text-low font-mono uppercase text-[10px] w-14">Empresa:</span> 
+          <span id="preview-company" data-placeholder="Nome da sua Empresa" class="font-medium text-hi"></span>
+        </p>
+        <p class="flex items-center gap-2">
+          <span class="text-low font-mono uppercase text-[10px] w-14">Cores:</span>
+          <span id="preview-swatch-primary" class="w-5 h-5 rounded-full inline-block border border-line/20 shadow-inner"></span>
+          <span id="preview-swatch-secondary" class="w-5 h-5 rounded-full inline-block border border-line/20 shadow-inner"></span>
+        </p>
+      </div>
+      
+    </div>
   </div>
-</form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    
+    // Função universal de bind
+    const bind = (id, previewId, attr) => {
+      const input = document.getElementById(id);
+      const preview = document.getElementById(previewId);
+      if (!input || !preview) return;
+      
+      const update = () => {
+        if (attr === 'text') {
+          // Usa o valor do input, ou o dataset placeholder, ou texto vazio.
+          preview.textContent = input.value.trim() || preview.dataset.placeholder || '';
+        } else {
+          preview.style[attr] = input.value;
+        }
+      };
+      
+      input.addEventListener('input', update);
+      update(); // Executa assim que a página carrega para preencher corretamente
+    };
+
+    // Bindings de Textos
+    bind('f_hero_title', 'preview-title', 'text');
+    bind('f_hero_subtitle', 'preview-subtitle', 'text');
+    bind('f_cta_primary', 'preview-cta-primary', 'text');
+    bind('f_cta_secondary', 'preview-cta-secondary', 'text');
+    bind('f_company_name', 'preview-company', 'text');
+
+    // Manipulação de Cores
+    const primaryInput = document.getElementById('f_color_primary');
+    const secondaryInput = document.getElementById('f_color_secondary');
+    const bg = document.getElementById('preview-bg');
+    const ctaPrimary = document.getElementById('preview-cta-primary');
+    const swatchPrimary = document.getElementById('preview-swatch-primary');
+    const swatchSecondary = document.getElementById('preview-swatch-secondary');
+
+    function updateColors() {
+      // Cores padrão caso os inputs estejam vazios ou inexistentes
+      const p = primaryInput && primaryInput.value ? primaryInput.value : '#3b82f6';
+      const s = secondaryInput && secondaryInput.value ? secondaryInput.value : '#1e3a8a';
+      
+      if (bg) bg.style.background = `linear-gradient(160deg, ${p}, ${s})`;
+      if (ctaPrimary) ctaPrimary.style.backgroundColor = p;
+      if (swatchPrimary) swatchPrimary.style.backgroundColor = p;
+      if (swatchSecondary) swatchSecondary.style.backgroundColor = s;
+    }
+    
+    if (primaryInput) primaryInput.addEventListener('input', updateColors);
+    if (secondaryInput) secondaryInput.addEventListener('input', updateColors);
+    updateColors(); // Força a pintura inicial
+
+    // Manipulação de Overlay
+    const overlayInput = document.getElementById('f_overlay');
+    const overlay = document.getElementById('preview-overlay');
+    const overlayValueDisplay = document.getElementById('overlay-value-display');
+    
+    if (overlayInput && overlay) {
+      const updateOverlay = () => {
+        const v = parseFloat(overlayInput.value);
+        const validValue = isNaN(v) ? 0.65 : Math.min(Math.max(v, 0), 1);
+        overlay.style.opacity = validValue;
+        if(overlayValueDisplay) {
+            overlayValueDisplay.textContent = Math.round(validValue * 100) + '%';
+        }
+      };
+      overlayInput.addEventListener('input', updateOverlay);
+      updateOverlay(); // Força a opacidade inicial
+    }
+  });
+</script>
 {% endblock %}

@@ -12,7 +12,7 @@ def test_submit_proposal_creates_record(client, db):
             "phone": "67999998888",
             "company_name": "Academia Vitalis",
             "message": "Quero anunciar",
-            "website": "",  # honeypot vazio
+            "confirm_hp": "",  # honeypot vazio
         },
         follow_redirects=True,
     )
@@ -30,7 +30,7 @@ def test_submit_proposal_honeypot_blocks_bots(client, db):
             "name": "Bot Malicioso",
             "email": "bot@example.com",
             "phone": "67999998888",
-            "website": "http://spam.com",  # honeypot preenchido = bot
+            "confirm_hp": "http://spam.com",  # honeypot preenchido = bot
         },
         follow_redirects=True,
     )

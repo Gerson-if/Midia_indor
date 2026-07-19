@@ -46,7 +46,7 @@ def submit_proposal():
         # exibidos nos campos do formulário renderizado novamente.
         return _render_index_with_errors(form)
 
-    if form.website.data:
+    if form.confirm_hp.data:
         # Honeypot preenchido -> provável bot. Responde "sucesso" falso,
         # sem persistir nada, para não revelar a defesa ao spammer.
         current_app.logger.info("Submissão de proposta bloqueada por honeypot (IP=%s)", request.remote_addr)

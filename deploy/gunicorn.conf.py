@@ -11,10 +11,12 @@ import os
 bind = os.environ.get("GUNICORN_BIND", "127.0.0.1:8000")
 
 # ---- Workers ----
-# Regra prática: 2 * núcleos + 1. Ajustável via variável de ambiente.
-workers = int(os.environ.get("GUNICORN_WORKERS", multiprocessing.cpu_count() * 2 + 1))
+# Padrão conservador (2 workers) — adequado para VPS pequenas (1-2 vCPU).
+# Em servidores maiores, defina GUNICORN_WORKERS explicitamente
+# (regra prática: 2 * núcleos + 1).
+workers = int(os.environ.get("GUNICORN_WORKERS", min(4, multiprocessing.cpu_count() * 2 + 1)))
 worker_class = "gthread"
-threads = int(os.environ.get("GUNICORN_THREADS", 4))
+threads = int(os.environ.get("GUNICORN_THREADS", 2))
 worker_tmp_dir = "/dev/shm"  # evita I/O em disco lento para heartbeat dos workers
 
 # ---- Timeouts ----

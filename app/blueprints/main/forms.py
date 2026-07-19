@@ -26,4 +26,6 @@ class ProposalRequestForm(FlaskForm):
     message = TextAreaField("Mensagem", validators=[Optional(), Length(max=2000)])
 
     # Honeypot anti-spam: campo invisível que humanos não preenchem.
-    website = StringField("Website", validators=[Optional(), Length(max=0, message="Falha na validação.")])
+    # Nome escolhido deliberadamente incomum para não colidir com
+    # heurísticas de autopreenchimento do navegador (ex.: "website", "url").
+    confirm_hp = StringField("Não preencher", validators=[Optional(), Length(max=0, message="Falha na validação.")])

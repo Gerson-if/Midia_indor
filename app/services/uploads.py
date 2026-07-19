@@ -32,6 +32,18 @@ ALLOWED_IMAGE_MIME = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 ALLOWED_VIDEO_MIME = {"video/mp4", "video/webm"}
 
 
+# Dimensão máxima (maior lado, em pixels) por tipo de imagem. Imagens maiores
+# que isso são redimensionadas antes de salvar — reduz drasticamente o peso
+# do arquivo sem perda perceptível de qualidade para uso web.
+MAX_DIMENSIONS = {
+    "content/services": (1200, 1200),
+    "content/gallery": (1400, 1400),
+    "content/partners": (600, 600),
+    "content": (1400, 1400),
+}
+DEFAULT_MAX_DIMENSION = (1600, 1600)
+
+
 class UploadError(Exception):
     pass
 
@@ -52,8 +64,15 @@ def _detect_mime(file_storage) -> str:
 
 def save_image(file_storage, subfolder: str = "content") -> str:
     """
-    Valida e salva uma imagem enviada, retornando o caminho relativo
-    (ex.: "uploads/content/ab12cd34.webp") para ser guardado no banco.
+    Valida, otimiza e salva uma imagem enviada, retornando o caminho
+    relativo (ex.: "uploads/content/ab12cd34.webp") para ser guardado no banco.
+
+    Otimizações aplicadas automaticamente:
+    - Redimensionamento para o tamanho máximo adequado ao contexto de uso
+      (logo de parceiro não precisa da mesma resolução de uma foto de galeria).
+    - Conversão para WEBP com qualidade 82 (ótimo custo/benefício tamanho x
+      qualidade para uso web).
+    - Remoção de metadados/EXIF (também reduz o tamanho do arquivo).
     """
     if not file_storage or not file_storage.filename:
         raise UploadError("Nenhum arquivo enviado.")
@@ -79,9 +98,17 @@ def save_image(file_storage, subfolder: str = "content") -> str:
         image = Image.open(io.BytesIO(raw_bytes))
         image.verify()
         image = Image.open(io.BytesIO(raw_bytes))  # verify() invalida o objeto; reabrir
-        image = image.convert("RGB") if image.mode in ("P", "CMYK") else image
+        if image.mode == "CMYK":
+            image = image.convert("RGB")
+        elif image.mode == "P":
+            image = image.convert("RGBA") if "transparency" in image.info else image.convert("RGB")
     except Exception as exc:  # noqa: BLE001
         raise UploadError("Não foi possível processar a imagem enviada.") from exc
+
+    # Redimensiona preservando o aspect ratio, apenas se a imagem for maior
+    # que o necessário (nunca amplia imagens pequenas).
+    max_size = MAX_DIMENSIONS.get(subfolder, DEFAULT_MAX_DIMENSION)
+    image.thumbnail(max_size, Image.LANCZOS)
 
     upload_root = current_app.config["UPLOAD_FOLDER"]
     target_dir = os.path.join(upload_root, subfolder)

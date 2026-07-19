@@ -3,23 +3,32 @@
 {% block admin_content %}
 <h2 class="font-display text-2xl mb-6">Vantagens (Seção "Por que anunciar")</h2>
 <div class="grid lg:grid-cols-3 gap-6">
-  <div class="card p-6">
-    <h3 class="font-display text-lg mb-4">Novo item</h3>
-    <form method="POST" enctype="multipart/form-data" class="space-y-4">
+  <div class="card p-6" id="form-card">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-display text-lg">{{ "Editando item" if editing else "Novo item" }}</h3>
+      {% if editing %}
+      <a href="{{ url_for('admin.services_manage') }}" class="text-xs text-mid hover:text-hi">Cancelar</a>
+      {% endif %}
+    </div>
+    <form method="POST" action="{{ url_for('admin.service_edit', item_id=editing.id) if editing else url_for('admin.services_manage') }}" enctype="multipart/form-data" class="space-y-4">
       {{ form.hidden_tag() }}
       <div>
         {{ form.title.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-        {{ form.title(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+        {{ form.title(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", required=true) }}
         {% for e in form.title.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
       </div>
       <div>
         {{ form.description.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-        {{ form.description(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", rows="3") }}
+        {{ form.description(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", rows="3", required=true) }}
         {% for e in form.description.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
       </div>
       <div>
         {{ form.image.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {% if editing and editing.image_path %}
+        <img src="{{ url_for('static', filename=editing.image_path) }}" class="w-20 h-20 rounded-lg object-cover mb-2">
+        {% endif %}
         {{ form.image(class_="w-full text-xs text-mid") }}
+        <p class="text-[11px] text-low mt-1">{{ "Envie uma imagem apenas se quiser substituir a atual." if editing else "Opcional. A imagem é otimizada e redimensionada automaticamente." }}</p>
         {% for e in form.image.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
       </div>
       <div class="flex items-center gap-4">
@@ -29,13 +38,15 @@
         </div>
         <label class="flex items-center gap-2 text-xs text-mid mt-5">{{ form.is_active() }} Ativo</label>
       </div>
-      <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">Adicionar</button>
+      <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">
+        {{ "Salvar alterações" if editing else "Adicionar" }}
+      </button>
     </form>
   </div>
 
   <div class="lg:col-span-2 space-y-3">
     {% for item in items %}
-    <div class="card p-4 flex items-center gap-4">
+    <div class="card p-4 flex items-center gap-4 {{ 'ring-1 ring-amber-400/50' if editing and editing.id == item.id }}">
       {% if item.image_path %}
       <img src="{{ url_for('static', filename=item.image_path) }}" class="w-16 h-16 rounded-lg object-cover shrink-0">
       {% else %}
@@ -46,10 +57,13 @@
         <p class="text-xs text-mid truncate">{{ item.description }}</p>
         <p class="text-[11px] font-mono {{ 'text-green-400' if item.is_active else 'text-low' }}">{{ 'Ativo' if item.is_active else 'Inativo' }} · ordem {{ item.display_order }}</p>
       </div>
-      <form method="POST" action="{{ url_for('admin.service_delete', item_id=item.id) }}" onsubmit="return confirm('Excluir este item?');">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="text-red-400 hover:text-red-300 text-xs">Excluir</button>
-      </form>
+      <div class="flex items-center gap-2 shrink-0">
+        <a href="{{ url_for('admin.service_edit', item_id=item.id) }}#form-card" class="hover:text-white text-xs px-2 py-1 rounded" style="color: var(--cyan)">Editar</a>
+        <form method="POST" action="{{ url_for('admin.service_delete', item_id=item.id) }}" onsubmit="return confirm('Excluir este item?');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="text-red-400 hover:text-red-300 text-xs">Excluir</button>
+        </form>
+      </div>
     </div>
     {% else %}
     <p class="text-mid text-sm">Nenhum item cadastrado.</p>

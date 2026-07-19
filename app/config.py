@@ -126,13 +126,12 @@ class ProductionConfig(BaseConfig):
     TESTING = False
     ENV = "production"
 
-    _db_url = os.environ.get("DATABASE_URL")
-    if not _db_url:
-        raise RuntimeError(
-            "DATABASE_URL é obrigatória em produção (use PostgreSQL). "
-            "Configure a variável de ambiente antes de iniciar a aplicação."
-        )
-    SQLALCHEMY_DATABASE_URI = _db_url
+    # Não lê/valida DATABASE_URL na definição da classe: isso rodaria
+    # sempre que o módulo config.py fosse importado, mesmo quando o
+    # ambiente ativo é development/testing (quebrando o import inteiro
+    # à toa). A validação real acontece em validate(), chamado pelo
+    # app factory apenas quando ProductionConfig é de fato selecionado.
+    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL", "")
     SQLALCHEMY_ENGINE_OPTIONS = {
         **BaseConfig.SQLALCHEMY_ENGINE_OPTIONS,
         "pool_size": int(os.environ.get("SQLALCHEMY_POOL_SIZE", 10)),
@@ -146,6 +145,11 @@ class ProductionConfig(BaseConfig):
 
     @classmethod
     def validate(cls):
+        if not cls.SQLALCHEMY_DATABASE_URI:
+            raise RuntimeError(
+                "DATABASE_URL é obrigatória em produção (use PostgreSQL). "
+                "Configure a variável de ambiente antes de iniciar a aplicação."
+            )
         insecure_defaults = {"dev-key-insegura-troque-me", "dev-salt-troque-me"}
         if cls.SECRET_KEY in insecure_defaults:
             raise RuntimeError("SECRET_KEY insegura detectada em produção. Defina uma chave forte.")

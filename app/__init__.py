@@ -4,7 +4,7 @@ from flask import Flask, g, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from app.config import get_config
-from app.extensions import bcrypt, csrf, db, limiter, login_manager, migrate, talisman
+from app.extensions import bcrypt, compress, csrf, db, limiter, login_manager, migrate, talisman
 from app.utils.errors import register_error_handlers
 from app.utils.logging import configure_logging
 
@@ -44,6 +44,7 @@ def _init_extensions(app: Flask) -> None:
     bcrypt.init_app(app)
     csrf.init_app(app)
     login_manager.init_app(app)
+    compress.init_app(app)
 
     limiter.init_app(app)
     if app.config.get("TESTING") or app.config.get("RATELIMIT_ENABLED") is False:
@@ -54,14 +55,8 @@ def _init_extensions(app: Flask) -> None:
     # (Tailwind CDN, Google Fonts, Alpine.js, Chart.js, AOS).
     csp = {
         "default-src": "'self'",
-        "script-src": [
-            "'self'",
-            "'unsafe-inline'",
-            "https://cdn.tailwindcss.com",
-            "https://cdn.jsdelivr.net",
-            "https://unpkg.com",
-        ],
-        "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://unpkg.com"],
+        "script-src": ["'self'", "'unsafe-inline'"],
+        "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         "font-src": ["'self'", "https://fonts.gstatic.com"],
         "img-src": ["'self'", "data:", "blob:"],
         "media-src": ["'self'", "blob:"],

@@ -29,10 +29,45 @@ EDIT_ROLES = (UserRole.ADMIN, UserRole.EDITOR)
 @admin_bp.route("/")
 @roles_required(*STAFF_ROLES)
 def dashboard():
+    from datetime import datetime, timedelta, timezone
+
     total_proposals = Proposal.query.count()
     new_proposals = Proposal.query.filter_by(status=ProposalStatus.NOVO).count()
     converted = Proposal.query.filter_by(status=ProposalStatus.CONVERTIDO).count()
     recent_proposals = Proposal.query.order_by(Proposal.created_at.desc()).limit(6).all()
+
+    # ---- Dados para o gráfico de status (donut) ----
+    from app.models.proposal import STATUS_LABELS
+
+    status_counts_raw = dict(
+        db.session.query(Proposal.status, db.func.count(Proposal.id)).group_by(Proposal.status).all()
+    )
+    status_chart = {
+        "labels": [STATUS_LABELS[s] for s in ProposalStatus],
+        "data": [status_counts_raw.get(s, 0) for s in ProposalStatus],
+    }
+
+    # ---- Dados para o gráfico de solicitações nos últimos 14 dias ----
+    # Filtragem feita em Python (não via SQL) para evitar incompatibilidade
+    # entre datetime "aware" e "naive" que o SQLite pode introduzir ao
+    # persistir/ler colunas DateTime (o PostgreSQL não tem esse problema,
+    # mas mantemos a mesma lógica para funcionar de forma idêntica em ambos).
+    today = datetime.now(timezone.utc).date()
+    days = [today - timedelta(days=i) for i in range(13, -1, -1)]
+    counts_by_day = {d: 0 for d in days}
+
+    all_created_ats = db.session.query(Proposal.created_at).all()
+    for (created_at,) in all_created_ats:
+        if created_at is None:
+            continue
+        day = created_at.date()
+        if day in counts_by_day:
+            counts_by_day[day] += 1
+
+    timeline_chart = {
+        "labels": [d.strftime("%d/%m") for d in days],
+        "data": [counts_by_day[d] for d in days],
+    }
 
     return render_template(
         "admin/dashboard.html",
@@ -42,6 +77,8 @@ def dashboard():
         recent_proposals=recent_proposals,
         active_gallery=GalleryItem.query.filter_by(is_active=True).count(),
         active_partners=Partner.query.filter_by(is_active=True).count(),
+        status_chart=status_chart,
+        timeline_chart=timeline_chart,
     )
 
 
@@ -212,7 +249,28 @@ def services_manage():
         return redirect(url_for("admin.services_manage"))
 
     items = Service.query.order_by(Service.display_order).all()
-    return render_template("admin/content_services.html", form=form, items=items)
+    return render_template("admin/content_services.html", form=form, items=items, editing=None)
+
+
+@admin_bp.route("/conteudo/servicos/<int:item_id>/editar", methods=["GET", "POST"])
+@roles_required(*EDIT_ROLES)
+def service_edit(item_id):
+    item = Service.query.get_or_404(item_id)
+    form = ServiceForm(obj=item) if request.method == "GET" else ServiceForm()
+
+    if form.validate_on_submit():
+        item.title = form.title.data
+        item.description = form.description.data
+        item.display_order = form.display_order.data or 0
+        item.is_active = form.is_active.data
+        _attach_image(form.image, item, "image_path", "content/services")
+        log_action("service.updated", entity_type="Service", entity_id=item.id, description=item.title)
+        db.session.commit()
+        flash("Serviço atualizado com sucesso.", "success")
+        return redirect(url_for("admin.services_manage"))
+
+    items = Service.query.order_by(Service.display_order).all()
+    return render_template("admin/content_services.html", form=form, items=items, editing=item)
 
 
 @admin_bp.route("/conteudo/servicos/<int:item_id>/excluir", methods=["POST"])
@@ -249,7 +307,28 @@ def gallery_manage():
         return redirect(url_for("admin.gallery_manage"))
 
     items = GalleryItem.query.order_by(GalleryItem.display_order).all()
-    return render_template("admin/content_gallery.html", form=form, items=items)
+    return render_template("admin/content_gallery.html", form=form, items=items, editing=None)
+
+
+@admin_bp.route("/conteudo/galeria/<int:item_id>/editar", methods=["GET", "POST"])
+@roles_required(*EDIT_ROLES)
+def gallery_edit(item_id):
+    item = GalleryItem.query.get_or_404(item_id)
+    form = GalleryItemForm(obj=item) if request.method == "GET" else GalleryItemForm()
+
+    if form.validate_on_submit():
+        item.title = form.title.data
+        item.category = form.category.data
+        item.display_order = form.display_order.data or 0
+        item.is_active = form.is_active.data
+        _attach_image(form.image, item, "image_path", "content/gallery")
+        log_action("gallery.updated", entity_type="GalleryItem", entity_id=item.id, description=item.title)
+        db.session.commit()
+        flash("Item de galeria atualizado com sucesso.", "success")
+        return redirect(url_for("admin.gallery_manage"))
+
+    items = GalleryItem.query.order_by(GalleryItem.display_order).all()
+    return render_template("admin/content_gallery.html", form=form, items=items, editing=item)
 
 
 @admin_bp.route("/conteudo/galeria/<int:item_id>/excluir", methods=["POST"])
@@ -286,7 +365,28 @@ def testimonials_manage():
         return redirect(url_for("admin.testimonials_manage"))
 
     items = Testimonial.query.order_by(Testimonial.display_order).all()
-    return render_template("admin/content_testimonials.html", form=form, items=items)
+    return render_template("admin/content_testimonials.html", form=form, items=items, editing=None)
+
+
+@admin_bp.route("/conteudo/depoimentos/<int:item_id>/editar", methods=["GET", "POST"])
+@roles_required(*EDIT_ROLES)
+def testimonial_edit(item_id):
+    item = Testimonial.query.get_or_404(item_id)
+    form = TestimonialForm(obj=item) if request.method == "GET" else TestimonialForm()
+
+    if form.validate_on_submit():
+        item.name = form.name.data
+        item.company_name = form.company_name.data
+        item.text = form.text.data
+        item.display_order = form.display_order.data or 0
+        item.is_active = form.is_active.data
+        log_action("testimonial.updated", entity_type="Testimonial", entity_id=item.id, description=item.name)
+        db.session.commit()
+        flash("Depoimento atualizado com sucesso.", "success")
+        return redirect(url_for("admin.testimonials_manage"))
+
+    items = Testimonial.query.order_by(Testimonial.display_order).all()
+    return render_template("admin/content_testimonials.html", form=form, items=items, editing=item)
 
 
 @admin_bp.route("/conteudo/depoimentos/<int:item_id>/excluir", methods=["POST"])
@@ -318,7 +418,27 @@ def partners_manage():
         return redirect(url_for("admin.partners_manage"))
 
     items = Partner.query.order_by(Partner.display_order).all()
-    return render_template("admin/content_partners.html", form=form, items=items)
+    return render_template("admin/content_partners.html", form=form, items=items, editing=None)
+
+
+@admin_bp.route("/conteudo/parceiros/<int:item_id>/editar", methods=["GET", "POST"])
+@roles_required(*EDIT_ROLES)
+def partner_edit(item_id):
+    item = Partner.query.get_or_404(item_id)
+    form = PartnerForm(obj=item) if request.method == "GET" else PartnerForm()
+
+    if form.validate_on_submit():
+        item.name = form.name.data
+        item.display_order = form.display_order.data or 0
+        item.is_active = form.is_active.data
+        _attach_image(form.logo, item, "logo_path", "content/partners")
+        log_action("partner.updated", entity_type="Partner", entity_id=item.id, description=item.name)
+        db.session.commit()
+        flash("Parceiro atualizado com sucesso.", "success")
+        return redirect(url_for("admin.partners_manage"))
+
+    items = Partner.query.order_by(Partner.display_order).all()
+    return render_template("admin/content_partners.html", form=form, items=items, editing=item)
 
 
 @admin_bp.route("/conteudo/parceiros/<int:item_id>/excluir", methods=["POST"])

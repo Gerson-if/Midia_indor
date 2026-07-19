@@ -3,21 +3,29 @@
 {% block admin_content %}
 <h2 class="font-display text-2xl mb-6">Depoimentos de Clientes</h2>
 <div class="grid lg:grid-cols-3 gap-6">
-  <div class="card p-6">
-    <h3 class="font-display text-lg mb-4">Novo depoimento</h3>
-    <form method="POST" class="space-y-4">
+  <div class="card p-6" id="form-card">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-display text-lg">{{ "Editando depoimento" if editing else "Novo depoimento" }}</h3>
+      {% if editing %}
+      <a href="{{ url_for('admin.testimonials_manage') }}" class="text-xs text-mid hover:text-hi">Cancelar</a>
+      {% endif %}
+    </div>
+    <form method="POST" action="{{ url_for('admin.testimonial_edit', item_id=editing.id) if editing else url_for('admin.testimonials_manage') }}" class="space-y-4">
       {{ form.hidden_tag() }}
       <div>
         {{ form.name.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-        {{ form.name(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+        {{ form.name(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", required=true) }}
+        {% for e in form.name.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
       </div>
       <div>
         {{ form.company_name.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-        {{ form.company_name(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+        {{ form.company_name(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", required=true) }}
+        {% for e in form.company_name.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
       </div>
       <div>
         {{ form.text.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-        {{ form.text(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", rows="3") }}
+        {{ form.text(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", rows="3", required=true) }}
+        {% for e in form.text.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
       </div>
       <div class="flex items-center gap-4">
         <div class="flex-1">
@@ -26,22 +34,28 @@
         </div>
         <label class="flex items-center gap-2 text-xs text-mid mt-5">{{ form.is_active() }} Ativo</label>
       </div>
-      <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">Adicionar</button>
+      <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">
+        {{ "Salvar alterações" if editing else "Adicionar" }}
+      </button>
     </form>
   </div>
 
   <div class="lg:col-span-2 space-y-3">
     {% for item in items %}
-    <div class="card p-4">
+    <div class="card p-4 {{ 'ring-1 ring-amber-400/50' if editing and editing.id == item.id }}">
       <div class="flex justify-between items-start gap-4">
         <div>
           <p class="font-semibold text-white text-sm">{{ item.name }} <span class="text-xs font-normal" style="color: var(--amber)">— {{ item.company_name }}</span></p>
           <p class="text-mid text-sm mt-1">&ldquo;{{ item.text }}&rdquo;</p>
+          <p class="text-[11px] font-mono mt-1 {{ 'text-green-400' if item.is_active else 'text-low' }}">{{ 'Ativo' if item.is_active else 'Inativo' }}</p>
         </div>
-        <form method="POST" action="{{ url_for('admin.testimonial_delete', item_id=item.id) }}" onsubmit="return confirm('Excluir?');">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit" class="text-red-400 hover:text-red-300 text-xs shrink-0">Excluir</button>
-        </form>
+        <div class="flex items-center gap-2 shrink-0">
+          <a href="{{ url_for('admin.testimonial_edit', item_id=item.id) }}#form-card" class="hover:text-white text-xs" style="color: var(--cyan)">Editar</a>
+          <form method="POST" action="{{ url_for('admin.testimonial_delete', item_id=item.id) }}" onsubmit="return confirm('Excluir?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="text-red-400 hover:text-red-300 text-xs">Excluir</button>
+          </form>
+        </div>
       </div>
     </div>
     {% else %}

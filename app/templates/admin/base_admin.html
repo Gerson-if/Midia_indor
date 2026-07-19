@@ -4,11 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}Painel — {{ APP_NAME }}{% endblock %}</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = { theme: { extend: { colors: { ink:'#0A0E16', inksoft:'#0E141D', panel:'#131A24', panel2:'#1A2330', line:'#232C3B', amber:'#FFB020', cyan:'#37D6C7', hi:'#ECEEF2', mid:'#AEB6C2', low:'#6C7686' }, fontFamily: { display:['Space Grotesk','sans-serif'], body:['IBM Plex Sans','sans-serif'], mono:['JetBrains Mono','monospace'] }}}}
-</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.min.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 <style>
   .nav-item{ display:flex; align-items:center; gap:.75rem; padding:.65rem .85rem; border-radius:10px; color:var(--text-mid); font-size:.875rem; transition:background .15s,color .15s; }
