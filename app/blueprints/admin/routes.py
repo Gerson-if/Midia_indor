@@ -479,19 +479,44 @@ def settings_manage():
             settings.color_secondary = form.color_secondary.data
             settings.hero_title = form.hero_title.data
             settings.hero_subtitle = form.hero_subtitle.data
+            settings.hero_media_type = form.hero_media_type.data
             if form.hero_overlay_opacity.data is not None:
                 settings.hero_overlay_opacity = form.hero_overlay_opacity.data
             settings.hero_cta_primary_label = form.hero_cta_primary_label.data
             settings.hero_cta_secondary_label = form.hero_cta_secondary_label.data
 
-            if form.hero_video.data:
-                try:
+            settings.services_accent_color = form.services_accent_color.data
+            settings.gallery_accent_color = form.gallery_accent_color.data
+            settings.testimonials_accent_color = form.testimonials_accent_color.data
+            settings.card_background_color = form.card_background_color.data
+            if form.card_border_radius.data is not None:
+                settings.card_border_radius = form.card_border_radius.data
+
+            settings.privacy_content = form.privacy_content.data
+            settings.terms_content = form.terms_content.data
+
+            # ---- Gerenciamento de mídia do Hero: remover, substituir ----
+            try:
+                if form.remove_hero_video.data and settings.hero_video_path:
+                    delete_upload(settings.hero_video_path)
+                    settings.hero_video_path = None
+
+                if form.remove_hero_image.data and settings.hero_image_path:
+                    delete_upload(settings.hero_image_path)
+                    settings.hero_image_path = None
+
+                if form.hero_video.data:
                     old_video = settings.hero_video_path
                     settings.hero_video_path = save_video(form.hero_video.data)
                     delete_upload(old_video)
-                except UploadError as exc:
-                    flash(str(exc), "danger")
-                    return render_template("admin/settings.html", form=form, settings=settings)
+
+                if form.hero_image.data:
+                    old_image = settings.hero_image_path
+                    settings.hero_image_path = save_image(form.hero_image.data, subfolder="hero")
+                    delete_upload(old_image)
+            except UploadError as exc:
+                flash(str(exc), "danger")
+                return render_template("admin/settings.html", form=form, settings=settings)
 
             try:
                 log_action("settings.updated", entity_type="SiteSettings", entity_id=settings.id)
@@ -501,6 +526,8 @@ def settings_manage():
                 db.session.rollback()
                 flash("Conflito de edição detectado. Tente novamente.", "warning")
             return redirect(url_for("admin.settings_manage"))
+        else:
+            flash("Não foi possível salvar: verifique os campos destacados.", "danger")
 
     return render_template("admin/settings.html", form=form, settings=settings)
 

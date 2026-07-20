@@ -135,6 +135,12 @@ def test_settings_update(client, admin_user, db):
             "color_primary": "#FFB020",
             "color_secondary": "#37D6C7",
             "hero_overlay_opacity": "0.5",
+            "hero_media_type": "video",
+            "services_accent_color": "#FFB020",
+            "gallery_accent_color": "#FFB020",
+            "testimonials_accent_color": "#37D6C7",
+            "card_background_color": "#131A24",
+            "card_border_radius": "12",
             "version_id": settings.version_id,
         },
         follow_redirects=True,
@@ -142,3 +148,82 @@ def test_settings_update(client, admin_user, db):
     assert resp.status_code == 200
     db.session.refresh(settings)
     assert settings.company_name == "Nova Empresa"
+
+
+def test_settings_hero_media_toggle_and_removal(client, admin_user, db):
+    """Cobre a alternância vídeo/imagem e a remoção de mídia do Hero."""
+    from app.models import SiteSettings
+
+    login(client, "admin@teste.com", "SenhaForte123!")
+    settings = SiteSettings.get_solo()
+    settings.hero_video_path = "uploads/hero/fake_video.mp4"
+    db.session.commit()
+
+    base_data = {
+        "company_name": settings.company_name,
+        "company_whatsapp": settings.company_whatsapp,
+        "color_primary": settings.color_primary,
+        "color_secondary": settings.color_secondary,
+        "hero_overlay_opacity": "0.5",
+        "hero_media_type": "image",
+        "services_accent_color": "#FFB020",
+        "gallery_accent_color": "#FFB020",
+        "testimonials_accent_color": "#37D6C7",
+        "card_background_color": "#131A24",
+        "card_border_radius": "12",
+        "version_id": settings.version_id,
+        "remove_hero_video": "y",
+    }
+    resp = client.post("/admin/configuracoes", data=base_data, follow_redirects=True)
+    assert resp.status_code == 200
+
+    db.session.refresh(settings)
+    assert settings.hero_media_type == "image"
+    assert settings.hero_video_path is None
+
+
+def test_privacy_and_terms_content_editable_and_rendered(client, admin_user, db):
+    from app.models import SiteSettings
+
+    login(client, "admin@teste.com", "SenhaForte123!")
+    settings = SiteSettings.get_solo()
+
+    resp = client.post(
+        "/admin/configuracoes",
+        data={
+            "company_name": settings.company_name,
+            "company_whatsapp": settings.company_whatsapp,
+            "color_primary": settings.color_primary,
+            "color_secondary": settings.color_secondary,
+            "hero_overlay_opacity": "0.5",
+            "hero_media_type": "video",
+            "services_accent_color": "#FFB020",
+            "gallery_accent_color": "#FFB020",
+            "testimonials_accent_color": "#37D6C7",
+            "card_background_color": "#131A24",
+            "card_border_radius": "12",
+            "version_id": settings.version_id,
+            "privacy_content": "## Título Customizado\nTexto customizado de privacidade.",
+            "terms_content": "## Regras Customizadas\nTexto customizado de termos.",
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+
+    resp = client.get("/privacidade")
+    html = resp.get_data(as_text=True)
+    assert "Título Customizado" in html
+    assert "Texto customizado de privacidade." in html
+
+    resp = client.get("/termos")
+    html = resp.get_data(as_text=True)
+    assert "Regras Customizadas" in html
+    assert "Texto customizado de termos." in html
+
+
+def test_flash_messages_rendered_as_toast_data(client, admin_user):
+    """As mensagens flash devem ser emitidas como dados para o sistema de toast, não como banner fixo."""
+    login(client, "admin@teste.com", "SenhaForte123!")
+    resp = client.get("/admin/")
+    html = resp.get_data(as_text=True)
+    assert "toast.js" in html

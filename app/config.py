@@ -62,7 +62,7 @@ class BaseConfig:
 
     # ---- Uploads ----
     UPLOAD_FOLDER = str(BASE_DIR / os.environ.get("UPLOAD_FOLDER", "app/static/uploads"))
-    MAX_CONTENT_LENGTH = int(os.environ.get("MAX_CONTENT_LENGTH_MB", 8)) * 1024 * 1024
+    MAX_CONTENT_LENGTH = int(os.environ.get("MAX_CONTENT_LENGTH_MB", 80)) * 1024 * 1024
     ALLOWED_IMAGE_EXTENSIONS = set(
         _list(os.environ.get("ALLOWED_IMAGE_EXTENSIONS"), ["jpg", "jpeg", "png", "webp", "gif"])
     )

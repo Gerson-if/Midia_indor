@@ -18,6 +18,12 @@ def run_seed():
         settings.hero_cta_secondary_label = "Conhecer Locais"
         settings.company_description = "Rede de mídia indoor digital estratégica para sua marca."
 
+    if not settings.privacy_content:
+        settings.privacy_content = SiteSettings._default_privacy_content()
+
+    if not settings.terms_content:
+        settings.terms_content = SiteSettings._default_terms_content()
+
     if Service.query.count() == 0:
         db.session.add_all(
             [

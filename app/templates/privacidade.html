@@ -4,7 +4,7 @@
 <header class="border-b border-line py-5">
   <div class="container-nx flex items-center justify-between">
     <a href="{{ url_for('main.index') }}" class="flex items-center gap-2 font-display font-semibold text-lg">
-      <span class="w-8 h-8 rounded-md flex items-center justify-center text-ink font-bold" style="background-color: var(--amber)">{{ settings.company_name[0] if settings.company_name else 'N' }}</span>{{ settings.company_name }}
+      <span class="w-8 h-8 rounded-md flex items-center justify-center text-ink font-bold" style="background-color: var(--amber, #FFB020)">{{ settings.company_name[0] if settings.company_name else 'N' }}</span>{{ settings.company_name }}
     </a>
     <a href="{{ url_for('main.index') }}" class="text-sm text-mid hover:text-hi">&larr; Voltar ao site</a>
   </div>
@@ -12,23 +12,21 @@
 <main class="container-nx py-16 max-w-2xl">
   <h1 class="font-display text-3xl font-semibold mb-2">Política de Privacidade</h1>
   <p class="text-xs text-low font-mono mb-10">última atualização: {{ now_year }}</p>
-  <div class="space-y-8 text-mid text-sm leading-relaxed">
-    <section>
-      <h2 class="font-display text-lg text-hi font-semibold mb-2">1. Dados que coletamos</h2>
-      <p>Coletamos informações fornecidas voluntariamente em formulários de contato, como nome, e-mail, telefone e mensagem, além de dados técnicos de navegação (endereço IP e navegador) para fins de segurança e estatística.</p>
-    </section>
-    <section>
-      <h2 class="font-display text-lg text-hi font-semibold mb-2">2. Como usamos seus dados</h2>
-      <p>As informações são utilizadas exclusivamente para responder solicitações comerciais, entrar em contato via WhatsApp, e-mail ou telefone, e melhorar a experiência de navegação no site.</p>
-    </section>
-    <section>
-      <h2 class="font-display text-lg text-hi font-semibold mb-2">3. Armazenamento e segurança</h2>
-      <p>Seus dados são armazenados em banco de dados protegido, com acesso restrito à nossa equipe autorizada e trilha de auditoria de todos os acessos administrativos.</p>
-    </section>
-    <section>
-      <h2 class="font-display text-lg text-hi font-semibold mb-2">4. Seus direitos</h2>
-      <p>Você pode solicitar a qualquer momento a exclusão ou correção dos seus dados entrando em contato através do e-mail {{ settings.company_email }}.</p>
-    </section>
+  <div class="space-y-6 text-mid text-sm leading-relaxed">
+    {% if settings.privacy_content %}
+      {% for block in settings.privacy_content.split('\n\n') %}
+        {% set block = block.strip() %}
+        {% if block %}
+          {% if block.startswith('## ') %}
+            <h2 class="font-display text-lg text-hi font-semibold mt-8 mb-2">{{ block[3:] }}</h2>
+          {% else %}
+            <p class="whitespace-pre-line">{{ block }}</p>
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+    {% else %}
+      <p>O conteúdo desta página ainda não foi configurado. Acesse o painel administrativo em <em>Configurações &rarr; Páginas Legais</em> para editá-lo.</p>
+    {% endif %}
   </div>
 </main>
 <footer class="border-t border-line py-8 text-xs text-low text-center">&copy; {{ now_year }} {{ settings.company_name }}</footer>

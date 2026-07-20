@@ -10,10 +10,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 # Dependências de sistema necessárias em runtime:
 # - libmagic1: validação real do tipo de arquivo em uploads
+# - ffmpeg: otimização/recodificação dos vídeos enviados no Hero
 # - libpq5: driver PostgreSQL (psycopg2-binary já embute libpq, mas
 #   mantemos por segurança em algumas distros slim)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libmagic1 \
+    ffmpeg \
     curl \
     && rm -rf /var/lib/apt/lists/*
 

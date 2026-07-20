@@ -57,7 +57,7 @@ Principais decisões:
 
 ```bash
 # 1. Clonar/entrar no projeto e criar o ambiente virtual
-python3 -m venv venv
+python -m venv ven
 source venv/bin/activate
 
 # 2. Instalar dependências (inclui as de desenvolvimento/testes)
@@ -139,7 +139,7 @@ Guia manual (sem Docker), usando Nginx + Gunicorn + systemd + PostgreSQL.
 ```bash
 sudo apt update && sudo apt install -y \
   python3-venv python3-pip build-essential libpq-dev \
-  libmagic1 nginx postgresql postgresql-contrib certbot python3-certbot-nginx redis-server
+  libmagic1 ffmpeg nginx postgresql postgresql-contrib certbot python3-certbot-nginx
 ```
 
 ### 2. Banco de dados PostgreSQL
@@ -291,6 +291,29 @@ atualiza conforme você digita, sem precisar salvar.
 
 O Dashboard exibe gráficos reais (Chart.js) de solicitações recebidas nos
 últimos 14 dias e de distribuição por status.
+
+### Mídia do Hero (vídeo ou imagem)
+
+Em Configurações → Mídia de Capa do Hero, o administrador escolhe se o
+topo do site exibe um **vídeo** ou uma **imagem estática**, com upload,
+substituição e remoção diretamente pelo painel — sem tocar em código.
+Vídeos enviados são automaticamente otimizados via `ffmpeg`: redimensionados
+para no máximo 1920×1080, recodificados em H.264 e com o áudio removido
+(o vídeo do Hero é sempre exibido mudo), reduzindo drasticamente o
+tamanho do arquivo. A pré-visualização ao vivo reflete a alternância
+entre vídeo e imagem em tempo real, antes mesmo de salvar.
+
+### Páginas legais editáveis
+
+O conteúdo de `/privacidade` e `/termos` é armazenado no banco e editado
+em Configurações → Páginas Legais. Use linhas iniciadas com `## ` para
+criar títulos de seção; parágrafos são separados por uma linha em branco.
+
+### Notificações (toasts)
+
+Mensagens de sucesso, erro e aviso são exibidas como notificações
+discretas no canto superior direito (auto-dismiss, com botão de fechar),
+tanto no site público quanto no painel administrativo.
 
 ## API
 

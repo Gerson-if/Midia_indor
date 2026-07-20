@@ -5,6 +5,7 @@ from wtforms import (
     FloatField,
     IntegerField,
     PasswordField,
+    RadioField,
     SelectField,
     StringField,
     TextAreaField,
@@ -67,10 +68,33 @@ class SiteSettingsForm(FlaskForm):
 
     hero_title = StringField("Título do Hero", validators=[Optional(), Length(max=200)])
     hero_subtitle = TextAreaField("Subtítulo do Hero", validators=[Optional(), Length(max=400)])
+    hero_media_type = RadioField(
+        "Tipo de capa do Hero",
+        choices=[("video", "Vídeo"), ("image", "Imagem estática")],
+        validators=[DataRequired()],
+    )
     hero_overlay_opacity = FloatField("Opacidade do overlay", validators=[Optional(), NumberRange(min=0, max=1)])
     hero_cta_primary_label = StringField("Texto do botão principal", validators=[Optional(), Length(max=80)])
     hero_cta_secondary_label = StringField("Texto do botão secundário", validators=[Optional(), Length(max=80)])
-    hero_video = FileField("Vídeo de fundo", validators=[Optional(), FileAllowed(["mp4", "webm"])])
+    hero_video = FileField("Vídeo de fundo", validators=[Optional(), FileAllowed(["mp4", "webm"], "Envie um arquivo .mp4 ou .webm.")])
+    hero_image = FileField(
+        "Imagem de capa",
+        validators=[Optional(), FileAllowed(["jpg", "jpeg", "png", "webp", "gif"], "Envie uma imagem válida.")],
+    )
+    remove_hero_video = BooleanField("Remover vídeo atual")
+    remove_hero_image = BooleanField("Remover imagem atual")
+
+    # ---- Aparência das demais seções ----
+    services_accent_color = StringField("Destaque — Vantagens", validators=[DataRequired(), Length(max=9)])
+    gallery_accent_color = StringField("Destaque — Galeria", validators=[DataRequired(), Length(max=9)])
+    testimonials_accent_color = StringField("Destaque — Depoimentos", validators=[DataRequired(), Length(max=9)])
+    card_background_color = StringField("Fundo dos cards", validators=[DataRequired(), Length(max=9)])
+    card_border_radius = IntegerField("Arredondamento dos cards (px)", validators=[Optional(), NumberRange(min=0, max=40)])
+
+    # ---- Páginas legais ----
+    privacy_content = TextAreaField("Conteúdo — Política de Privacidade", validators=[Optional(), Length(max=20000)])
+    terms_content = TextAreaField("Conteúdo — Termos de Uso", validators=[Optional(), Length(max=20000)])
+
     version_id = IntegerField("version", validators=[Optional()])
 
 

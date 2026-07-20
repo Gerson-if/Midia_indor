@@ -59,11 +59,9 @@
     <main class="flex-1 p-8 overflow-y-auto">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-          <div class="mb-6 space-y-2">
+          <div hidden>
             {% for category, message in messages %}
-              <div class="card px-4 py-3 text-sm border-l-4 {{ 'border-l-red-500' if category=='danger' else ('border-l-amber-400' if category=='warning' else ('border-l-cyan-400' if category=='info' else 'border-l-green-500')) }}">
-                {{ message }}
-              </div>
+              <div class="flash-data" data-category="{{ category }}">{{ message }}</div>
             {% endfor %}
           </div>
         {% endif %}
@@ -73,6 +71,7 @@
     </main>
   </div>
 </div>
+<script src="{{ url_for('static', filename='js/toast.js') }}"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>
