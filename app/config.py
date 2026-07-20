@@ -132,16 +132,36 @@ class ProductionConfig(BaseConfig):
     # à toa). A validação real acontece em validate(), chamado pelo
     # app factory apenas quando ProductionConfig é de fato selecionado.
     SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL", "")
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        **BaseConfig.SQLALCHEMY_ENGINE_OPTIONS,
-        "pool_size": int(os.environ.get("SQLALCHEMY_POOL_SIZE", 10)),
-        "max_overflow": int(os.environ.get("SQLALCHEMY_MAX_OVERFLOW", 20)),
-        "pool_recycle": int(os.environ.get("SQLALCHEMY_POOL_RECYCLE", 1800)),
-    }
+
+    # pool_size/max_overflow só são aceitos pelo QueuePool (Postgres).
+    # SQLite usa StaticPool (":memory:") ou um pool que não aceita esses
+    # argumentos — passá-los faz create_engine() estourar TypeError e
+    # derruba a aplicação inteira antes de processar qualquer rota.
+    # Isso quebrava exatamente o caso de testar ProductionConfig com
+    # SQLite (sem PostgreSQL disponível).
+    if SQLALCHEMY_DATABASE_URI.startswith("sqlite"):
+        SQLALCHEMY_ENGINE_OPTIONS = dict(BaseConfig.SQLALCHEMY_ENGINE_OPTIONS)
+    else:
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            **BaseConfig.SQLALCHEMY_ENGINE_OPTIONS,
+            "pool_size": int(os.environ.get("SQLALCHEMY_POOL_SIZE", 10)),
+            "max_overflow": int(os.environ.get("SQLALCHEMY_MAX_OVERFLOW", 20)),
+            "pool_recycle": int(os.environ.get("SQLALCHEMY_POOL_RECYCLE", 1800)),
+        }
 
     SESSION_COOKIE_SECURE = True
     REMEMBER_COOKIE_SECURE = True
     FORCE_HTTPS = _bool(os.environ.get("FORCE_HTTPS"), True)
+
+    # Em produção o Flask roda atrás do Nginx (ver deploy/nginx.conf), que
+    # encaminha X-Forwarded-For/Proto/Host/Port. Sem confiar nesses
+    # cabeçalhos (via ProxyFix, ativado no app factory quando BEHIND_PROXY
+    # é verdadeiro), o Werkzeug monta redirecionamentos e URLs absolutas
+    # usando o host/porta interno do Gunicorn (127.0.0.1:8000) em vez do
+    # domínio público — quebrando rotas e redirecionamentos assim que a
+    # aplicação sai do localhost. Continua sobrescrevível via variável de
+    # ambiente para quem não usa Nginx na frente.
+    BEHIND_PROXY = _bool(os.environ.get("BEHIND_PROXY"), True)
 
     @classmethod
     def validate(cls):

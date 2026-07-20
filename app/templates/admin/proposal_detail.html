@@ -57,7 +57,7 @@
       <h3 class="font-display text-lg text-hi mb-4">Status</h3>
       <form method="POST" action="{{ url_for('admin.proposal_update_status', proposal_id=proposal.id) }}" class="space-y-4">
         {{ form.hidden_tag() }}
-        {{ form.version_id() }}
+        {{ form.version_id(class="hidden") }}
         <div>
           <label class="block text-xs font-mono uppercase text-low mb-1">Status atual</label>
           {{ form.status(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm text-hi focus:outline-none") }}

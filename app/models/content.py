@@ -1,6 +1,20 @@
 from datetime import datetime, timezone
 
+from flask import url_for
+
 from app.extensions import db
+
+
+def _static_url(relative_path):
+    """
+    Converte um caminho relativo salvo no banco (ex.: "content/services/x.webp")
+    em uma URL absoluta e utilizável fora do servidor da aplicação (apps
+    mobile, totens, painéis headless, ou qualquer outro domínio consumindo
+    a API pública em /api/v1/content/site).
+    """
+    if not relative_path:
+        return None
+    return url_for("static", filename=relative_path, _external=True)
 
 
 class TimestampMixin:
@@ -32,7 +46,7 @@ class Service(TimestampMixin, db.Model):
             "id": self.id,
             "title": self.title,
             "description": self.description,
-            "image_url": self.image_path,
+            "image_url": _static_url(self.image_path),
             "display_order": self.display_order,
             "is_active": self.is_active,
         }
@@ -55,7 +69,7 @@ class GalleryItem(TimestampMixin, db.Model):
             "id": self.id,
             "title": self.title,
             "category": self.category,
-            "image_url": self.image_path,
+            "image_url": _static_url(self.image_path),
             "display_order": self.display_order,
             "is_active": self.is_active,
         }
@@ -91,7 +105,7 @@ class Partner(TimestampMixin, db.Model):
     is_active = db.Column(db.Boolean, nullable=False, default=True)
 
     def to_dict(self):
-        return {"id": self.id, "name": self.name, "logo_url": self.logo_path}
+        return {"id": self.id, "name": self.name, "logo_url": _static_url(self.logo_path)}
 
 
 class SiteSettings(TimestampMixin, db.Model):
@@ -202,15 +216,15 @@ class SiteSettings(TimestampMixin, db.Model):
                 "phone": self.company_phone,
                 "address": self.company_address,
                 "colors": {"primary": self.color_primary, "secondary": self.color_secondary},
-                "favicon_url": self.favicon_path,
-                "logo_url": self.logo_path,
+                "favicon_url": _static_url(self.favicon_path),
+                "logo_url": _static_url(self.logo_path),
             },
             "hero": {
                 "title": self.hero_title,
                 "subtitle": self.hero_subtitle,
                 "media_type": self.hero_media_type,
-                "video_url": self.hero_video_path,
-                "image_url": self.hero_image_path,
+                "video_url": _static_url(self.hero_video_path),
+                "image_url": _static_url(self.hero_image_path),
                 "overlay_opacity": self.hero_overlay_opacity,
                 "cta_primary_label": self.hero_cta_primary_label,
                 "cta_secondary_label": self.hero_cta_secondary_label,

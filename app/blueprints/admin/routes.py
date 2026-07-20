@@ -17,6 +17,7 @@ from app.models.proposal import ProposalStatus
 from app.services.uploads import UploadError, delete_upload, save_favicon, save_image, save_video
 from app.services.whatsapp import build_client_whatsapp_link
 from app.utils.decorators import admin_required, log_action, roles_required
+from app.utils.legal_content import normalize_newlines
 from sqlalchemy.orm.exc import StaleDataError
 
 STAFF_ROLES = (UserRole.ADMIN, UserRole.EDITOR, UserRole.VIEWER)
@@ -492,8 +493,8 @@ def settings_manage():
             if form.card_border_radius.data is not None:
                 settings.card_border_radius = form.card_border_radius.data
 
-            settings.privacy_content = form.privacy_content.data
-            settings.terms_content = form.terms_content.data
+            settings.privacy_content = normalize_newlines(form.privacy_content.data)
+            settings.terms_content = normalize_newlines(form.terms_content.data)
 
             # ---- Gerenciamento de mídia do Hero: remover, substituir ----
             try:

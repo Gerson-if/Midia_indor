@@ -89,6 +89,14 @@ flask run
 Acesse `http://localhost:5000` para o site público e
 `http://localhost:5000/login` para o painel administrativo.
 
+> **Acessando de outra máquina/ambiente (VM, container, servidor de teste)?**
+> `flask run` escuta por padrão apenas em `127.0.0.1` (só aceita conexões da
+> própria máquina). O `.env.example` já define `FLASK_RUN_HOST=0.0.0.0` para
+> que o Flask CLI escute em todas as interfaces — copie o `.env` normalmente
+> e o `flask run` já vai funcionar acessando pelo IP/domínio do ambiente
+> remoto. Sem essa variável (ou passando `--host 127.0.0.1` manualmente), a
+> conexão externa é recusada e parece que a aplicação "só entende localhost".
+
 ## Testes
 
 ```bash

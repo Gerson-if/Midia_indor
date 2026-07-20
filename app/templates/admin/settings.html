@@ -9,9 +9,9 @@
   .tab-panel{ display:none; }
   .tab-panel.active{ display:block; }
 
-  /* Barra de ações fixa: o botão "Salvar" fica sempre acessível sem
-     precisar rolar a página até o final. */
-  .save-bar{ position:sticky; bottom:0; z-index:30; }
+  /* Barra de ações fixa: o botão "Salvar" fica sempre acessível no topo
+     da página, sem precisar rolar até o final do formulário. */
+  .save-bar{ position:sticky; top:0; z-index:30; }
 
   /* Réplica em miniatura do início do site público (header + hero),
      escalada para caber no painel de pré-visualização — mesmas classes
@@ -44,6 +44,15 @@
       <button type="button" class="tab-btn" data-tab="tab-hero">Hero</button>
       <button type="button" class="tab-btn" data-tab="tab-aparencia">Aparência</button>
       <button type="button" class="tab-btn" data-tab="tab-legal">Páginas Legais</button>
+    </div>
+
+    <!-- ---- Barra de ações fixa: sempre visível no topo, sem precisar rolar ---- -->
+    <div class="save-bar card !rounded-xl px-4 py-3 flex items-center justify-between gap-3 backdrop-blur border border-line" style="background:rgba(19,26,36,.92)">
+      <p class="text-[11px] text-low hidden sm:block">As alterações só entram em vigor no site após salvar.</p>
+      <div class="flex items-center gap-3 ml-auto">
+        <span class="text-xs text-low" id="save-hint">&nbsp;</span>
+        <button type="submit" class="btn btn-primary px-6 sm:px-8 py-2.5 text-sm" style="background-color: var(--amber)">Salvar Configurações</button>
+      </div>
     </div>
 
     <!-- ================= EMPRESA ================= -->
@@ -273,7 +282,8 @@
       <div class="card p-6 space-y-4">
         <h3 class="font-display text-lg text-hi mb-2">Páginas Legais</h3>
         <p class="text-xs text-low -mt-2">
-          Use linhas iniciadas com <code class="text-cyan-300">## </code> para criar títulos de seção. Separe parágrafos com uma linha em branco.
+          Use linhas iniciadas com <code class="text-cyan-300">## </code> para criar títulos de seção,
+          e linhas iniciadas com <code class="text-cyan-300">- </code> para criar listas. Separe parágrafos com uma linha em branco.
         </p>
         <div>
           {{ form.privacy_content.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
@@ -287,15 +297,6 @@
           <a href="{{ url_for('main.privacidade') }}" target="_blank" class="hover:underline" style="color: var(--cyan)">Ver política publicada &rarr;</a>
           <a href="{{ url_for('main.termos') }}" target="_blank" class="hover:underline" style="color: var(--cyan)">Ver termos publicados &rarr;</a>
         </div>
-      </div>
-    </div>
-
-    <!-- ---- Barra de ações fixa: sempre visível, sem precisar rolar ---- -->
-    <div class="save-bar card !rounded-xl px-4 py-3 flex items-center justify-between gap-3 backdrop-blur border border-line" style="background:rgba(19,26,36,.92)">
-      <p class="text-[11px] text-low hidden sm:block">As alterações só entram em vigor no site após salvar.</p>
-      <div class="flex items-center gap-3 ml-auto">
-        <span class="text-xs text-low" id="save-hint">&nbsp;</span>
-        <button type="submit" class="btn btn-primary px-6 sm:px-8 py-2.5 text-sm" style="background-color: var(--amber)">Salvar Configurações</button>
       </div>
     </div>
   </form>

@@ -38,7 +38,8 @@
   html.sidebar-collapsed .nav-item .badge{ display:none; }
   html.sidebar-collapsed .nav-item .badge-dot{ display:block; }
   html.sidebar-collapsed .toggle-btn svg{ transform:rotate(180deg); }
-  html.sidebar-collapsed .sidebar-brand{ justify-content:center; }
+  html.sidebar-collapsed .sidebar-brand{ justify-content:center; padding-left:.5rem; padding-right:.5rem; }
+  html.sidebar-collapsed .sidebar-brand-mark{ display:none; }
 
   /* ---- Mobile: sidebar vira off-canvas (drawer) ---- */
   .sidebar-backdrop{ display:none; }
@@ -48,7 +49,8 @@
     html.sidebar-collapsed .sidebar .nav-label,
     html.sidebar-collapsed .sidebar .sidebar-brand-text,
     html.sidebar-collapsed .sidebar .sidebar-section-label,
-    html.sidebar-collapsed .sidebar .sidebar-user-info{ display:block; }
+    html.sidebar-collapsed .sidebar .sidebar-user-info,
+    html.sidebar-collapsed .sidebar .sidebar-brand-mark{ display:block; }
     html.sidebar-collapsed .sidebar .nav-item{ justify-content:flex-start; }
     html.sidebar-collapsed .sidebar .badge{ display:inline-flex; }
     html.sidebar-collapsed .sidebar .badge-dot{ display:none; }
@@ -80,11 +82,14 @@
   <aside class="sidebar border-r border-line flex flex-col shrink-0 bg-inksoft h-screen sticky top-0 overflow-x-hidden">
     <div class="sidebar-brand flex items-center gap-3 px-5 h-16 border-b border-line shrink-0">
       {% if site_settings and site_settings.logo_path %}
-      <img src="{{ url_for('static', filename=site_settings.logo_path) }}" alt="{{ APP_NAME }}" class="w-8 h-8 rounded-md object-contain shrink-0">
+      <img src="{{ url_for('static', filename=site_settings.logo_path) }}" alt="{{ APP_NAME }}" class="sidebar-brand-mark w-8 h-8 rounded-md object-contain shrink-0">
       {% else %}
-      <span class="w-8 h-8 rounded-md flex items-center justify-center text-ink font-bold shrink-0" style="background-color: var(--amber)">{{ APP_NAME[0] if APP_NAME else 'N' }}</span>
+      <span class="sidebar-brand-mark w-8 h-8 rounded-md flex items-center justify-center text-ink font-bold shrink-0" style="background-color: var(--amber)">{{ APP_NAME[0] if APP_NAME else 'N' }}</span>
       {% endif %}
-      <span class="sidebar-brand-text font-display font-semibold truncate">Painel Admin</span>
+      <span class="sidebar-brand-text font-display font-semibold truncate flex-1">Painel Admin</span>
+      <button type="button" id="sidebar-toggle" class="toggle-btn shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-low hover:text-hi hover:bg-white/5 transition-colors" title="Recolher/expandir menu" aria-label="Recolher/expandir menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" class="shrink-0"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="m14 10-2 2 2 2"/></svg>
+      </button>
     </div>
 
     <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
@@ -137,10 +142,6 @@
     </nav>
 
     <div class="border-t border-line shrink-0">
-      <button type="button" id="sidebar-toggle" class="toggle-btn w-full flex items-center gap-3 px-5 py-3 text-low hover:text-hi hover:bg-white/5 transition-colors" title="Recolher/expandir menu">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" class="shrink-0"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="m14 10-2 2 2 2"/></svg>
-        <span class="sidebar-brand-text text-xs font-mono uppercase tracking-wider">Recolher menu</span>
-      </button>
       <div class="sidebar-user-info px-5 py-3 text-xs text-low">
         <p class="text-mid truncate">{{ current_user.name }}</p>
         <p class="font-mono">{{ current_user.role.value }}</p>

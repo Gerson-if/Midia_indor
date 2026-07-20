@@ -45,6 +45,12 @@ services:
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-nexo_user}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-nexo_midia}
       RATELIMIT_STORAGE_URI: memory://
       GUNICORN_WORKERS: ${GUNICORN_WORKERS:-2}
+      # 127.0.0.1 (padrão do gunicorn.conf.py) é o loopback do PRÓPRIO
+      # CONTÊINER — o port mapping do Docker chega pela interface de rede
+      # do contêiner, não pelo loopback, então com o padrão a aplicação
+      # fica inacessível de fora (em qualquer host/ambiente). 0.0.0.0
+      # escuta em todas as interfaces do contêiner e resolve isso.
+      GUNICORN_BIND: "0.0.0.0:8000"
       BEHIND_PROXY: "1"
       SECRET_KEY: ${SECRET_KEY:?defina SECRET_KEY no .env}
       SECURITY_PASSWORD_SALT: ${SECURITY_PASSWORD_SALT:?defina SECURITY_PASSWORD_SALT no .env}

@@ -6,6 +6,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from app.config import get_config
 from app.extensions import bcrypt, compress, csrf, db, limiter, login_manager, migrate, talisman
 from app.utils.errors import register_error_handlers
+from app.utils.legal_content import render_legal_content
 from app.utils.logging import configure_logging
 
 
@@ -78,6 +79,8 @@ def _init_extensions(app: Flask) -> None:
     @login_manager.user_loader
     def load_user(user_id):
         return db.session.get(User, int(user_id))
+
+    app.jinja_env.filters["legal_content"] = render_legal_content
 
 
 def _register_blueprints(app: Flask) -> None:
