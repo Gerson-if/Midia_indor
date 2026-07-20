@@ -32,11 +32,15 @@
 {% block content %}
 <header class="fixed top-0 inset-x-0 z-50 transition-all duration-300 glass border-b border-line">
   <nav class="container-nx flex items-center justify-between py-4">
-    <a href="#top" class="flex items-center gap-2 font-display font-semibold text-lg text-hi">
-      <span class="w-8 h-8 rounded-md flex items-center justify-center text-ink font-bold" style="background-color: var(--amber)">
+    <a href="#top" class="flex items-center gap-2 font-display font-semibold text-lg text-hi min-w-0">
+      {% if settings.logo_path %}
+      <img src="{{ url_for('static', filename=settings.logo_path) }}" alt="{{ settings.company_name }}" class="w-8 h-8 rounded-md object-contain shrink-0">
+      {% else %}
+      <span class="w-8 h-8 rounded-md flex items-center justify-center text-ink font-bold shrink-0" style="background-color: var(--amber)">
         {{ settings.company_name[0] if settings.company_name else 'N' }}
       </span>
-      <span>{{ settings.company_name }}</span>
+      {% endif %}
+      <span class="truncate">{{ settings.company_name }}</span>
     </a>
     <div class="hidden md:flex items-center gap-8 font-mono text-xs uppercase tracking-wider text-mid">
       <a href="#servicos" class="hover:text-hi transition-colors">Vantagens</a>

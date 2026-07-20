@@ -51,13 +51,15 @@ def _init_extensions(app: Flask) -> None:
         limiter.enabled = False
 
     # Talisman: cabeçalhos de segurança (CSP, HSTS, X-Content-Type-Options, etc.)
-    # CSP permissiva o suficiente para os CDNs usados pelo front-end atual
-    # (Tailwind CDN, Google Fonts, Alpine.js, Chart.js, AOS).
+    # CSP restrita a 'self': todo o front-end (Tailwind, fontes, Chart.js,
+    # AOS) é servido localmente a partir de app/static — sem dependência
+    # de CDNs de terceiros, reduzindo a superfície de rede e melhorando
+    # o tempo de carregamento (sem round-trips extras de DNS/TLS).
     csp = {
         "default-src": "'self'",
         "script-src": ["'self'", "'unsafe-inline'"],
-        "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        "font-src": ["'self'", "https://fonts.gstatic.com"],
+        "style-src": ["'self'", "'unsafe-inline'"],
+        "font-src": ["'self'"],
         "img-src": ["'self'", "data:", "blob:"],
         "media-src": ["'self'", "blob:"],
         "connect-src": ["'self'"],
@@ -95,9 +97,17 @@ def _register_context_processors(app: Flask) -> None:
     def inject_globals():
         from datetime import datetime, timezone
 
+        from app.models import SiteSettings
+
+        try:
+            settings = SiteSettings.get_solo()
+        except Exception:
+            settings = None
+
         return {
             "APP_NAME": app.config.get("COMPANY_NAME"),
             "now_year": datetime.now(timezone.utc).year,
+            "global_settings": settings,
         }
 
 

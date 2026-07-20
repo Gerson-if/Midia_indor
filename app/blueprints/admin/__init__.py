@@ -16,11 +16,15 @@ from app.blueprints.admin import routes  # noqa: E402,F401
 
 @admin_bp.context_processor
 def inject_sidebar_data():
-    from app.models import Proposal
+    from app.models import Proposal, SiteSettings
     from app.models.proposal import ProposalStatus
 
     try:
         count = Proposal.query.filter_by(status=ProposalStatus.NOVO).count()
     except Exception:
         count = 0
-    return {"new_proposals_count": count}
+    try:
+        site_settings = SiteSettings.get_solo()
+    except Exception:
+        site_settings = None
+    return {"new_proposals_count": count, "site_settings": site_settings}

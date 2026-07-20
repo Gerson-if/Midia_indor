@@ -66,6 +66,18 @@ class SiteSettingsForm(FlaskForm):
     color_primary = StringField("Cor primária", validators=[DataRequired(), Length(max=9)])
     color_secondary = StringField("Cor secundária", validators=[DataRequired(), Length(max=9)])
 
+    # ---- Identidade visual ----
+    favicon = FileField(
+        "Favicon (ícone da aba)",
+        validators=[Optional(), FileAllowed(["png", "jpg", "jpeg", "ico", "webp"], "Envie um .png, .ico, .jpg ou .webp.")],
+    )
+    remove_favicon = BooleanField("Remover favicon atual")
+    logo = FileField(
+        "Logo da empresa",
+        validators=[Optional(), FileAllowed(["jpg", "jpeg", "png", "webp", "gif"], "Envie uma imagem válida.")],
+    )
+    remove_logo = BooleanField("Remover logo atual")
+
     hero_title = StringField("Título do Hero", validators=[Optional(), Length(max=200)])
     hero_subtitle = TextAreaField("Subtítulo do Hero", validators=[Optional(), Length(max=400)])
     hero_media_type = RadioField(

@@ -46,7 +46,7 @@
       {% else %}
       <div class="w-12 h-12 rounded-lg bg-panel2 shrink-0"></div>
       {% endif %}
-      <p class="flex-1 font-semibold text-white text-sm truncate">{{ item.name }}</p>
+      <p class="flex-1 min-w-0 font-semibold text-white text-sm truncate">{{ item.name }}</p>
       <div class="flex items-center gap-2 shrink-0">
         <a href="{{ url_for('admin.partner_edit', item_id=item.id) }}#form-card" class="hover:text-white text-xs" style="color: var(--cyan)">Editar</a>
         <form method="POST" action="{{ url_for('admin.partner_delete', item_id=item.id) }}" onsubmit="return confirm('Excluir?');">

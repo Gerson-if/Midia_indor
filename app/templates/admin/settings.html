@@ -1,22 +1,59 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}Configurações — {{ APP_NAME }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .tab-btn{ display:flex; align-items:center; gap:.5rem; padding:.55rem 1rem; border-radius:9px; font-size:.8rem; font-weight:600; color:var(--text-mid); white-space:nowrap; transition:background .15s,color .15s; }
+  .tab-btn:hover{ color:var(--text-hi); background:rgba(255,255,255,.04); }
+  .tab-btn.active{ background:var(--amber); color:#1A1204; }
+  .tab-panel{ display:none; }
+  .tab-panel.active{ display:block; }
+
+  /* Barra de ações fixa: o botão "Salvar" fica sempre acessível sem
+     precisar rolar a página até o final. */
+  .save-bar{ position:sticky; bottom:0; z-index:30; }
+
+  /* Réplica em miniatura do início do site público (header + hero),
+     escalada para caber no painel de pré-visualização — mesmas classes
+     do template público (index.html), garantindo fidelidade visual. */
+  .pv-scale-wrap{ position:relative; width:100%; aspect-ratio:16/11; overflow:hidden; background:#000; }
+  .pv-scale{ position:absolute; top:0; left:0; width:200%; transform:scale(.5); transform-origin:top left; }
+</style>
+{% endblock %}
+
 {% block admin_content %}
-<div class="flex items-center justify-between mb-6">
-  <h2 class="font-display text-2xl">Configurações do Site</h2>
-  <a href="{{ url_for('main.index') }}" target="_blank" class="btn btn-ghost !py-2 !px-4 text-xs">Abrir site em nova aba &rarr;</a>
+<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+  <div>
+    <h2 class="font-display text-2xl">Configurações do Site</h2>
+    <p class="text-xs text-low mt-1">Altere os dados, o hero e a aparência do site público.</p>
+  </div>
+  <a href="{{ url_for('main.index') }}" target="_blank" class="btn btn-ghost !py-2 !px-4 text-xs shrink-0">Abrir site em nova aba &rarr;</a>
 </div>
 
-<div class="grid lg:grid-cols-5 gap-6">
-  <form method="POST" enctype="multipart/form-data" class="lg:col-span-3 space-y-6" id="settings-form">
+<div class="grid lg:grid-cols-5 gap-6 items-start">
+  <form method="POST" enctype="multipart/form-data" class="lg:col-span-3 flex flex-col gap-6" id="settings-form">
     {{ form.hidden_tag() }}
-    {{ form.version_id() }}
+    
+    <!-- Correção aplicada aqui: class="hidden" para esconder o campo numérico em branco -->
+    {{ form.version_id(class="hidden") }}
 
-    <div class="grid md:grid-cols-2 gap-6">
+    <!-- ---- Navegação por abas: reduz a rolagem necessária ---- -->
+    <div class="card p-2 flex gap-1 overflow-x-auto">
+      <button type="button" class="tab-btn active" data-tab="tab-empresa">Empresa</button>
+      <button type="button" class="tab-btn" data-tab="tab-marca">Marca</button>
+      <button type="button" class="tab-btn" data-tab="tab-hero">Hero</button>
+      <button type="button" class="tab-btn" data-tab="tab-aparencia">Aparência</button>
+      <button type="button" class="tab-btn" data-tab="tab-legal">Páginas Legais</button>
+    </div>
+
+    <!-- ================= EMPRESA ================= -->
+    <div class="tab-panel active space-y-6" id="tab-empresa">
       <div class="card p-6 space-y-4">
         <h3 class="font-display text-lg text-hi mb-2">Dados da Empresa</h3>
         <div>
           {{ form.company_name.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
           {{ form.company_name(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", required=true, id="f_company_name") }}
+          {% for e in form.company_name.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
         </div>
         <div>
           {{ form.company_description.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
@@ -28,10 +65,11 @@
           <p class="text-[11px] text-low mt-1">Somente números, com DDI 55 e DDD.</p>
           {% for e in form.company_whatsapp.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
         </div>
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid sm:grid-cols-2 gap-3">
           <div>
             {{ form.company_email.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
             {{ form.company_email(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", type="email") }}
+            {% for e in form.company_email.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
           </div>
           <div>
             {{ form.company_phone.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
@@ -42,7 +80,154 @@
           {{ form.company_address.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
           {{ form.company_address(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
         </div>
-        <div class="grid grid-cols-2 gap-3">
+      </div>
+    </div>
+
+    <!-- ================= MARCA (favicon / logo) ================= -->
+    <div class="tab-panel space-y-6" id="tab-marca">
+      <div class="card p-6 space-y-4">
+        <h3 class="font-display text-lg text-hi mb-2">Identidade Visual</h3>
+        <p class="text-xs text-low -mt-2">Favicon (ícone da aba do navegador) e logo exibida no cabeçalho do site e do painel.</p>
+        <div class="grid sm:grid-cols-2 gap-6">
+          <div class="border border-line rounded-lg p-4 space-y-3">
+            <p class="text-sm font-semibold text-hi">Favicon</p>
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-lg border border-line bg-panel2 flex items-center justify-center overflow-hidden shrink-0">
+                {% if settings.favicon_path %}
+                <img src="{{ url_for('static', filename=settings.favicon_path) }}" class="w-8 h-8 object-contain">
+                {% else %}
+                <span class="text-[10px] text-low text-center px-1">Padrão</span>
+                {% endif %}
+              </div>
+              <div class="min-w-0 flex-1 text-xs text-low">
+                {% if settings.favicon_path %}Favicon personalizado ativo.{% else %}Nenhum favicon enviado — usando o ícone padrão.{% endif %}
+              </div>
+            </div>
+            {% if settings.favicon_path %}
+            <label class="flex items-center gap-2 text-xs text-red-400">{{ form.remove_favicon() }} Remover favicon atual ao salvar</label>
+            {% endif %}
+            <div>
+              {{ form.favicon.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+              {{ form.favicon(class_="w-full text-xs text-mid") }}
+              <p class="text-[11px] text-low mt-1">.png, .ico ou .webp. Redimensionado para até 256×256.</p>
+              {% for e in form.favicon.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+            </div>
+          </div>
+
+          <div class="border border-line rounded-lg p-4 space-y-3">
+            <p class="text-sm font-semibold text-hi">Logo da empresa</p>
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-lg border border-line bg-panel2 flex items-center justify-center overflow-hidden shrink-0">
+                {% if settings.logo_path %}
+                <img src="{{ url_for('static', filename=settings.logo_path) }}" class="w-full h-full object-contain">
+                {% else %}
+                <span class="text-[10px] text-low text-center px-1">Inicial</span>
+                {% endif %}
+              </div>
+              <div class="min-w-0 flex-1 text-xs text-low">
+                {% if settings.logo_path %}Logo personalizada ativa.{% else %}Nenhuma logo enviada — exibindo a inicial do nome da empresa.{% endif %}
+              </div>
+            </div>
+            {% if settings.logo_path %}
+            <label class="flex items-center gap-2 text-xs text-red-400">{{ form.remove_logo() }} Remover logo atual ao salvar</label>
+            {% endif %}
+            <div>
+              {{ form.logo.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+              {{ form.logo(class_="w-full text-xs text-mid") }}
+              <p class="text-[11px] text-low mt-1">Opcional. Otimizada automaticamente (WEBP).</p>
+              {% for e in form.logo.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= HERO ================= -->
+    <div class="tab-panel space-y-6" id="tab-hero">
+      <div class="card p-6 space-y-4">
+        <h3 class="font-display text-lg text-hi mb-2">Textos do Hero</h3>
+        <div>
+          {{ form.hero_title.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+          {{ form.hero_title(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", id="f_hero_title") }}
+        </div>
+        <div>
+          {{ form.hero_subtitle.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+          {{ form.hero_subtitle(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", rows="2", id="f_hero_subtitle") }}
+        </div>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <div>
+            {{ form.hero_cta_primary_label.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+            {{ form.hero_cta_primary_label(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", id="f_cta_primary") }}
+          </div>
+          <div>
+            {{ form.hero_cta_secondary_label.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+            {{ form.hero_cta_secondary_label(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", id="f_cta_secondary") }}
+          </div>
+        </div>
+        <div class="max-w-xs">
+          {{ form.hero_overlay_opacity.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+          {{ form.hero_overlay_opacity(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", step="0.05", min="0", max="1", id="f_overlay") }}
+        </div>
+      </div>
+
+      <div class="card p-6 space-y-4">
+        <h3 class="font-display text-lg text-hi mb-2">Mídia de Capa do Hero</h3>
+        <div>
+          <label class="block text-xs font-mono uppercase text-low mb-2">Tipo de capa exibida no site</label>
+          <div class="flex gap-4">
+            {% for subfield in form.hero_media_type %}
+            <label class="flex items-center gap-2 text-sm text-mid cursor-pointer">
+              {{ subfield(class_="hero-media-toggle") }} {{ subfield.label.text }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="grid sm:grid-cols-2 gap-6 pt-2">
+          <div class="border border-line rounded-lg p-4 space-y-3">
+            <p class="text-sm font-semibold text-hi">Vídeo de fundo</p>
+            {% if settings.hero_video_path %}
+            <video src="{{ url_for('static', filename=settings.hero_video_path) }}" class="w-full rounded-lg aspect-video object-cover bg-black" muted loop autoplay playsinline></video>
+            <label class="flex items-center gap-2 text-xs text-red-400">
+              {{ form.remove_hero_video() }} Remover vídeo atual ao salvar
+            </label>
+            {% else %}
+            <p class="text-xs text-low">Nenhum vídeo enviado ainda.</p>
+            {% endif %}
+            <div>
+              {{ form.hero_video.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+              {{ form.hero_video(class_="w-full text-xs text-mid") }}
+              <p class="text-[11px] text-low mt-1">Otimizado automaticamente (máx. 1920×1080, sem áudio, .mp4). Aceita .mp4 e .webm.</p>
+              {% for e in form.hero_video.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+            </div>
+          </div>
+
+          <div class="border border-line rounded-lg p-4 space-y-3">
+            <p class="text-sm font-semibold text-hi">Imagem de capa (alternativa ao vídeo)</p>
+            {% if settings.hero_image_path %}
+            <img src="{{ url_for('static', filename=settings.hero_image_path) }}" class="w-full rounded-lg aspect-video object-cover bg-black">
+            <label class="flex items-center gap-2 text-xs text-red-400">
+              {{ form.remove_hero_image() }} Remover imagem atual ao salvar
+            </label>
+            {% else %}
+            <p class="text-xs text-low">Nenhuma imagem enviada ainda.</p>
+            {% endif %}
+            <div>
+              {{ form.hero_image.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+              {{ form.hero_image(class_="w-full text-xs text-mid") }}
+              <p class="text-[11px] text-low mt-1">Otimizada e redimensionada automaticamente (WEBP).</p>
+              {% for e in form.hero_image.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= APARÊNCIA ================= -->
+    <div class="tab-panel space-y-6" id="tab-aparencia">
+      <div class="card p-6 space-y-4">
+        <h3 class="font-display text-lg text-hi mb-2">Cores da Marca</h3>
+        <div class="grid grid-cols-2 gap-3 max-w-sm">
           <div>
             {{ form.color_primary.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
             {{ form.color_primary(class_="w-full bg-panel2 border border-line rounded-lg h-10 focus:outline-none", type="color", id="f_color_primary") }}
@@ -55,168 +240,120 @@
       </div>
 
       <div class="card p-6 space-y-4">
-        <h3 class="font-display text-lg text-hi mb-2">Textos do Hero</h3>
-        <div>
-          {{ form.hero_title.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-          {{ form.hero_title(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", id="f_hero_title") }}
-        </div>
-        <div>
-          {{ form.hero_subtitle.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-          {{ form.hero_subtitle(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", rows="2", id="f_hero_subtitle") }}
-        </div>
-        <div class="grid grid-cols-2 gap-3">
+        <h3 class="font-display text-lg text-hi mb-2">Aparência das Seções</h3>
+        <p class="text-xs text-low -mt-2">Personalize as cores de destaque e o estilo dos cards nas seções de Vantagens, Galeria e Depoimentos, sem precisar editar código.</p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div>
-            {{ form.hero_cta_primary_label.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-            {{ form.hero_cta_primary_label(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", id="f_cta_primary") }}
+            {{ form.services_accent_color.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+            {{ form.services_accent_color(class_="w-full bg-panel2 border border-line rounded-lg h-10 focus:outline-none", type="color") }}
           </div>
           <div>
-            {{ form.hero_cta_secondary_label.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-            {{ form.hero_cta_secondary_label(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", id="f_cta_secondary") }}
+            {{ form.gallery_accent_color.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+            {{ form.gallery_accent_color(class_="w-full bg-panel2 border border-line rounded-lg h-10 focus:outline-none", type="color") }}
+          </div>
+          <div>
+            {{ form.testimonials_accent_color.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+            {{ form.testimonials_accent_color(class_="w-full bg-panel2 border border-line rounded-lg h-10 focus:outline-none", type="color") }}
+          </div>
+          <div>
+            {{ form.card_background_color.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+            {{ form.card_background_color(class_="w-full bg-panel2 border border-line rounded-lg h-10 focus:outline-none", type="color") }}
           </div>
         </div>
-        <div>
-          {{ form.hero_overlay_opacity.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-          {{ form.hero_overlay_opacity(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", step="0.05", min="0", max="1", id="f_overlay") }}
+        <div class="max-w-xs">
+          {{ form.card_border_radius.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+          {{ form.card_border_radius(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+          <p class="text-[11px] text-low mt-1">0 = cantos retos, 40 = bem arredondado.</p>
         </div>
       </div>
     </div>
 
-    <!-- ---- Gerenciamento de mídia do Hero ---- -->
-    <div class="card p-6 space-y-4">
-      <h3 class="font-display text-lg text-hi mb-2">Mídia de Capa do Hero</h3>
-
-      <div>
-        <label class="block text-xs font-mono uppercase text-low mb-2">Tipo de capa exibida no site</label>
-        <div class="flex gap-4">
-          {% for subfield in form.hero_media_type %}
-          <label class="flex items-center gap-2 text-sm text-mid cursor-pointer">
-            {{ subfield(class_="hero-media-toggle") }} {{ subfield.label.text }}
-          </label>
-          {% endfor %}
+    <!-- ================= PÁGINAS LEGAIS ================= -->
+    <div class="tab-panel space-y-6" id="tab-legal">
+      <div class="card p-6 space-y-4">
+        <h3 class="font-display text-lg text-hi mb-2">Páginas Legais</h3>
+        <p class="text-xs text-low -mt-2">
+          Use linhas iniciadas com <code class="text-cyan-300">## </code> para criar títulos de seção. Separe parágrafos com uma linha em branco.
+        </p>
+        <div>
+          {{ form.privacy_content.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+          {{ form.privacy_content(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none font-mono", rows="8") }}
         </div>
-      </div>
-
-      <div class="grid md:grid-cols-2 gap-6 pt-2">
-        <div class="border border-line rounded-lg p-4 space-y-3">
-          <p class="text-sm font-semibold text-hi">Vídeo de fundo</p>
-          {% if settings.hero_video_path %}
-          <video src="{{ url_for('static', filename=settings.hero_video_path) }}" class="w-full rounded-lg aspect-video object-cover bg-black" muted loop autoplay playsinline></video>
-          <label class="flex items-center gap-2 text-xs text-red-400">
-            {{ form.remove_hero_video() }} Remover vídeo atual ao salvar
-          </label>
-          {% else %}
-          <p class="text-xs text-low">Nenhum vídeo enviado ainda.</p>
-          {% endif %}
-          <div>
-            {{ form.hero_video.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-            {{ form.hero_video(class_="w-full text-xs text-mid") }}
-            <p class="text-[11px] text-low mt-1">Otimizado automaticamente (máx. 1920×1080, sem áudio, .mp4). Aceita .mp4 e .webm.</p>
-            {% for e in form.hero_video.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
-          </div>
+        <div>
+          {{ form.terms_content.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+          {{ form.terms_content(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none font-mono", rows="8") }}
         </div>
-
-        <div class="border border-line rounded-lg p-4 space-y-3">
-          <p class="text-sm font-semibold text-hi">Imagem de capa (alternativa ao vídeo)</p>
-          {% if settings.hero_image_path %}
-          <img src="{{ url_for('static', filename=settings.hero_image_path) }}" class="w-full rounded-lg aspect-video object-cover bg-black">
-          <label class="flex items-center gap-2 text-xs text-red-400">
-            {{ form.remove_hero_image() }} Remover imagem atual ao salvar
-          </label>
-          {% else %}
-          <p class="text-xs text-low">Nenhuma imagem enviada ainda.</p>
-          {% endif %}
-          <div>
-            {{ form.hero_image.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-            {{ form.hero_image(class_="w-full text-xs text-mid") }}
-            <p class="text-[11px] text-low mt-1">Otimizada e redimensionada automaticamente (WEBP).</p>
-            {% for e in form.hero_image.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
-          </div>
+        <div class="flex gap-4 text-xs">
+          <a href="{{ url_for('main.privacidade') }}" target="_blank" class="hover:underline" style="color: var(--cyan)">Ver política publicada &rarr;</a>
+          <a href="{{ url_for('main.termos') }}" target="_blank" class="hover:underline" style="color: var(--cyan)">Ver termos publicados &rarr;</a>
         </div>
       </div>
     </div>
 
-    <!-- ---- Aparência das demais seções ---- -->
-    <div class="card p-6 space-y-4">
-      <h3 class="font-display text-lg text-hi mb-2">Aparência das Seções</h3>
-      <p class="text-xs text-low -mt-2">Personalize as cores de destaque e o estilo dos cards nas seções de Vantagens, Galeria e Depoimentos, sem precisar editar código.</p>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div>
-          {{ form.services_accent_color.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-          {{ form.services_accent_color(class_="w-full bg-panel2 border border-line rounded-lg h-10 focus:outline-none", type="color") }}
-        </div>
-        <div>
-          {{ form.gallery_accent_color.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-          {{ form.gallery_accent_color(class_="w-full bg-panel2 border border-line rounded-lg h-10 focus:outline-none", type="color") }}
-        </div>
-        <div>
-          {{ form.testimonials_accent_color.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-          {{ form.testimonials_accent_color(class_="w-full bg-panel2 border border-line rounded-lg h-10 focus:outline-none", type="color") }}
-        </div>
-        <div>
-          {{ form.card_background_color.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-          {{ form.card_background_color(class_="w-full bg-panel2 border border-line rounded-lg h-10 focus:outline-none", type="color") }}
-        </div>
-      </div>
-      <div class="max-w-xs">
-        {{ form.card_border_radius.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-        {{ form.card_border_radius(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
-        <p class="text-[11px] text-low mt-1">0 = cantos retos, 40 = bem arredondado.</p>
+    <!-- ---- Barra de ações fixa: sempre visível, sem precisar rolar ---- -->
+    <div class="save-bar card !rounded-xl px-4 py-3 flex items-center justify-between gap-3 backdrop-blur border border-line" style="background:rgba(19,26,36,.92)">
+      <p class="text-[11px] text-low hidden sm:block">As alterações só entram em vigor no site após salvar.</p>
+      <div class="flex items-center gap-3 ml-auto">
+        <span class="text-xs text-low" id="save-hint">&nbsp;</span>
+        <button type="submit" class="btn btn-primary px-6 sm:px-8 py-2.5 text-sm" style="background-color: var(--amber)">Salvar Configurações</button>
       </div>
     </div>
-
-    <!-- ---- Páginas legais ---- -->
-    <div class="card p-6 space-y-4">
-      <h3 class="font-display text-lg text-hi mb-2">Páginas Legais</h3>
-      <p class="text-xs text-low -mt-2">
-        Use linhas iniciadas com <code class="text-cyan-300">## </code> para criar títulos de seção. Separe parágrafos com uma linha em branco.
-      </p>
-      <div>
-        {{ form.privacy_content.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-        {{ form.privacy_content(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none font-mono", rows="8") }}
-      </div>
-      <div>
-        {{ form.terms_content.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-        {{ form.terms_content(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none font-mono", rows="8") }}
-      </div>
-      <div class="flex gap-4 text-xs">
-        <a href="{{ url_for('main.privacidade') }}" target="_blank" class="hover:underline" style="color: var(--cyan)">Ver política publicada &rarr;</a>
-        <a href="{{ url_for('main.termos') }}" target="_blank" class="hover:underline" style="color: var(--cyan)">Ver termos publicados &rarr;</a>
-      </div>
-    </div>
-
-    <button type="submit" class="btn btn-primary px-8 py-3 text-sm" style="background-color: var(--amber)">Salvar Configurações</button>
   </form>
 
   <!-- Painel de pré-visualização ao vivo (atualiza conforme você digita) -->
   <div class="lg:col-span-2">
-    <div class="card overflow-hidden sticky top-6">
+    <div class="card overflow-hidden sticky top-20">
       <div class="px-4 py-3 border-b border-line bg-panel2 flex items-center justify-between">
-        <h3 class="font-display text-sm text-hi">Pré-visualização do Hero</h3>
+        <h3 class="font-display text-sm text-hi">Pré-visualização — início do site</h3>
         <span class="text-[10px] font-mono text-low">atualiza ao digitar</span>
       </div>
-      <div id="hero-preview" class="relative aspect-[9/12] sm:aspect-video overflow-hidden bg-black">
-        <div id="preview-bg" class="absolute inset-0" style="background: linear-gradient(160deg, {{ settings.color_primary }}, {{ settings.color_secondary }});"></div>
 
-        <video id="preview-video" src="{{ url_for('static', filename=settings.hero_video_path) if settings.hero_video_path else '' }}"
-               autoplay loop muted playsinline
-               class="absolute inset-0 w-full h-full object-cover"
-               style="display: {{ 'block' if settings.hero_media_type == 'video' and settings.hero_video_path else 'none' }};"></video>
+      <div class="pv-scale-wrap">
+        <div class="pv-scale font-body" id="hero-preview">
+          <!-- Cabeçalho: réplica fiel do header público (base.html/index.html) -->
+          <div class="flex items-center justify-between px-6 py-4 glass border-b border-line">
+            <div class="flex items-center gap-2 font-display font-semibold text-lg text-hi">
+              {% if settings.logo_path %}
+              <img src="{{ url_for('static', filename=settings.logo_path) }}" class="w-8 h-8 rounded-md object-contain">
+              {% else %}
+              <span class="w-8 h-8 rounded-md flex items-center justify-center text-ink font-bold" id="preview-logo-fallback" style="background-color: {{ settings.color_primary }}">{{ (settings.company_name or 'N')[0] }}</span>
+              {% endif %}
+              <span id="preview-company-header">{{ settings.company_name }}</span>
+            </div>
+            <div class="hidden md:flex items-center gap-8 font-mono text-xs uppercase tracking-wider text-mid">
+              <span>Vantagens</span><span>Telas</span><span>Clientes</span>
+              <span class="btn btn-primary !py-1.5 !px-4 text-xs" id="preview-cta-header" style="background-color: {{ settings.color_primary }}">Anunciar</span>
+            </div>
+          </div>
 
-        <img id="preview-image" src="{{ url_for('static', filename=settings.hero_image_path) if settings.hero_image_path else '' }}"
-             class="absolute inset-0 w-full h-full object-cover"
-             style="display: {{ 'block' if settings.hero_media_type == 'image' and settings.hero_image_path else 'none' }};">
+          <!-- Hero: mesmas classes do index.html, em escala reduzida -->
+          <div class="relative flex items-center justify-center overflow-hidden bg-ink" style="min-height:560px; padding:60px 24px;">
+            <div class="absolute inset-0 w-full h-full z-0 pointer-events-none">
+              <div id="preview-bg" class="absolute inset-0" style="background: linear-gradient(160deg, {{ settings.color_primary }}22, {{ settings.color_secondary }}22), #0A0E16;"></div>
+              <video id="preview-video" src="{{ url_for('static', filename=settings.hero_video_path) if settings.hero_video_path else '' }}"
+                     autoplay loop muted playsinline
+                     class="absolute inset-0 w-full h-full object-cover"
+                     style="display: {{ 'block' if settings.hero_media_type == 'video' and settings.hero_video_path else 'none' }};"></video>
+              <img id="preview-image" src="{{ url_for('static', filename=settings.hero_image_path) if settings.hero_image_path else '' }}"
+                   class="absolute inset-0 w-full h-full object-cover"
+                   style="display: {{ 'block' if settings.hero_media_type == 'image' and settings.hero_image_path else 'none' }};">
+            </div>
+            <div id="preview-overlay" class="absolute inset-0 z-10 bg-black" style="opacity: {{ settings.hero_overlay_opacity }};"></div>
 
-        <div id="preview-overlay" class="absolute inset-0 bg-black" style="opacity: {{ settings.hero_overlay_opacity }};"></div>
-        <div class="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
-          <h4 id="preview-title" class="font-display text-xl sm:text-2xl font-bold text-white mb-2 leading-tight">{{ settings.hero_title or "Título do Hero" }}</h4>
-          <p id="preview-subtitle" class="text-white/80 text-xs sm:text-sm mb-4 max-w-xs">{{ settings.hero_subtitle or "Subtítulo do Hero" }}</p>
-          <div class="flex gap-2">
-            <span id="preview-cta-primary" class="text-[11px] font-bold px-4 py-2 rounded-full text-ink" style="background-color: {{ settings.color_primary }};">{{ settings.hero_cta_primary_label or "Anuncie Conosco" }}</span>
-            <span id="preview-cta-secondary" class="text-[11px] font-bold px-4 py-2 rounded-full bg-white/10 text-white border border-white/30">{{ settings.hero_cta_secondary_label or "Conhecer Locais" }}</span>
+            <div class="container-nx relative z-20 text-center max-w-4xl mx-auto">
+              <span class="pill-live mb-6 mx-auto"><span class="dot" style="background-color: {{ settings.color_primary }}"></span>Telas ao vivo</span>
+              <h1 id="preview-title" class="font-display text-5xl md:text-6xl font-bold leading-[1.1] text-white mb-6">{{ settings.hero_title or "Título do Hero" }}</h1>
+              <p id="preview-subtitle" class="text-mid text-lg md:text-xl mb-10 max-w-2xl mx-auto">{{ settings.hero_subtitle or "Subtítulo do Hero" }}</p>
+              <div class="flex flex-wrap justify-center gap-4">
+                <span id="preview-cta-primary" class="btn btn-primary px-8 py-4 text-lg" style="background-color: {{ settings.color_primary }};">{{ settings.hero_cta_primary_label or "Anuncie Conosco" }}</span>
+                <span id="preview-cta-secondary" class="btn btn-ghost px-8 py-4 text-lg bg-black/30 backdrop-blur-md">{{ settings.hero_cta_secondary_label or "Conhecer Locais" }}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-      <div class="p-4 space-y-2 text-xs text-mid">
+
+      <div class="p-4 space-y-2 text-xs text-mid border-t border-line">
         <p><span class="text-low font-mono uppercase text-[10px]">Empresa:</span> <span id="preview-company">{{ settings.company_name }}</span></p>
         <p class="flex items-center gap-2">
           <span class="text-low font-mono uppercase text-[10px]">Cores:</span>
@@ -239,6 +376,19 @@
 {% block scripts %}
 <script>
   document.addEventListener('DOMContentLoaded', () => {
+    // ---- Navegação por abas ----
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const panels = document.querySelectorAll('.tab-panel');
+    tabButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        tabButtons.forEach((b) => b.classList.remove('active'));
+        panels.forEach((p) => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    // ---- Pré-visualização ao vivo (texto) ----
     const bind = (id, previewId, attr) => {
       const input = document.getElementById(id);
       const preview = document.getElementById(previewId);
@@ -255,25 +405,32 @@
     bind('f_cta_primary', 'preview-cta-primary', 'text');
     bind('f_cta_secondary', 'preview-cta-secondary', 'text');
     bind('f_company_name', 'preview-company', 'text');
+    bind('f_company_name', 'preview-company-header', 'text');
 
+    // ---- Cores (primária/secundária) ----
     const primaryInput = document.getElementById('f_color_primary');
     const secondaryInput = document.getElementById('f_color_secondary');
     const bg = document.getElementById('preview-bg');
     const ctaPrimary = document.getElementById('preview-cta-primary');
+    const ctaHeader = document.getElementById('preview-cta-header');
+    const logoFallback = document.getElementById('preview-logo-fallback');
     const swatchPrimary = document.getElementById('preview-swatch-primary');
     const swatchSecondary = document.getElementById('preview-swatch-secondary');
 
     function updateColors() {
       const p = primaryInput ? primaryInput.value : null;
       const s = secondaryInput ? secondaryInput.value : null;
-      if (bg && p && s) bg.style.background = `linear-gradient(160deg, ${p}, ${s})`;
+      if (bg && p && s) bg.style.background = `linear-gradient(160deg, ${p}22, ${s}22), #0A0E16`;
       if (ctaPrimary && p) ctaPrimary.style.backgroundColor = p;
+      if (ctaHeader && p) ctaHeader.style.backgroundColor = p;
+      if (logoFallback && p) logoFallback.style.backgroundColor = p;
       if (swatchPrimary && p) swatchPrimary.style.backgroundColor = p;
       if (swatchSecondary && s) swatchSecondary.style.backgroundColor = s;
     }
     if (primaryInput) primaryInput.addEventListener('input', updateColors);
     if (secondaryInput) secondaryInput.addEventListener('input', updateColors);
 
+    // ---- Opacidade do overlay ----
     const overlayInput = document.getElementById('f_overlay');
     const overlay = document.getElementById('preview-overlay');
     if (overlayInput && overlay) {
@@ -283,9 +440,7 @@
       });
     }
 
-    // Alterna a mídia exibida no preview (vídeo/imagem) conforme o
-    // rádio selecionado — resolve o problema de a pré-visualização não
-    // refletir a alternância entre vídeo e imagem de capa.
+    // ---- Alterna a mídia exibida no preview (vídeo/imagem) ----
     const mediaToggles = document.querySelectorAll('.hero-media-toggle');
     const previewVideo = document.getElementById('preview-video');
     const previewImage = document.getElementById('preview-image');
@@ -318,6 +473,17 @@
     }
     mediaToggles.forEach((el) => el.addEventListener('change', updateMediaVisibility));
     updateMediaVisibility();
+
+    // ---- Preview instantâneo do favicon/logo escolhidos (antes de salvar) ----
+    const favInput = document.querySelector('input[name="favicon"]');
+    if (favInput) {
+      favInput.addEventListener('change', () => {
+        const hint = favInput.closest('.border').querySelector('.text-low');
+        if (favInput.files && favInput.files[0] && hint) {
+          hint.textContent = `Selecionado: ${favInput.files[0].name} (será aplicado ao salvar).`;
+        }
+      });
+    }
   });
 </script>
 {% endblock %}

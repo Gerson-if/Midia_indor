@@ -14,7 +14,7 @@ from app.blueprints.admin.forms import (
 from app.extensions import db
 from app.models import AuditLog, GalleryItem, Partner, Proposal, Service, SiteSettings, Testimonial, User, UserRole
 from app.models.proposal import ProposalStatus
-from app.services.uploads import UploadError, delete_upload, save_image, save_video
+from app.services.uploads import UploadError, delete_upload, save_favicon, save_image, save_video
 from app.services.whatsapp import build_client_whatsapp_link
 from app.utils.decorators import admin_required, log_action, roles_required
 from sqlalchemy.orm.exc import StaleDataError
@@ -514,6 +514,25 @@ def settings_manage():
                     old_image = settings.hero_image_path
                     settings.hero_image_path = save_image(form.hero_image.data, subfolder="hero")
                     delete_upload(old_image)
+
+                # ---- Identidade visual: favicon e logo ----
+                if form.remove_favicon.data and settings.favicon_path:
+                    delete_upload(settings.favicon_path)
+                    settings.favicon_path = None
+
+                if form.remove_logo.data and settings.logo_path:
+                    delete_upload(settings.logo_path)
+                    settings.logo_path = None
+
+                if form.favicon.data:
+                    old_favicon = settings.favicon_path
+                    settings.favicon_path = save_favicon(form.favicon.data)
+                    delete_upload(old_favicon)
+
+                if form.logo.data:
+                    old_logo = settings.logo_path
+                    settings.logo_path = save_image(form.logo.data, subfolder="brand/logo")
+                    delete_upload(old_logo)
             except UploadError as exc:
                 flash(str(exc), "danger")
                 return render_template("admin/settings.html", form=form, settings=settings)

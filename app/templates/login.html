@@ -8,7 +8,11 @@
   <div class="absolute inset-0 opacity-10" style="background:radial-gradient(circle at top, var(--amber) 0%, transparent 70%)"></div>
   <div class="relative z-10">
     <div class="flex justify-center mb-6">
-      <span class="w-12 h-12 rounded-lg flex items-center justify-center text-ink font-display font-bold text-2xl" style="background-color: #FFB020">N</span>
+      {% if global_settings and global_settings.logo_path %}
+      <img src="{{ url_for('static', filename=global_settings.logo_path) }}" alt="{{ APP_NAME }}" class="w-12 h-12 rounded-lg object-contain">
+      {% else %}
+      <span class="w-12 h-12 rounded-lg flex items-center justify-center text-ink font-display font-bold text-2xl" style="background-color: #FFB020">{{ APP_NAME[0] if APP_NAME else 'N' }}</span>
+      {% endif %}
     </div>
     <h2 class="font-display text-2xl text-center mb-6 text-white">Acesso ao Painel</h2>
 

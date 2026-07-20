@@ -43,6 +43,7 @@ MAX_DIMENSIONS = {
     "content/partners": (600, 600),
     "content": (1400, 1400),
     "hero": (1920, 1920),
+    "brand/logo": (800, 800),
 }
 DEFAULT_MAX_DIMENSION = (1600, 1600)
 
@@ -120,6 +121,71 @@ def save_image(file_storage, subfolder: str = "content") -> str:
     filename = f"{uuid.uuid4().hex}.webp"
     absolute_path = os.path.join(target_dir, filename)
     image.save(absolute_path, format="WEBP", quality=82, method=6)
+
+    return f"uploads/{subfolder}/{filename}"
+
+
+ALLOWED_FAVICON_MIME = ALLOWED_IMAGE_MIME | {"image/x-icon", "image/vnd.microsoft.icon"}
+
+
+def save_favicon(file_storage, subfolder: str = "brand/favicon") -> str:
+    """
+    Salva o favicon (ícone da aba do navegador).
+
+    Diferente de save_image(): mantém o formato PNG (ou ICO, se enviado
+    assim) em vez de converter para WEBP, já que nem todos os navegadores
+    (Safari, IE/Edge legado) suportam favicon em WEBP. O arquivo é
+    redimensionado para no máximo 256x256, tamanho mais que suficiente
+    para um ícone de aba/atalho.
+    """
+    if not file_storage or not file_storage.filename:
+        raise UploadError("Nenhum arquivo enviado.")
+
+    ext = _extension(secure_filename(file_storage.filename))
+    if ext not in {"png", "jpg", "jpeg", "ico", "webp"}:
+        raise UploadError("Extensão não permitida. Use .png, .ico, .jpg ou .webp.")
+
+    mime = _detect_mime(file_storage)
+    if mime not in ALLOWED_FAVICON_MIME:
+        raise UploadError("O conteúdo do arquivo não corresponde a uma imagem/ícone válido.")
+
+    raw_bytes = file_storage.read()
+    if len(raw_bytes) == 0:
+        raise UploadError("Arquivo vazio.")
+    if len(raw_bytes) > current_app.config["MAX_CONTENT_LENGTH"]:
+        raise UploadError("Arquivo excede o tamanho máximo permitido.")
+
+    upload_root = current_app.config["UPLOAD_FOLDER"]
+    target_dir = os.path.join(upload_root, subfolder)
+    os.makedirs(target_dir, exist_ok=True)
+
+    if ext == "ico":
+        # .ico já é o formato nativo de favicon: mantemos como está,
+        # apenas validando que é decodificável.
+        try:
+            image = Image.open(io.BytesIO(raw_bytes))
+            image.verify()
+        except Exception as exc:  # noqa: BLE001
+            raise UploadError("Não foi possível processar o ícone enviado.") from exc
+        filename = f"{uuid.uuid4().hex}.ico"
+        absolute_path = os.path.join(target_dir, filename)
+        with open(absolute_path, "wb") as fh:
+            fh.write(raw_bytes)
+        return f"uploads/{subfolder}/{filename}"
+
+    try:
+        image = Image.open(io.BytesIO(raw_bytes))
+        image.verify()
+        image = Image.open(io.BytesIO(raw_bytes))
+        if image.mode not in ("RGBA", "RGB"):
+            image = image.convert("RGBA")
+    except Exception as exc:  # noqa: BLE001
+        raise UploadError("Não foi possível processar a imagem enviada.") from exc
+
+    image.thumbnail((256, 256), Image.LANCZOS)
+    filename = f"{uuid.uuid4().hex}.png"
+    absolute_path = os.path.join(target_dir, filename)
+    image.save(absolute_path, format="PNG", optimize=True)
 
     return f"uploads/{subfolder}/{filename}"
 

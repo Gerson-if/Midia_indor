@@ -41,35 +41,37 @@
     <h3 class="font-display text-lg text-hi">Últimas solicitações</h3>
     <a href="{{ url_for('admin.proposals_list') }}" class="text-xs hover:underline" style="color: var(--cyan)">Ver todas &rarr;</a>
   </div>
-  <table class="w-full text-sm text-left">
-    <thead>
-      <tr class="text-xs font-mono uppercase text-low border-b border-line bg-ink">
-        <th class="px-4 py-3">Data</th>
-        <th class="px-4 py-3">Nome</th>
-        <th class="px-4 py-3">Contato</th>
-        <th class="px-4 py-3">Status</th>
-        <th class="px-4 py-3 text-right">Ação</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for p in recent_proposals %}
-      <tr class="border-b border-line hover:bg-panel2 transition-colors">
-        <td class="px-4 py-3 text-mid">{{ p.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
-        <td class="px-4 py-3 font-semibold text-white">{{ p.name }}</td>
-        <td class="px-4 py-3 text-mid">{{ p.phone }}</td>
-        <td class="px-4 py-3">
-          <span class="px-2 py-1 text-xs rounded-md font-mono {{ 'text-ink' if p.status.value == 'novo' else 'bg-line text-mid' }}"
-                style="{{ 'background-color: var(--amber)' if p.status.value == 'novo' else '' }}">{{ p.status_label }}</span>
-        </td>
-        <td class="px-4 py-3 text-right">
-          <a href="{{ url_for('admin.proposal_detail', proposal_id=p.id) }}" class="hover:text-white px-2" style="color: var(--cyan)">Ver detalhes</a>
-        </td>
-      </tr>
-      {% else %}
-      <tr><td colspan="5" class="px-4 py-8 text-center text-mid">Nenhuma solicitação recebida ainda.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="overflow-x-auto">
+  <table class="w-full text-sm text-left min-w-[640px]">
+      <thead>
+        <tr class="text-xs font-mono uppercase text-low border-b border-line bg-ink">
+          <th class="px-4 py-3">Data</th>
+          <th class="px-4 py-3">Nome</th>
+          <th class="px-4 py-3">Contato</th>
+          <th class="px-4 py-3">Status</th>
+          <th class="px-4 py-3 text-right">Ação</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in recent_proposals %}
+        <tr class="border-b border-line hover:bg-panel2 transition-colors">
+          <td class="px-4 py-3 text-mid whitespace-nowrap">{{ p.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+          <td class="px-4 py-3 font-semibold text-white">{{ p.name }}</td>
+          <td class="px-4 py-3 text-mid">{{ p.phone }}</td>
+          <td class="px-4 py-3">
+            <span class="px-2 py-1 text-xs rounded-md font-mono {{ 'text-ink' if p.status.value == 'novo' else 'bg-line text-mid' }}"
+                  style="{{ 'background-color: var(--amber)' if p.status.value == 'novo' else '' }}">{{ p.status_label }}</span>
+          </td>
+          <td class="px-4 py-3 text-right whitespace-nowrap">
+            <a href="{{ url_for('admin.proposal_detail', proposal_id=p.id) }}" class="hover:text-white px-2" style="color: var(--cyan)">Ver detalhes</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="px-4 py-8 text-center text-mid">Nenhuma solicitação recebida ainda.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}
 

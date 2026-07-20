@@ -30,7 +30,8 @@
   </div>
 
   <div class="lg:col-span-2 card overflow-hidden self-start">
-    <table class="w-full text-sm text-left">
+    <div class="overflow-x-auto">
+    <table class="w-full text-sm text-left min-w-[560px]">
       <thead>
         <tr class="text-xs font-mono uppercase text-low border-b border-line bg-ink">
           <th class="px-4 py-3">Nome</th>
@@ -61,6 +62,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   </div>
 </div>
 {% endblock %}

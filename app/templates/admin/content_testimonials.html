@@ -44,7 +44,7 @@
     {% for item in items %}
     <div class="card p-4 {{ 'ring-1 ring-amber-400/50' if editing and editing.id == item.id }}">
       <div class="flex justify-between items-start gap-4">
-        <div>
+        <div class="min-w-0">
           <p class="font-semibold text-white text-sm">{{ item.name }} <span class="text-xs font-normal" style="color: var(--amber)">— {{ item.company_name }}</span></p>
           <p class="text-mid text-sm mt-1">&ldquo;{{ item.text }}&rdquo;</p>
           <p class="text-[11px] font-mono mt-1 {{ 'text-green-400' if item.is_active else 'text-low' }}">{{ 'Ativo' if item.is_active else 'Inativo' }}</p>

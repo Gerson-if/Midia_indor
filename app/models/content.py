@@ -113,6 +113,10 @@ class SiteSettings(TimestampMixin, db.Model):
     color_primary = db.Column(db.String(9), nullable=False, default="#FFB020")
     color_secondary = db.Column(db.String(9), nullable=False, default="#37D6C7")
 
+    # ---- Identidade visual (favicon / logo) ----
+    favicon_path = db.Column(db.String(255), nullable=True)
+    logo_path = db.Column(db.String(255), nullable=True)
+
     # ---- Hero (topo do site) ----
     hero_title = db.Column(db.String(200), nullable=True)
     hero_subtitle = db.Column(db.String(400), nullable=True)
@@ -198,6 +202,8 @@ class SiteSettings(TimestampMixin, db.Model):
                 "phone": self.company_phone,
                 "address": self.company_address,
                 "colors": {"primary": self.color_primary, "secondary": self.color_secondary},
+                "favicon_url": self.favicon_path,
+                "logo_url": self.logo_path,
             },
             "hero": {
                 "title": self.hero_title,

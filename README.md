@@ -57,7 +57,7 @@ Principais decisões:
 
 ```bash
 # 1. Clonar/entrar no projeto e criar o ambiente virtual
-python -m venv ven
+python3 -m venv venv
 source venv/bin/activate
 
 # 2. Instalar dependências (inclui as de desenvolvimento/testes)
