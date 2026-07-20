@@ -11,8 +11,7 @@ de mídia indoor digital. PostgreSQL em produção, SQLite em desenvolvimento/te
 - [Testes](#testes)
 - [Migrations](#migrations)
 - [Variáveis de ambiente](#variáveis-de-ambiente)
-- [Deploy em VPS Ubuntu (Nginx + Gunicorn + systemd)](#deploy-em-vps-ubuntu)
-- [Deploy com Docker](#deploy-com-docker)
+- [Deploy em VPS Ubuntu (guiado, sem Docker)](#deploy-em-vps-ubuntu)
 - [Segurança implementada](#segurança-implementada)
 - [API](#api)
 
@@ -28,7 +27,7 @@ app/
 ├── static/                # CSS, imagens, uploads
 ├── config.py              # Development / Testing / Production
 └── extensions.py          # instâncias únicas das libs (db, login, csrf...)
-deploy/                    # Nginx, Gunicorn, systemd, Docker
+deploy/                    # Scripts de instalação/atualização, Nginx, Gunicorn, systemd
 migrations/                 # Flask-Migrate / Alembic
 scripts/seed.py              # dados de demonstração
 tests/                        # pytest
@@ -51,7 +50,6 @@ Principais decisões:
 - Python 3.11+
 - PostgreSQL 14+ (produção) — SQLite já vem pronto para dev/testes
 - (Opcional) Redis, para rate limiting distribuído em produção com múltiplos workers
-- (Opcional) Docker + Docker Compose
 
 ## Desenvolvimento local
 
@@ -140,108 +138,31 @@ segredo inseguro por engano.
 
 ## Deploy em VPS Ubuntu
 
-Guia manual (sem Docker), usando Nginx + Gunicorn + systemd + PostgreSQL.
+Deploy nativo (sem Docker) com um instalador guiado: Nginx + Gunicorn +
+systemd, com PostgreSQL ou SQLite à sua escolha, HTTPS automático via
+Let's Encrypt (se você tiver domínio) ou acesso direto por IP, e
+atualizações seguras com backup e rollback automáticos.
 
-### 1. Pacotes do sistema
+Veja o guia completo em **[`deploy/README.md`](deploy/README.md)**.
 
-```bash
-sudo apt update && sudo apt install -y \
-  python3-venv python3-pip build-essential libpq-dev \
-  libmagic1 ffmpeg nginx postgresql postgresql-contrib certbot python3-certbot-nginx
-```
-
-### 2. Banco de dados PostgreSQL
+Resumo rápido — na VPS (Ubuntu 22.04/24.04), dentro da pasta do projeto:
 
 ```bash
-sudo -u postgres psql <<SQL
-CREATE DATABASE nexo_midia;
-CREATE USER nexo_user WITH ENCRYPTED PASSWORD 'senha-forte-aqui';
-GRANT ALL PRIVILEGES ON DATABASE nexo_midia TO nexo_user;
-ALTER DATABASE nexo_midia OWNER TO nexo_user;
-SQL
+sudo bash deploy/scripts/install.sh
 ```
 
-### 3. Aplicação
+O script pergunta tudo que precisa (domínio ou IP, banco de dados,
+Redis, HTTPS, dados da empresa e do administrador) e deixa o site no ar.
+
+Para publicar atualizações depois, envie o novo código para a VPS e rode:
 
 ```bash
-sudo mkdir -p /opt/midia-indoor
-sudo chown $USER:$USER /opt/midia-indoor
-# copie os arquivos do projeto para /opt/midia-indoor (git clone, scp, rsync...)
-
-cd /opt/midia-indoor
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-cp .env.example .env
-nano .env
-# ajuste: FLASK_ENV=production, SECRET_KEY, SECURITY_PASSWORD_SALT,
-# DATABASE_URL=postgresql+psycopg2://nexo_user:senha-forte-aqui@localhost:5432/nexo_midia,
-# RATELIMIT_STORAGE_URI=redis://localhost:6379/0, BEHIND_PROXY=1, FORCE_HTTPS=1,
-# SESSION_COOKIE_SECURE=1, REMEMBER_COOKIE_SECURE=1, COMPANY_WHATSAPP=...
-
-mkdir -p instance logs app/static/uploads
-
-export FLASK_APP=wsgi.py FLASK_ENV=production
-flask db upgrade
-flask create-admin
-flask seed-demo   # opcional
+sudo bash deploy/scripts/update.sh
 ```
 
-### 4. systemd (Gunicorn como serviço)
-
-```bash
-sudo cp deploy/midia-indoor.service /etc/systemd/system/
-# ajuste WorkingDirectory/ExecStart no arquivo se o caminho for diferente de /opt/midia-indoor
-sudo chown -R www-data:www-data /opt/midia-indoor
-sudo systemctl daemon-reload
-sudo systemctl enable --now midia-indoor
-sudo systemctl status midia-indoor
-```
-
-### 5. Nginx + HTTPS
-
-```bash
-sudo cp deploy/nginx.conf /etc/nginx/sites-available/midia-indoor
-sudo ln -s /etc/nginx/sites-available/midia-indoor /etc/nginx/sites-enabled/
-# edite server_name no arquivo com seu domínio real
-sudo nginx -t && sudo systemctl reload nginx
-
-# Certificado TLS gratuito (Let's Encrypt)
-sudo certbot --nginx -d midiaindoor.com.br -d www.midiaindoor.com.br
-```
-
-### 6. Atualizações futuras (deploy contínuo simples)
-
-```bash
-cd /opt/midia-indoor
-git pull            # ou rsync dos arquivos atualizados
-source venv/bin/activate
-pip install -r requirements.txt
-flask db upgrade
-sudo systemctl restart midia-indoor
-```
-
-## Deploy com Docker
-
-Alternativa que já sobe app + PostgreSQL + Redis + Nginx:
-
-```bash
-cp .env.example .env
-nano .env   # defina SECRET_KEY, SECURITY_PASSWORD_SALT, POSTGRES_PASSWORD, COMPANY_WHATSAPP...
-
-docker compose -f deploy/docker/docker-compose.yml --env-file .env up -d --build
-
-# criar o admin dentro do container
-docker compose -f deploy/docker/docker-compose.yml exec web flask create-admin
-```
-
-O `entrypoint.sh` já aguarda o PostgreSQL ficar disponível e aplica as
-migrations automaticamente antes de iniciar o Gunicorn.
-
-Para HTTPS com Docker, gere os certificados com Certbot em modo standalone
-ou webroot e monte os volumes indicados no `docker-compose.yml`
-(`certbot_www`, `certbot_certs`).
+Isso faz backup do banco, publica a nova versão em paralelo, roda as
+migrações, só então troca para a nova versão e reverte automaticamente
+se algo falhar. Detalhes de cada script em [`deploy/README.md`](deploy/README.md).
 
 ## Segurança implementada
 

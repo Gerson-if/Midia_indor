@@ -1,0 +1,56 @@
+# =============================================================
+# Nginx — reverse proxy para o Nexo Mídia (Flask + Gunicorn)
+# Gerado automaticamente por deploy/scripts/setup-nginx.sh
+# NÃO edite manualmente: rode o script novamente para reconfigurar.
+#
+# Se HTTPS estiver ativado, o Certbot adiciona o bloco SSL e o
+# redirecionamento 80->443 automaticamente neste mesmo arquivo
+# (via `certbot --nginx`), então após a primeira emissão de
+# certificado este arquivo passa a ter blocos adicionais — isso
+# é esperado e normal.
+# =============================================================
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name __SERVER_NAMES__;
+
+    # Necessário para emissão/renovação do Certbot/Let's Encrypt
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    client_max_body_size __MAX_UPLOAD_MB__M;
+    keepalive_timeout 15;
+
+    access_log /var/log/nginx/midia-indoor.access.log;
+    error_log  /var/log/nginx/midia-indoor.error.log;
+
+    # ---- Arquivos estáticos servidos diretamente pelo Nginx ----
+    location /static/ {
+        alias __STATIC_PATH__/;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    # ---- Aplicação Flask via Gunicorn (socket TCP local) ----
+    location / {
+        proxy_pass http://__GUNICORN_BIND__;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+        proxy_redirect off;
+        proxy_connect_timeout 30s;
+        proxy_read_timeout 30s;
+    }
+
+    # Health check (não loga, usado por monitoramento)
+    location = /healthz {
+        proxy_pass http://__GUNICORN_BIND__/healthz;
+        access_log off;
+    }
+}

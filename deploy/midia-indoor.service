@@ -1,12 +1,17 @@
 # =============================================================
 # Serviço systemd — Nexo Mídia (Gunicorn)
-# Instale em /etc/systemd/system/midia-indoor.service
+# Instalado automaticamente por deploy/scripts/install.sh em
+# /etc/systemd/system/midia-indoor.service
 #
-#   sudo cp deploy/midia-indoor.service /etc/systemd/system/
-#   sudo systemctl daemon-reload
-#   sudo systemctl enable --now midia-indoor
+# Comandos úteis:
 #   sudo systemctl status midia-indoor
+#   sudo systemctl restart midia-indoor
 #   sudo journalctl -u midia-indoor -f
+#
+# Este arquivo usa o layout "releases + current" (estilo blue/green):
+#   /opt/midia-indoor/current -> aponta para a release ativa
+#   /opt/midia-indoor/shared  -> .env, venv, uploads, logs e banco
+#     (compartilhados entre releases, preservados nas atualizações)
 # =============================================================
 [Unit]
 Description=Nexo Midia - Flask + Gunicorn (mídia indoor digital)
@@ -15,11 +20,11 @@ Wants=postgresql.service
 
 [Service]
 Type=simple
-User=www-data
-Group=www-data
-WorkingDirectory=/opt/midia-indoor
-EnvironmentFile=/opt/midia-indoor/.env
-ExecStart=/opt/midia-indoor/venv/bin/gunicorn -c deploy/gunicorn.conf.py wsgi:app
+User=midia-indoor
+Group=midia-indoor
+WorkingDirectory=/opt/midia-indoor/current
+EnvironmentFile=/opt/midia-indoor/shared/.env
+ExecStart=/opt/midia-indoor/shared/venv/bin/gunicorn -c deploy/gunicorn.conf.py wsgi:app
 ExecReload=/bin/kill -s HUP $MAINPID
 Restart=always
 RestartSec=5
@@ -31,7 +36,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
 ProtectHome=true
-ReadWritePaths=/opt/midia-indoor/app/static/uploads /opt/midia-indoor/logs /opt/midia-indoor/instance
+ReadWritePaths=/opt/midia-indoor/shared
 
 [Install]
 WantedBy=multi-user.target

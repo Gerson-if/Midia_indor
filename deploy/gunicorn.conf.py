@@ -29,7 +29,7 @@ max_requests = 1000
 max_requests_jitter = 100
 
 # ---- Logging ----
-accesslog = "-"  # stdout (coletado pelo systemd/journald ou docker logs)
+accesslog = "-"  # stdout (coletado pelo systemd/journald via `journalctl -u midia-indoor`)
 errorlog = "-"
 loglevel = os.environ.get("GUNICORN_LOG_LEVEL", "info")
 access_log_format = (
