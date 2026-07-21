@@ -40,12 +40,17 @@
     var clearBtn = group.querySelector('[data-media-clear]');
     var nameBadge = group.querySelector('[data-media-filename]');
 
-    // Guarda o estado original (imagem já salva) para poder restaurar
+    // Guarda o estado original (imagem/vídeo já salvo) para poder restaurar
     // quando o usuário cancelar a seleção de um novo arquivo.
     if (previewImg && previewImg.getAttribute('src')) {
       previewImg.dataset.originalSrc = previewImg.getAttribute('src');
     }
+    if (previewVideo && previewVideo.getAttribute('src')) {
+      previewVideo.dataset.originalSrc = previewVideo.getAttribute('src');
+    }
     var hadOriginalImage = !!(previewImg && previewImg.dataset.originalSrc);
+    var hadOriginalVideo = !!(previewVideo && previewVideo.dataset.originalSrc);
+    var hadOriginalMedia = hadOriginalImage || hadOriginalVideo;
 
     function showImagePreview(file) {
       if (!previewImg) return;
@@ -63,6 +68,7 @@
       var url = URL.createObjectURL(file);
       previewVideo.dataset.blobUrl = url;
       previewVideo.src = url;
+      previewVideo.load();
       previewVideo.classList.remove('hidden');
       if (previewImg) previewImg.classList.add('hidden');
     }
@@ -72,8 +78,14 @@
 
       if (previewVideo) {
         revokeIfBlob(previewVideo.dataset.blobUrl);
-        previewVideo.removeAttribute('src');
-        previewVideo.classList.add('hidden');
+        if (hadOriginalVideo) {
+          previewVideo.src = previewVideo.dataset.originalSrc;
+          previewVideo.load();
+          previewVideo.classList.remove('hidden');
+        } else {
+          previewVideo.removeAttribute('src');
+          previewVideo.classList.add('hidden');
+        }
       }
 
       if (previewImg) {
@@ -88,7 +100,7 @@
       }
 
       if (placeholder) {
-        placeholder.classList.toggle('hidden', hadOriginalImage);
+        placeholder.classList.toggle('hidden', hadOriginalMedia);
       }
       if (nameBadge) {
         nameBadge.textContent = '';

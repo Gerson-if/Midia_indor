@@ -82,7 +82,7 @@
 
     {% if current_user.is_admin %}
     <form method="POST" action="{{ url_for('admin.proposal_delete', proposal_id=proposal.id) }}"
-          onsubmit="return confirm('Tem certeza que deseja excluir esta solicitação? Esta ação não pode ser desfeita.');">
+          data-confirm-message="Tem certeza que deseja excluir esta solicitação? Esta ação não pode ser desfeita.">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn btn-ghost w-full justify-center py-2.5 text-sm text-red-400 !border-red-400/30 hover:bg-red-500/10">Excluir solicitação</button>
     </form>

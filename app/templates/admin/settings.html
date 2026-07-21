@@ -98,15 +98,12 @@
         <h3 class="font-display text-lg text-hi mb-2">Identidade Visual</h3>
         <p class="text-xs text-low -mt-2">Favicon (ícone da aba do navegador) e logo exibida no cabeçalho do site e do painel.</p>
         <div class="grid sm:grid-cols-2 gap-6">
-          <div class="border border-line rounded-lg p-4 space-y-3">
+          <div class="border border-line rounded-lg p-4 space-y-3" data-media-group>
             <p class="text-sm font-semibold text-hi">Favicon</p>
             <div class="flex items-center gap-3">
-              <div class="w-12 h-12 rounded-lg border border-line bg-panel2 flex items-center justify-center overflow-hidden shrink-0">
-                {% if settings.favicon_path %}
-                <img src="{{ url_for('static', filename=settings.favicon_path) }}" class="w-8 h-8 object-contain">
-                {% else %}
-                <span class="text-[10px] text-low text-center px-1">Padrão</span>
-                {% endif %}
+              <div class="relative w-12 h-12 rounded-lg border border-line bg-panel2 flex items-center justify-center overflow-hidden shrink-0">
+                <img data-media-preview="image" class="w-8 h-8 object-contain {{ '' if settings.favicon_path else 'hidden' }}" {% if settings.favicon_path %}src="{{ url_for('static', filename=settings.favicon_path) }}"{% endif %}>
+                <span data-media-placeholder class="text-[10px] text-low text-center px-1 {{ 'hidden' if settings.favicon_path else '' }}">Padrão</span>
               </div>
               <div class="min-w-0 flex-1 text-xs text-low">
                 {% if settings.favicon_path %}Favicon personalizado ativo.{% else %}Nenhum favicon enviado — usando o ícone padrão.{% endif %}
@@ -117,21 +114,22 @@
             {% endif %}
             <div>
               {{ form.favicon.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+              <div class="flex items-center gap-2 mb-1">
+                <span data-media-filename class="media-filename-badge hidden"></span>
+                <button type="button" data-media-clear class="media-preview-remove hidden">✕ Cancelar seleção</button>
+              </div>
               {{ form.favicon(class_="w-full text-xs text-mid") }}
-              <p class="text-[11px] text-low mt-1">.png, .ico ou .webp. Redimensionado para até 256×256.</p>
+              <p class="text-[11px] text-low mt-1">.png, .ico ou .webp. Redimensionado para até 256×256. A prévia aparece assim que você escolher o arquivo.</p>
               {% for e in form.favicon.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
             </div>
           </div>
 
-          <div class="border border-line rounded-lg p-4 space-y-3">
+          <div class="border border-line rounded-lg p-4 space-y-3" data-media-group>
             <p class="text-sm font-semibold text-hi">Logo da empresa</p>
             <div class="flex items-center gap-3">
-              <div class="w-12 h-12 rounded-lg border border-line bg-panel2 flex items-center justify-center overflow-hidden shrink-0">
-                {% if settings.logo_path %}
-                <img src="{{ url_for('static', filename=settings.logo_path) }}" class="w-full h-full object-contain">
-                {% else %}
-                <span class="text-[10px] text-low text-center px-1">Inicial</span>
-                {% endif %}
+              <div class="relative w-12 h-12 rounded-lg border border-line bg-panel2 flex items-center justify-center overflow-hidden shrink-0">
+                <img data-media-preview="image" class="w-full h-full object-contain {{ '' if settings.logo_path else 'hidden' }}" {% if settings.logo_path %}src="{{ url_for('static', filename=settings.logo_path) }}"{% endif %}>
+                <span data-media-placeholder class="text-[10px] text-low text-center px-1 {{ 'hidden' if settings.logo_path else '' }}">Inicial</span>
               </div>
               <div class="min-w-0 flex-1 text-xs text-low">
                 {% if settings.logo_path %}Logo personalizada ativa.{% else %}Nenhuma logo enviada — exibindo a inicial do nome da empresa.{% endif %}
@@ -142,8 +140,12 @@
             {% endif %}
             <div>
               {{ form.logo.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+              <div class="flex items-center gap-2 mb-1">
+                <span data-media-filename class="media-filename-badge hidden"></span>
+                <button type="button" data-media-clear class="media-preview-remove hidden">✕ Cancelar seleção</button>
+              </div>
               {{ form.logo(class_="w-full text-xs text-mid") }}
-              <p class="text-[11px] text-low mt-1">Opcional. Otimizada automaticamente (WEBP).</p>
+              <p class="text-[11px] text-low mt-1">Opcional. Otimizada automaticamente (WEBP). A prévia aparece assim que você escolher o arquivo.</p>
               {% for e in form.logo.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
             </div>
           </div>
@@ -193,38 +195,44 @@
         </div>
 
         <div class="grid sm:grid-cols-2 gap-6 pt-2">
-          <div class="border border-line rounded-lg p-4 space-y-3">
+          <div class="border border-line rounded-lg p-4 space-y-3" data-media-group>
             <p class="text-sm font-semibold text-hi">Vídeo de fundo</p>
+            <video data-media-preview="video" class="w-full rounded-lg aspect-video object-cover bg-black {{ '' if settings.hero_video_path else 'hidden' }}" {% if settings.hero_video_path %}src="{{ url_for('static', filename=settings.hero_video_path) }}"{% endif %} muted loop autoplay playsinline></video>
+            <p data-media-placeholder class="text-xs text-low {{ 'hidden' if settings.hero_video_path else '' }}">Nenhum vídeo enviado ainda.</p>
             {% if settings.hero_video_path %}
-            <video src="{{ url_for('static', filename=settings.hero_video_path) }}" class="w-full rounded-lg aspect-video object-cover bg-black" muted loop autoplay playsinline></video>
             <label class="flex items-center gap-2 text-xs text-red-400">
               {{ form.remove_hero_video() }} Remover vídeo atual ao salvar
             </label>
-            {% else %}
-            <p class="text-xs text-low">Nenhum vídeo enviado ainda.</p>
             {% endif %}
             <div>
               {{ form.hero_video.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+              <div class="flex items-center gap-2 mb-1">
+                <span data-media-filename class="media-filename-badge hidden"></span>
+                <button type="button" data-media-clear class="media-preview-remove hidden">✕ Cancelar seleção</button>
+              </div>
               {{ form.hero_video(class_="w-full text-xs text-mid") }}
-              <p class="text-[11px] text-low mt-1">Otimizado automaticamente (máx. 1920×1080, sem áudio, .mp4). Aceita .mp4 e .webm.</p>
+              <p class="text-[11px] text-low mt-1">Otimizado automaticamente (máx. 1920×1080, sem áudio, .mp4). Aceita .mp4 e .webm. A prévia aparece assim que você escolher o arquivo.</p>
               {% for e in form.hero_video.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
             </div>
           </div>
 
-          <div class="border border-line rounded-lg p-4 space-y-3">
+          <div class="border border-line rounded-lg p-4 space-y-3" data-media-group>
             <p class="text-sm font-semibold text-hi">Imagem de capa (alternativa ao vídeo)</p>
+            <img data-media-preview="image" class="w-full rounded-lg aspect-video object-cover bg-black {{ '' if settings.hero_image_path else 'hidden' }}" {% if settings.hero_image_path %}src="{{ url_for('static', filename=settings.hero_image_path) }}"{% endif %}>
+            <p data-media-placeholder class="text-xs text-low {{ 'hidden' if settings.hero_image_path else '' }}">Nenhuma imagem enviada ainda.</p>
             {% if settings.hero_image_path %}
-            <img src="{{ url_for('static', filename=settings.hero_image_path) }}" class="w-full rounded-lg aspect-video object-cover bg-black">
             <label class="flex items-center gap-2 text-xs text-red-400">
               {{ form.remove_hero_image() }} Remover imagem atual ao salvar
             </label>
-            {% else %}
-            <p class="text-xs text-low">Nenhuma imagem enviada ainda.</p>
             {% endif %}
             <div>
               {{ form.hero_image.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+              <div class="flex items-center gap-2 mb-1">
+                <span data-media-filename class="media-filename-badge hidden"></span>
+                <button type="button" data-media-clear class="media-preview-remove hidden">✕ Cancelar seleção</button>
+              </div>
               {{ form.hero_image(class_="w-full text-xs text-mid") }}
-              <p class="text-[11px] text-low mt-1">Otimizada e redimensionada automaticamente (WEBP).</p>
+              <p class="text-[11px] text-low mt-1">Otimizada e redimensionada automaticamente (WEBP). A prévia aparece assim que você escolher o arquivo.</p>
               {% for e in form.hero_image.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
             </div>
           </div>

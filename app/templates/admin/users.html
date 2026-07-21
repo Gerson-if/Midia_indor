@@ -42,7 +42,7 @@
         <div class="flex items-center justify-between gap-3 mt-2">
           <p class="text-xs text-low">Último acesso: {{ u.last_login_at.strftime('%d/%m/%Y %H:%M') if u.last_login_at else "nunca" }}</p>
           {% if u.id != current_user.id %}
-          <form method="POST" action="{{ url_for('admin.user_delete', user_id=u.id) }}" onsubmit="return confirm('Excluir este usuário?');">
+          <form method="POST" action="{{ url_for('admin.user_delete', user_id=u.id) }}" data-confirm-message="Excluir este usuário? Esta ação não pode ser desfeita.">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="text-red-400 hover:text-red-300 text-xs shrink-0">Excluir</button>
           </form>
@@ -75,7 +75,7 @@
           <td class="px-4 py-3 text-mid text-xs">{{ u.last_login_at.strftime('%d/%m/%Y %H:%M') if u.last_login_at else "nunca" }}</td>
           <td class="px-4 py-3 text-right">
             {% if u.id != current_user.id %}
-            <form method="POST" action="{{ url_for('admin.user_delete', user_id=u.id) }}" onsubmit="return confirm('Excluir este usuário?');">
+            <form method="POST" action="{{ url_for('admin.user_delete', user_id=u.id) }}" data-confirm-message="Excluir este usuário? Esta ação não pode ser desfeita.">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="text-red-400 hover:text-red-300 text-xs">Excluir</button>
             </form>

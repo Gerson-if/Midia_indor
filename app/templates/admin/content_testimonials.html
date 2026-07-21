@@ -43,7 +43,7 @@
     {% endif %}
     <div class="space-y-3" data-reorder-list data-reorder-url="{{ url_for('admin.testimonials_reorder') }}">
       {% for item in items %}
-      <div class="card card-draggable p-4 {{ 'ring-1 ring-amber-400/50' if editing and editing.id == item.id }}" data-reorder-item data-id="{{ item.id }}">
+      <div class="card card-draggable p-4 {{ 'card-editing' if editing and editing.id == item.id }}" data-reorder-item data-id="{{ item.id }}">
         <div class="flex justify-between items-start gap-3">
           <span class="drag-handle -ml-1 -mt-1" data-drag-handle title="Arrastar para reordenar">
             <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
@@ -58,7 +58,7 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
               <span class="hidden sm:inline">Editar</span>
             </a>
-            <form method="POST" action="{{ url_for('admin.testimonial_delete', item_id=item.id) }}" onsubmit="return confirm('Excluir?');">
+            <form method="POST" action="{{ url_for('admin.testimonial_delete', item_id=item.id) }}" data-confirm-message="Excluir este depoimento? Esta ação não pode ser desfeita.">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="icon-btn icon-btn-danger" title="Excluir">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>

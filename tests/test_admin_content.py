@@ -1,6 +1,6 @@
 import io
 
-from app.models import Proposal, Service
+from app.models import GalleryItem, Partner, Proposal, Service, Testimonial, User, UserRole
 from tests.conftest import login
 
 
@@ -403,3 +403,55 @@ def test_services_reorder_requires_editor_role(client, admin_user, db):
     login(client, "viewer@teste.com", "SenhaForte123!")
     resp = client.post("/admin/conteudo/servicos/reordenar", json={"order": [a.id]})
     assert resp.status_code == 403
+
+
+def test_settings_marca_tab_has_media_preview_markup(client, admin_user, db):
+    """A aba "Marca" (Favicon/Logo) deve usar o mesmo componente de prévia
+    instantânea + cancelamento antes de salvar já usado em Serviços/Galeria/
+    Parceiros, em vez de só um <img> estático sem prévia do arquivo novo."""
+    login(client, "admin@teste.com", "SenhaForte123!")
+    resp = client.get("/admin/configuracoes")
+    assert resp.status_code == 200
+    html = resp.get_data(as_text=True)
+
+    # Cada campo de mídia da aba Marca (e do Hero) precisa estar dentro do
+    # wrapper que o admin-media-preview.js sabe reconhecer.
+    assert html.count("data-media-group") >= 4
+    assert 'data-media-preview="image"' in html
+    assert 'data-media-preview="video"' in html
+    assert "data-media-clear" in html
+    assert "data-media-filename" in html
+
+
+def test_admin_delete_forms_use_custom_confirm_modal_not_native_confirm(client, admin_user, db):
+    """O diálogo nativo confirm() do navegador foi substituído por um modal
+    próprio (admin-confirm-modal.js). Nenhum template do admin deve mais
+    depender de onsubmit="return confirm(...)" para excluir registros."""
+    login(client, "admin@teste.com", "SenhaForte123!")
+
+    service = Service(title="A", description="d", display_order=0)
+    item = GalleryItem(title="B", category="Cat", display_order=0)
+    partner = Partner(name="C", display_order=0)
+    testimonial = Testimonial(name="D", company_name="E", text="Ótimo!", display_order=0)
+    proposal = Proposal(name="F", email="f@example.com", phone="67900000000")
+    # /admin/usuarios só mostra o botão de excluir para usuários que não
+    # sejam o próprio usuário logado — precisa de um segundo usuário.
+    other_user = User(name="Outro", email="outro@teste.com", role=UserRole.EDITOR)
+    other_user.set_password("SenhaForte123!")
+    db.session.add_all([service, item, partner, testimonial, proposal, other_user])
+    db.session.commit()
+
+    pages = [
+        "/admin/conteudo/servicos",
+        "/admin/conteudo/galeria",
+        "/admin/conteudo/parceiros",
+        "/admin/conteudo/depoimentos",
+        f"/admin/solicitacoes/{proposal.id}",
+        "/admin/usuarios",
+    ]
+    for url in pages:
+        resp = client.get(url)
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+        assert "return confirm(" not in html, f"{url} ainda usa confirm() nativo"
+        assert "data-confirm-message=" in html, f"{url} não tem o modal de confirmação"
