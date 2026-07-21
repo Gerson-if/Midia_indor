@@ -289,6 +289,14 @@ def _optimize_video(input_path: str, output_path: str, max_width: int = 1920, ma
         "-c:v", "libx264",
         "-preset", "veryfast",
         "-crf", "28",
+        # Perfil/nível H.264 amplamente suportados (iOS Safari, Android
+        # WebView antigos, Smart TVs). Sem isso, vídeos gravados em
+        # celulares mais novos podem sair em pixel format/profile que o
+        # player mobile não decodifica — o vídeo trava no primeiro frame
+        # ou nem inicia, mesmo aparentando estar "carregado".
+        "-pix_fmt", "yuv420p",
+        "-profile:v", "main",
+        "-level", "4.0",
         "-movflags", "+faststart",  # permite reprodução progressiva no navegador
         "-an",  # remove áudio (vídeo do Hero é sempre mudo)
         "-max_muxing_queue_size", "1024",

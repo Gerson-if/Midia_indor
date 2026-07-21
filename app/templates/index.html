@@ -48,7 +48,21 @@
       <a href="#depoimentos" class="hover:text-hi transition-colors">Clientes</a>
       <a href="#contato" class="btn btn-primary !py-1.5 !px-4 text-xs" style="background-color: var(--amber)">Anunciar</a>
     </div>
+    <button type="button" id="mobile-nav-toggle" aria-expanded="false" aria-controls="mobile-nav-menu" aria-label="Abrir menu"
+            class="md:hidden shrink-0 w-10 h-10 flex items-center justify-center rounded-lg text-hi hover:bg-white/5 -mr-2">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+        <path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/>
+      </svg>
+    </button>
   </nav>
+  <div id="mobile-nav-menu" class="hidden md:hidden border-t border-line bg-ink backdrop-blur-md">
+    <div class="container-nx flex flex-col py-4 gap-1 font-mono text-sm uppercase tracking-wider text-mid">
+      <a href="#servicos" class="py-3 border-b border-line hover:text-hi transition-colors">Vantagens</a>
+      <a href="#galeria" class="py-3 border-b border-line hover:text-hi transition-colors">Telas</a>
+      <a href="#depoimentos" class="py-3 border-b border-line hover:text-hi transition-colors">Clientes</a>
+      <a href="#contato" class="btn btn-primary justify-center !py-3 mt-3 text-xs normal-case" style="background-color: var(--amber)">Anunciar</a>
+    </div>
+  </div>
 </header>
 
 <section id="top" class="relative min-h-screen flex items-center pt-24 pb-20 overflow-hidden bg-ink">
@@ -58,7 +72,11 @@
     <div class="absolute inset-0" style="background: linear-gradient(160deg, {{ settings.color_primary }}22, {{ settings.color_secondary }}22), #0A0E16;"></div>
 
     {% if settings.hero_media_type == 'video' and settings.hero_video_path %}
-    <video id="hero-video" src="{{ url_for('static', filename=settings.hero_video_path) }}" autoplay loop muted playsinline preload="auto" class="absolute inset-0 w-full h-full object-cover"></video>
+    <video id="hero-video"
+           src="{{ url_for('static', filename=settings.hero_video_path) }}"
+           {% if settings.hero_image_path %}poster="{{ url_for('static', filename=settings.hero_image_path) }}"{% endif %}
+           autoplay loop muted playsinline webkit-playsinline="true" x5-playsinline="true" disablepictureinpicture
+           preload="auto" class="absolute inset-0 w-full h-full object-cover"></video>
     {% elif settings.hero_media_type == 'image' and settings.hero_image_path %}
     <img src="{{ url_for('static', filename=settings.hero_image_path) }}" alt="" class="absolute inset-0 w-full h-full object-cover">
     {% endif %}
@@ -67,7 +85,7 @@
 
   <div class="container-nx relative z-20 text-center max-w-4xl mx-auto" data-aos="fade-up">
     <span class="pill-live mb-6 mx-auto"><span class="dot" style="background-color: var(--amber)"></span>Telas ao vivo</span>
-    <h1 class="font-display text-5xl md:text-7xl font-bold leading-[1.1] text-white mb-6">{{ settings.hero_title }}</h1>
+    <h1 class="font-display text-4xl sm:text-5xl md:text-7xl font-bold leading-[1.1] text-white mb-6 break-words">{{ settings.hero_title }}</h1>
     <p class="text-mid text-lg md:text-xl mb-10 max-w-2xl mx-auto">{{ settings.hero_subtitle }}</p>
     <div class="flex flex-wrap justify-center gap-4">
       <a href="#contato" class="btn btn-primary px-8 py-4 text-lg" style="background-color: var(--amber)">{{ settings.hero_cta_primary_label or 'Anuncie Conosco' }}</a>
@@ -263,6 +281,11 @@
     // o Hero volta a ficar visível (scroll) ou a aba volta a ficar ativa.
     const video = document.getElementById('hero-video');
     if (video) {
+      const isVisible = () => {
+        const rect = video.getBoundingClientRect();
+        return rect.bottom > 0 && rect.top < window.innerHeight;
+      };
+
       const resumeIfPaused = () => {
         if (video.paused) {
           video.play().catch(() => { /* autoplay pode exigir nova interação; ignore */ });
@@ -287,10 +310,78 @@
       video.addEventListener('pause', () => {
         // Só tenta retomar automaticamente se ainda estiver visível na tela
         // (evita brigar com o usuário caso ele pause via DevTools/extensão).
-        const rect = video.getBoundingClientRect();
-        const isVisible = rect.bottom > 0 && rect.top < window.innerHeight;
-        if (isVisible) setTimeout(resumeIfPaused, 150);
+        if (isVisible()) setTimeout(resumeIfPaused, 150);
       });
+
+      // ---- Recuperação de travamentos reais (buffer parado / erro de rede) ----
+      // Em conexões móveis instáveis, o vídeo pode "travar" no meio (evento
+      // 'stalled'/'waiting' sem nunca se recuperar sozinho) ou disparar
+      // 'error' (arquivo corrompido, timeout). Sem tratamento, ele fica
+      // parado num frame congelado indefinidamente. Tentamos recarregar
+      // algumas vezes com espera crescente; se continuar falhando,
+      // escondemos o vídeo e deixamos só o gradiente de fundo (que já
+      // está sempre presente atrás dele), evitando um frame quebrado
+      // visível para o visitante.
+      let recoveryAttempts = 0;
+      const MAX_RECOVERY_ATTEMPTS = 3;
+      let stallTimer = null;
+
+      const giveUpAndHideVideo = () => {
+        video.style.display = 'none';
+      };
+
+      const attemptRecovery = () => {
+        if (recoveryAttempts >= MAX_RECOVERY_ATTEMPTS) {
+          giveUpAndHideVideo();
+          return;
+        }
+        recoveryAttempts += 1;
+        const delayMs = 1000 * recoveryAttempts;
+        setTimeout(() => {
+          try {
+            video.load();
+            video.play().catch(() => { /* ignora: tenta de novo no próximo evento */ });
+          } catch (e) { /* ambiente sem suporte a load()/play() aqui; ignora */ }
+        }, delayMs);
+      };
+
+      video.addEventListener('error', attemptRecovery);
+
+      // 'stalled' pode disparar sem que o playback realmente pare (buffer
+      // ok mas download momentaneamente lento) — por isso só tratamos como
+      // travamento real se o tempo do vídeo não avançar por alguns segundos.
+      const armStallWatch = () => {
+        clearTimeout(stallTimer);
+        stallTimer = setTimeout(() => {
+          if (isVisible() && video.paused === false && video.readyState < 3) {
+            attemptRecovery();
+          }
+        }, 6000);
+      };
+      video.addEventListener('stalled', armStallWatch);
+      video.addEventListener('waiting', armStallWatch);
+      video.addEventListener('playing', () => {
+        clearTimeout(stallTimer);
+        recoveryAttempts = 0; // voltou a reproduzir normalmente: zera o contador
+      });
+    }
+
+    // ---- Menu mobile (header) ----
+    const mobileMenuBtn = document.getElementById('mobile-nav-toggle');
+    const mobileMenu = document.getElementById('mobile-nav-menu');
+    if (mobileMenuBtn && mobileMenu) {
+      const closeMenu = () => {
+        mobileMenu.classList.add('hidden');
+        mobileMenuBtn.setAttribute('aria-expanded', 'false');
+      };
+      const toggleMenu = () => {
+        const isOpen = !mobileMenu.classList.contains('hidden');
+        mobileMenu.classList.toggle('hidden');
+        mobileMenuBtn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+      };
+      mobileMenuBtn.addEventListener('click', toggleMenu);
+      mobileMenu.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeMenu));
+      document.addEventListener('keydown', (evt) => { if (evt.key === 'Escape') closeMenu(); });
     }
   });
 </script>

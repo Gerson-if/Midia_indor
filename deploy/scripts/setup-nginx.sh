@@ -138,6 +138,36 @@ if [ "$SSL_MODE" = "letsencrypt" ]; then
         warn "Sem domínio configurado — pulando emissão de certificado HTTPS."
     else
         need_cmd certbot
+
+        # ---- 1) Confere se o(s) domínio(s) já resolvem para este servidor ----
+        # Certbot falha (e pode até gerar bloqueio temporário por excesso de
+        # tentativas) se o DNS ainda não propagou. Avisamos antes de tentar.
+        title "Verificando DNS do(s) domínio(s)"
+        PUBLIC_IP="$(detect_public_ip)"
+        DNS_OK=1
+        if [ -n "$PUBLIC_IP" ]; then
+            info "IP público detectado deste servidor: $PUBLIC_IP"
+            for d in $SERVER_NAMES; do
+                RESOLVED_IPS="$(getent ahostsv4 "$d" 2>/dev/null | awk '{print $1}' | sort -u | tr '\n' ' ')"
+                if [ -z "$RESOLVED_IPS" ]; then
+                    warn "$d não resolveu para nenhum IP (DNS ainda não propagou?)."
+                    DNS_OK=0
+                elif ! grep -qw "$PUBLIC_IP" <<<"$RESOLVED_IPS"; then
+                    warn "$d resolve para [$RESOLVED_IPS], mas este servidor é [$PUBLIC_IP] — confira o registro DNS tipo A."
+                    DNS_OK=0
+                else
+                    ok "$d aponta corretamente para este servidor."
+                fi
+            done
+        else
+            warn "Não foi possível detectar o IP público deste servidor para conferir o DNS — seguindo mesmo assim."
+        fi
+
+        if [ "$DNS_OK" = "0" ]; then
+            warn "Prosseguindo mesmo com possível problema de DNS (o Certbot fará a validação real a seguir)."
+        fi
+
+        # ---- 2) Emite/renova o certificado ----
         title "Emitindo certificado HTTPS (Let's Encrypt)"
         DOMAIN_ARGS=()
         for d in $SERVER_NAMES; do
@@ -149,9 +179,37 @@ if [ "$SSL_MODE" = "letsencrypt" ]; then
         else
             EMAIL_ARG=(--register-unsafely-without-email)
         fi
+
         if certbot --nginx "${DOMAIN_ARGS[@]}" "${EMAIL_ARG[@]}" --agree-tos --redirect --non-interactive; then
             ok "Certificado HTTPS emitido e Nginx atualizado automaticamente pelo Certbot."
-            ok "Renovação automática já fica agendada pelo systemd timer do certbot (certbot.timer)."
+
+            # ---- 3) Garante que a renovação automática está ativa ----
+            if systemctl list-unit-files 2>/dev/null | grep -q '^certbot.timer'; then
+                systemctl enable --now certbot.timer >/dev/null 2>&1
+                if systemctl is-active --quiet certbot.timer; then
+                    ok "Renovação automática ativa (certbot.timer). Verifique quando roda: systemctl list-timers certbot.timer"
+                else
+                    warn "certbot.timer existe mas não está ativo — renovação automática pode não funcionar. Rode: sudo systemctl enable --now certbot.timer"
+                fi
+            else
+                warn "Timer certbot.timer não encontrado. A renovação automática pode depender de um cron próprio do pacote — confira com: sudo certbot renew --dry-run"
+            fi
+
+            # ---- 4) Testa se o site realmente responde em HTTPS ----
+            PRIMARY_DOMAIN="$(echo "$SERVER_NAMES" | awk '{print $1}')"
+            if curl -fsSk --max-time 8 "https://$PRIMARY_DOMAIN/healthz" >/dev/null 2>&1; then
+                ok "Confirmado: https://$PRIMARY_DOMAIN/healthz responde normalmente."
+            else
+                warn "O certificado foi emitido, mas https://$PRIMARY_DOMAIN/healthz não respondeu no teste local."
+                warn "Pode ser só o firewall/DNS ainda propagando — confira manualmente pelo navegador em alguns minutos."
+            fi
+
+            # ---- 5) Testa a renovação (não emite certificado novo, só simula) ----
+            if certbot renew --cert-name "$PRIMARY_DOMAIN" --dry-run >/tmp/certbot-dry-run.log 2>&1; then
+                ok "Teste de renovação automática (--dry-run) passou sem erros."
+            else
+                warn "Teste de renovação automática (--dry-run) falhou — veja /tmp/certbot-dry-run.log. O certificado atual continua válido; investigue antes do vencimento."
+            fi
         else
             warn "Falha ao emitir certificado. O site continua funcionando em HTTP."
             warn "Verifique se o domínio já aponta (registro DNS tipo A) para o IP desta VPS e tente novamente:"
