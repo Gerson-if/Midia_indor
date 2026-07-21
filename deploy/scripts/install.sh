@@ -197,8 +197,9 @@ if confirm "Configurar firewall básico (UFW: liberar SSH, HTTP e HTTPS)?" "s"; 
     ok "UFW ativado (SSH + Nginx liberados)."
 fi
 
-SERVER_NAME_FINAL="$(grep -E '^SERVER_NAME=' "$APP_DIR/.env" | cut -d= -f2-)"
+SERVER_NAME_FINAL="$(grep -E '^SERVER_NAME=' "$APP_DIR/.env" | cut -d= -f2- | tr -d '"')"
 USE_HTTPS_FINAL="$(grep -E '^USE_HTTPS=' "$APP_DIR/.env" | cut -d= -f2-)"
+SSL_MODE_FINAL="$(grep -E '^SSL_MODE=' "$APP_DIR/.env" | cut -d= -f2- | tr -d '"')"
 if [ "$USE_HTTPS_FINAL" = "1" ]; then
     URL="https://$SERVER_NAME_FINAL"
 else
@@ -211,6 +212,11 @@ echo -e "  Site:        ${C_BOLD}$URL${C_RESET}"
 echo -e "  Painel:      ${C_BOLD}$URL/login${C_RESET}"
 echo -e "  Admin:       ${C_BOLD}$ADMIN_EMAIL${C_RESET}"
 echo -e "  Diretório:   ${C_BOLD}$APP_DIR${C_RESET}"
+if [ "$SSL_MODE_FINAL" = "selfsigned" ]; then
+    echo
+    warn "HTTPS ativo com certificado autoassinado (sem domínio ainda)."
+    warn "O navegador vai avisar 'conexão não é privada' na primeira visita — clique em avançado/continuar. A conexão continua criptografada normalmente."
+fi
 echo
 echo "Comandos úteis:"
 echo "  sudo systemctl status midia-indoor        # status da aplicação"

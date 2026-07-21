@@ -49,21 +49,31 @@ if [[ "$ACCESS_MODE" == Tenho* ]]; then
         SERVER_NAMES="$DOMAIN"
     fi
     if confirm "Ativar HTTPS automático com Let's Encrypt (recomendado)?" "s"; then
+        SSL_MODE="letsencrypt"
         USE_HTTPS="1"
         ask "E-mail para avisos do certificado Let's Encrypt" "$(cur ADMIN_EMAIL 'admin@example.com')" LE_EMAIL
     else
+        SSL_MODE="none"
         USE_HTTPS="0"
         LE_EMAIL=""
     fi
     SERVER_NAME_PRIMARY="$DOMAIN"
 else
     DETECTED_IP="$(detect_public_ip)"
-    ask "IP público da VPS" "$(cur SERVER_NAME "$DETECTED_IP")" SERVER_NAME_PRIMARY
+    ask "IP público (da VPS, ou o IP de onde estiver rodando)" "$(cur SERVER_NAME "$DETECTED_IP")" SERVER_NAME_PRIMARY
     SERVER_NAMES="$SERVER_NAME_PRIMARY"
-    USE_HTTPS="0"
     LE_EMAIL=""
     warn "Sem domínio não é possível emitir certificado HTTPS confiável (Let's Encrypt exige um domínio)."
-    warn "O site funcionará em HTTP. Você pode rodar 'deploy/scripts/setup-nginx.sh' de novo quando tiver um domínio."
+    if confirm "Ativar HTTPS mesmo assim, com um certificado autoassinado (a conexão fica criptografada, mas o navegador mostra um aviso de segurança na primeira visita — normal sem domínio)?" "s"; then
+        SSL_MODE="selfsigned"
+        USE_HTTPS="1"
+        ok "HTTPS com certificado autoassinado será gerado por 'setup-nginx.sh' (openssl, local, sem depender de nenhum serviço externo)."
+        info "Quando tiver um domínio, rode este assistente de novo e escolha 'Tenho um domínio' + Let's Encrypt para trocar pelo certificado confiável."
+    else
+        SSL_MODE="none"
+        USE_HTTPS="0"
+        warn "O site funcionará apenas em HTTP."
+    fi
 fi
 
 # ---------------------------------------------------------------
@@ -193,6 +203,8 @@ FLASK_DEBUG=0
 SERVER_NAME="${SERVER_NAME_PRIMARY}"
 SERVER_NAMES="${SERVER_NAMES}"
 USE_HTTPS=${USE_HTTPS}
+# SSL_MODE: letsencrypt (domínio) | selfsigned (acesso por IP) | none (HTTP)
+SSL_MODE="${SSL_MODE}"
 LETSENCRYPT_EMAIL="${LE_EMAIL}"
 
 # ---- Segurança ----
@@ -265,6 +277,7 @@ if [ "$USE_REDIS" = "1" ]; then
     export NEXO_NEEDS_REDIS=1
 fi
 export NEXO_USE_HTTPS="$USE_HTTPS"
+export NEXO_SSL_MODE="$SSL_MODE"
 export NEXO_SERVER_NAME="$SERVER_NAME_PRIMARY"
 export NEXO_SERVER_NAMES="$SERVER_NAMES"
 export NEXO_LE_EMAIL="$LE_EMAIL"

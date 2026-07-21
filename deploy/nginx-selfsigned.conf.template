@@ -1,0 +1,86 @@
+# =============================================================
+# Nginx — reverse proxy para o Nexo Mídia (Flask + Gunicorn)
+# HTTPS com certificado AUTOASSINADO — usado quando não há um
+# domínio ainda (acesso pelo IP da VPS ou de onde estiver rodando).
+# Gerado automaticamente por deploy/scripts/setup-nginx.sh
+# NÃO edite manualmente: rode o script novamente para reconfigurar.
+#
+# Certificado autoassinado != Let's Encrypt: como não existe um
+# domínio para validar com uma autoridade certificadora pública
+# (Let's Encrypt exige domínio), o navegador vai mostrar um aviso
+# do tipo "a conexão não é privada"/"certificado inválido" na
+# primeira visita. Isso é esperado — basta clicar em
+# "avançado" -> "continuar mesmo assim". A conexão continua sendo
+# criptografada normalmente (TLS), só não há a "cadeia de confiança"
+# pública que existe com um domínio + Let's Encrypt.
+#
+# Quando um domínio estiver disponível, rode novamente
+# configure-env.sh escolhendo "Tenho um domínio" + Let's Encrypt,
+# e depois setup-nginx.sh — o certificado autoassinado é substituído
+# automaticamente por um confiável.
+# =============================================================
+
+# ---- Porta 80: redireciona tudo para HTTPS ----
+server {
+    listen 80;
+    listen [::]:80;
+    server_name __SERVER_NAMES__;
+
+    # Mantido para o caso de mais tarde migrar para Let's Encrypt
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# ---- Porta 443: HTTPS com certificado autoassinado ----
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name __SERVER_NAMES__;
+
+    ssl_certificate     __SSL_CERT__;
+    ssl_certificate_key __SSL_KEY__;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+
+    client_max_body_size __MAX_UPLOAD_MB__M;
+    keepalive_timeout 15;
+
+    access_log /var/log/nginx/midia-indoor.access.log;
+    error_log  /var/log/nginx/midia-indoor.error.log;
+
+    # ---- Arquivos estáticos servidos diretamente pelo Nginx ----
+    location /static/ {
+        alias __STATIC_PATH__/;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    # ---- Aplicação Flask via Gunicorn (socket TCP local) ----
+    location / {
+        proxy_pass http://__GUNICORN_BIND__;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port 443;
+        proxy_redirect off;
+        proxy_connect_timeout 30s;
+        proxy_read_timeout 30s;
+    }
+
+    # Health check (não loga, usado por monitoramento)
+    location = /healthz {
+        proxy_pass http://__GUNICORN_BIND__/healthz;
+        access_log off;
+    }
+}
