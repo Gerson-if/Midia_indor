@@ -216,6 +216,10 @@ if [ "$SSL_MODE_FINAL" = "selfsigned" ]; then
     echo
     warn "HTTPS ativo com certificado autoassinado (sem domínio ainda)."
     warn "O navegador vai avisar 'conexão não é privada' na primeira visita — clique em avançado/continuar. A conexão continua criptografada normalmente."
+elif [ "$SSL_MODE_FINAL" = "custom" ]; then
+    echo
+    ok "HTTPS ativo com certificado comprado (CSR)."
+    info "Sem renovação automática neste modo — rode 'sudo deploy/scripts/check-https.sh $APP_DIR' de vez em quando para acompanhar o vencimento."
 fi
 echo
 echo "Comandos úteis:"

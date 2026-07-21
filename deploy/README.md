@@ -13,6 +13,7 @@ deploy/
 │   ├── install.sh        # instalação inicial guiada (rodar 1x)
 │   ├── configure-env.sh  # assistente para (re)gerar o .env
 │   ├── setup-nginx.sh    # gera/atualiza a config do Nginx (+ HTTPS)
+│   ├── generate-csr.sh   # gera chave privada + CSR p/ certificado comprado
 │   ├── check-https.sh    # diagnostica o estado do HTTPS/certificado
 │   ├── update.sh         # publica uma atualização (git pull + migração)
 │   ├── rollback.sh       # volta para um commit anterior (git)
@@ -20,6 +21,7 @@ deploy/
 ├── nginx.conf.template            # HTTP simples (sem HTTPS)
 ├── nginx-selfsigned.conf.template # HTTPS autoassinado (sem domínio)
 ├── nginx-letsencrypt.conf.template# HTTPS com Let's Encrypt (com domínio)
+├── nginx-custom.conf.template     # HTTPS com certificado comprado via CSR
 ├── midia-indoor.service  # unit do systemd instalada pelo install.sh
 └── gunicorn.conf.py      # configuração do Gunicorn
 ```
@@ -186,7 +188,52 @@ sudo bash deploy/scripts/setup-nginx.sh /opt/midia-indoor
 O certificado autoassinado é automaticamente substituído pelo
 certificado público do Let's Encrypt.
 
-### 5.3 Como o HTTPS é mantido (e por que o cadeado não deveria sumir)
+### 5.3 Certificado comprado de uma CA (DigiCert etc.) via CSR
+
+Se preferir (ou precisar, por política interna/compliance) usar um
+certificado pago em vez do Let's Encrypt, o fluxo é:
+
+```bash
+# 1) Gera a chave privada + o CSR (Certificate Signing Request)
+sudo bash deploy/scripts/generate-csr.sh /opt/midia-indoor
+```
+
+O script pede o domínio e os dados da empresa e devolve o conteúdo do
+CSR na tela — copie e cole no site da CA na hora de comprar/emitir o
+certificado (veja o guia da própria CA, ex.:
+https://www.digicert.com/kb/csr-creation.htm). A chave privada fica
+salva em `/etc/nginx/ssl/midia-indoor-csr/` e **nunca deve ser
+enviada** para a CA nem para ninguém — só o CSR.
+
+Depois que a CA validar o domínio e emitir o certificado, ela devolve
+dois tipos de arquivo: o certificado do seu domínio e o(s)
+certificado(s) **intermediário(s)** (às vezes chamado de "CA bundle"
+ou "chain"). Junte na configuração:
+
+```bash
+sudo bash deploy/scripts/configure-env.sh /opt/midia-indoor/.env
+# escolha "Tenho um domínio" -> "Já tenho/vou comprar um certificado... (CSR)"
+# informe os caminhos do certificado, da chave e dos intermediários
+sudo bash deploy/scripts/setup-nginx.sh /opt/midia-indoor
+```
+
+O `setup-nginx.sh` confere automaticamente as causas mais comuns do
+**"x vermelho" / cadeado ausente mesmo com certificado instalado**:
+
+- a chave privada não bate com o certificado;
+- faltam os certificados intermediários da CA (o motivo mais comum —
+  sem eles o navegador não consegue montar a cadeia de confiança até
+  a raiz, mesmo com o certificado do domínio correto e válido);
+- o certificado não cobre o domínio acessado (campo SAN);
+- o certificado está expirado ou perto de vencer.
+
+Ao final, rode `sudo bash deploy/scripts/check-https.sh /opt/midia-indoor`
+para uma validação completa da cadeia (o mesmo tipo de checagem que o
+navegador faz). Diferente do Let's Encrypt, **este modo não renova
+sozinho** — quando a CA emitir a renovação, rode `configure-env.sh` +
+`setup-nginx.sh` novamente com os novos arquivos.
+
+### 5.4 Como o HTTPS é mantido (e por que o cadeado não deveria sumir)
 
 Desde esta versão, o `setup-nginx.sh` **não deixa mais o Certbot editar
 o `nginx.conf` diretamente** (não usamos `certbot --nginx`). O Certbot
@@ -241,7 +288,12 @@ curl -i http://127.0.0.1:8000/healthz   # testar a aplicação diretamente (sem 
 - **Certificado instalado, mas o navegador ainda mostra aviso/sem
   cadeado** — rode `sudo bash deploy/scripts/check-https.sh`; ele
   confere se o Nginx está servindo o certificado certo e se há
-  conteúdo misto (`http://` numa página `https://`). Veja a seção 5.3.
+  conteúdo misto (`http://` numa página `https://`). Veja a seção 5.4.
+- **Certificado comprado via CSR instalado, mas ainda com "x
+  vermelho"/sem cadeado** — na grande maioria dos casos faltam os
+  certificados **intermediários** da CA no arquivo instalado (só o
+  certificado do domínio foi colocado). Veja a seção 5.3 e rode
+  `check-https.sh`, que aponta exatamente isso.
 - **Navegador avisa "conexão não é privada" ao acessar por IP** — normal
   quando o HTTPS está no modo autoassinado (sem domínio ainda); veja a
   seção 5.1. Não é um erro de configuração.

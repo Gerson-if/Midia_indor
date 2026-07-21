@@ -48,21 +48,43 @@ if [[ "$ACCESS_MODE" == Tenho* ]]; then
     else
         SERVER_NAMES="$DOMAIN"
     fi
-    if confirm "Ativar HTTPS automático com Let's Encrypt (recomendado)?" "s"; then
-        SSL_MODE="letsencrypt"
-        USE_HTTPS="1"
-        ask "E-mail para avisos do certificado Let's Encrypt" "$(cur ADMIN_EMAIL 'admin@example.com')" LE_EMAIL
-    else
-        SSL_MODE="none"
-        USE_HTTPS="0"
-        LE_EMAIL=""
-    fi
+    HTTPS_CHOICE=""
+    choose "Como ativar o HTTPS neste domínio?" HTTPS_CHOICE \
+        "Let's Encrypt automático (gratuito, recomendado)" \
+        "Já tenho/vou comprar um certificado de uma CA (DigiCert etc.) via CSR" \
+        "Não ativar HTTPS agora"
+    CUSTOM_SSL_CERT=""; CUSTOM_SSL_KEY=""; CUSTOM_SSL_CHAIN=""; LE_EMAIL=""
+    case "$HTTPS_CHOICE" in
+        "Let's Encrypt"*)
+            SSL_MODE="letsencrypt"
+            USE_HTTPS="1"
+            ask "E-mail para avisos do certificado Let's Encrypt" "$(cur ADMIN_EMAIL 'admin@example.com')" LE_EMAIL
+            ;;
+        "Já tenho"*)
+            SSL_MODE="custom"
+            USE_HTTPS="1"
+            echo
+            info "Se ainda não gerou a chave/CSR para comprar o certificado, rode antes:"
+            info "  sudo deploy/scripts/generate-csr.sh"
+            info "e volte aqui depois de receber o certificado da CA."
+            echo
+            ask "Caminho do certificado (fullchain: seu certificado + intermediários da CA)" "$(cur CUSTOM_SSL_CERT '/etc/nginx/ssl/midia-indoor-csr/certificado.crt')" CUSTOM_SSL_CERT
+            ask "Caminho da chave privada (a mesma usada para gerar o CSR)" "$(cur CUSTOM_SSL_KEY "/etc/nginx/ssl/midia-indoor-csr/${DOMAIN}.key")" CUSTOM_SSL_KEY
+            ask "Caminho do(s) certificado(s) intermediário(s)/CA bundle (deixe em branco se já estiver junto no fullchain acima)" "$(cur CUSTOM_SSL_CHAIN '')" CUSTOM_SSL_CHAIN
+            warn "Não encontrando os intermediários da CA agora? O setup-nginx.sh detecta isso e avisa — é a causa nº 1 do navegador não mostrar o cadeado mesmo com certificado instalado."
+            ;;
+        *)
+            SSL_MODE="none"
+            USE_HTTPS="0"
+            ;;
+    esac
     SERVER_NAME_PRIMARY="$DOMAIN"
 else
     DETECTED_IP="$(detect_public_ip)"
     ask "IP público (da VPS, ou o IP de onde estiver rodando)" "$(cur SERVER_NAME "$DETECTED_IP")" SERVER_NAME_PRIMARY
     SERVER_NAMES="$SERVER_NAME_PRIMARY"
     LE_EMAIL=""
+    CUSTOM_SSL_CERT=""; CUSTOM_SSL_KEY=""; CUSTOM_SSL_CHAIN=""
     warn "Sem domínio não é possível emitir certificado HTTPS confiável (Let's Encrypt exige um domínio)."
     if confirm "Ativar HTTPS mesmo assim, com um certificado autoassinado (a conexão fica criptografada, mas o navegador mostra um aviso de segurança na primeira visita — normal sem domínio)?" "s"; then
         SSL_MODE="selfsigned"
@@ -203,9 +225,13 @@ FLASK_DEBUG=0
 SERVER_NAME="${SERVER_NAME_PRIMARY}"
 SERVER_NAMES="${SERVER_NAMES}"
 USE_HTTPS=${USE_HTTPS}
-# SSL_MODE: letsencrypt (domínio) | selfsigned (acesso por IP) | none (HTTP)
+# SSL_MODE: letsencrypt (domínio) | selfsigned (acesso por IP) | custom (certificado comprado via CSR) | none (HTTP)
 SSL_MODE="${SSL_MODE}"
 LETSENCRYPT_EMAIL="${LE_EMAIL}"
+# ---- Certificado comprado via CSR (só usado quando SSL_MODE=custom) ----
+CUSTOM_SSL_CERT="${CUSTOM_SSL_CERT}"
+CUSTOM_SSL_KEY="${CUSTOM_SSL_KEY}"
+CUSTOM_SSL_CHAIN="${CUSTOM_SSL_CHAIN}"
 
 # ---- Segurança ----
 SECRET_KEY="${SECRET_KEY}"

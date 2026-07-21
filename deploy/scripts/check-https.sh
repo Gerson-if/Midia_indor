@@ -18,7 +18,7 @@ ENV_FILE="$APP_DIR/.env"
 [ -f "$ENV_FILE" ] || die "Não encontrei $ENV_FILE."
 
 # shellcheck disable=SC1090
-source <(grep -E '^(SERVER_NAMES|USE_HTTPS|SSL_MODE)=' "$ENV_FILE" | sed 's/^/export /')
+source <(grep -E '^(SERVER_NAMES|USE_HTTPS|SSL_MODE|CUSTOM_SSL_CERT|CUSTOM_SSL_KEY|CUSTOM_SSL_CHAIN)=' "$ENV_FILE" | sed 's/^/export /')
 SERVER_NAMES="${SERVER_NAMES//\"/}"
 SSL_MODE="${SSL_MODE:-}"
 [ -z "$SSL_MODE" ] && SSL_MODE="desconhecido (arquivo .env antigo)"
@@ -134,6 +134,68 @@ selfsigned)
     fi
 
     info "Quando tiver domínio, rode configure-env.sh + setup-nginx.sh de novo para trocar pelo Let's Encrypt."
+    ;;
+
+custom)
+    need_cmd openssl
+    SSL_DIR_CUSTOM="/etc/nginx/ssl/midia-indoor-custom"
+    CERT_FULLCHAIN="$SSL_DIR_CUSTOM/fullchain.pem"
+    PRIMARY_DOMAIN="$(echo "$SERVER_NAMES" | awk '{print $1}')"
+
+    title "1) Certificado instalado (modo custom / CSR)"
+    if [ -s "$CERT_FULLCHAIN" ]; then
+        ok "Encontrado em $CERT_FULLCHAIN"
+        openssl x509 -in "$CERT_FULLCHAIN" -noout -subject -issuer -enddate -ext subjectAltName 2>/dev/null | sed 's/^/  /'
+        N_CERTS="$(grep -c 'BEGIN CERTIFICATE' "$CERT_FULLCHAIN" || true)"
+        if [ "$N_CERTS" -le 1 ]; then
+            warn "Este arquivo contém só $N_CERTS certificado(s) — sem os intermediários da CA."
+            warn "CAUSA MAIS PROVÁVEL do 'x vermelho'/cadeado ausente: o navegador não consegue montar a cadeia até a CA raiz."
+            warn "Baixe o CA bundle/intermediários no site da sua CA e informe CUSTOM_SSL_CHAIN em configure-env.sh, depois rode setup-nginx.sh de novo."
+        else
+            ok "Arquivo contém $N_CERTS certificados (parece incluir os intermediários)."
+        fi
+
+        title "1.1) Validade"
+        if ! openssl x509 -in "$CERT_FULLCHAIN" -noout -checkend 0 >/dev/null 2>&1; then
+            err "Certificado EXPIRADO. É exatamente isso que gera o aviso vermelho de 'não seguro' no navegador."
+        elif ! openssl x509 -in "$CERT_FULLCHAIN" -noout -checkend $((30 * 86400)) >/dev/null 2>&1; then
+            warn "Certificado vence em menos de 30 dias — não há renovação automática no modo custom."
+        else
+            ok "Dentro da validade."
+        fi
+    else
+        err "Não encontrei certificado instalado em $CERT_FULLCHAIN. Rode: sudo deploy/scripts/setup-nginx.sh $APP_DIR"
+    fi
+
+    title "2) Site respondendo em HTTPS"
+    if curl -fsSk --max-time 8 -o /dev/null -w "HTTP %{http_code} — TLS: %{ssl_verify_result} (0 = válido)\n" "https://$PRIMARY_DOMAIN/healthz"; then
+        ok "https://$PRIMARY_DOMAIN/healthz respondeu."
+    else
+        err "https://$PRIMARY_DOMAIN/healthz não respondeu. Confira: sudo systemctl status nginx midia-indoor"
+    fi
+
+    title "3) Validação completa da cadeia como um navegador faria"
+    # -verify_return_error faz o openssl retornar erro real de validação de
+    # cadeia (o mesmo tipo de problema que gera o "x vermelho" no navegador).
+    CHAIN_CHECK="$(echo | openssl s_client -connect "$PRIMARY_DOMAIN:443" -servername "$PRIMARY_DOMAIN" -verify_return_error 2>&1 || true)"
+    if echo "$CHAIN_CHECK" | grep -qi "Verify return code: 0 (ok)"; then
+        ok "A cadeia de certificados valida corretamente (é o que faz o cadeado aparecer)."
+    else
+        VERIFY_LINE="$(echo "$CHAIN_CHECK" | grep -i "Verify return code" || echo "  (não consegui obter o motivo — confira firewall/porta 443)")"
+        err "A cadeia de certificados NÃO valida: $VERIFY_LINE"
+        err "Isso é o que causa o aviso vermelho/sem cadeado. Motivos comuns: intermediários da CA ausentes (veja item 1), certificado emitido para outro domínio, ou expirado."
+    fi
+
+    title "4) Conteúdo misto (recursos http:// numa página https://)"
+    MIXED="$(curl -fsSk --max-time 8 "https://$PRIMARY_DOMAIN/" 2>/dev/null | grep -oE 'src="http://[^"]+"|href="http://[^"]+"' | grep -v "$PRIMARY_DOMAIN" | head -5 || true)"
+    if [ -n "$MIXED" ]; then
+        warn "Encontrado conteúdo misto na página inicial (mantém o cadeado 'quebrado'/com aviso mesmo com certificado válido):"
+        echo "$MIXED" | sed 's/^/    /'
+    else
+        ok "Nenhum recurso http:// óbvio encontrado na página inicial."
+    fi
+
+    info "Sem renovação automática neste modo — quando a CA reemitir o certificado, atualize os arquivos e rode setup-nginx.sh de novo."
     ;;
 
 *)
