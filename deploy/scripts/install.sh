@@ -3,21 +3,25 @@
 # install.sh — instalação guiada do Nexo Mídia em uma VPS Ubuntu,
 # SEM Docker: Python + venv + Gunicorn + systemd + Nginx.
 #
-# Como usar (na VPS, dentro da pasta do projeto já extraída):
+# Como usar (na VPS, dentro da pasta do projeto já extraída/clonada):
 #   sudo bash deploy/scripts/install.sh
 #
-# O script é idempotente: pode ser executado de novo com segurança
-# (por exemplo, para reinstalar após corrigir algum problema).
+# O script é idempotente: pode ser executado de novo com segurança.
 #
-# Estrutura criada em /opt/midia-indoor:
-#   releases/<timestamp>/   -> código de cada versão publicada
-#   current -> symlink para a release ativa
-#   shared/.env             -> variáveis de ambiente (preservado)
-#   shared/venv             -> ambiente virtual Python (preservado)
-#   shared/uploads          -> mídias enviadas pelo painel (preservado)
-#   shared/instance         -> banco SQLite, se usado (preservado)
-#   shared/logs             -> logs da aplicação (preservado)
-#   shared/backups          -> backups automáticos gerados no update.sh
+# Estrutura criada em /opt/midia-indoor — UMA PASTA SÓ, sem
+# releases/current/shared. É o próprio código (git clone ou cópia
+# do zip), com venv/.env/uploads/logs/instance vivendo dentro dela
+# (esses já são ignorados pelo .gitignore, então um `git pull`
+# nunca mexe neles):
+#
+#   /opt/midia-indoor/
+#   ├── venv/                  -> ambiente virtual Python
+#   ├── .env                   -> variáveis de ambiente
+#   ├── app/static/uploads/    -> mídias enviadas pelo painel
+#   ├── instance/              -> banco SQLite, se usado
+#   └── logs/                  -> logs da aplicação
+#
+# Atualizações depois: deploy/scripts/update.sh (veja deploy/README.md)
 # =============================================================
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -25,9 +29,9 @@ source "$SCRIPT_DIR/lib.sh"
 
 need_root
 
-# Diretório onde o instalador foi extraído (raiz do projeto/código-fonte)
+# Diretório onde o instalador foi extraído/clonado (raiz do projeto)
 SOURCE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-[ -f "$SOURCE_DIR/wsgi.py" ] || die "Não encontrei wsgi.py em $SOURCE_DIR — rode este script de dentro do projeto extraído."
+[ -f "$SOURCE_DIR/wsgi.py" ] || die "Não encontrei wsgi.py em $SOURCE_DIR — rode este script de dentro do projeto."
 
 APP_USER="midia-indoor"
 APP_GROUP="midia-indoor"
@@ -48,7 +52,7 @@ ask "Em qual diretório instalar a aplicação?" "/opt/midia-indoor" APP_DIR
 # ---------------------------------------------------------------
 # 1) Pacotes do sistema
 # ---------------------------------------------------------------
-title "1/9 — Instalando pacotes do sistema (apt)"
+title "1/8 — Instalando pacotes do sistema (apt)"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
 apt-get install -y --no-install-recommends \
@@ -84,7 +88,7 @@ ok "Pacotes do sistema prontos."
 # ---------------------------------------------------------------
 # 2) Usuário de sistema
 # ---------------------------------------------------------------
-title "2/9 — Usuário de sistema"
+title "2/8 — Usuário de sistema"
 if ! id "$APP_USER" >/dev/null 2>&1; then
     useradd --system --home-dir "$APP_DIR" --shell /usr/sbin/nologin --create-home "$APP_USER"
     ok "Usuário de sistema '$APP_USER' criado."
@@ -93,97 +97,87 @@ else
 fi
 
 # ---------------------------------------------------------------
-# 3) Estrutura de diretórios + cópia do código (releases)
+# 3) Publicar o código em APP_DIR (pasta única, sem releases)
 # ---------------------------------------------------------------
-title "3/9 — Publicando o código em $APP_DIR"
-RELEASE_ID="$(date -u +%Y%m%d%H%M%S)"
-RELEASE_DIR="$APP_DIR/releases/$RELEASE_ID"
-mkdir -p "$APP_DIR/releases" "$APP_DIR/shared/venv" "$APP_DIR/shared/uploads" \
-    "$APP_DIR/shared/instance" "$APP_DIR/shared/logs" "$APP_DIR/shared/backups"
-mkdir -p "$RELEASE_DIR"
-
-rsync -a \
-    --exclude ".git" --exclude ".github" \
-    --exclude "__pycache__" --exclude "*.pyc" \
-    --exclude "node_modules" --exclude ".env" \
-    --exclude "instance" --exclude "logs" \
-    --exclude "app/static/uploads" \
-    "$SOURCE_DIR/" "$RELEASE_DIR/"
-
-ln -sfn "$RELEASE_DIR" "$APP_DIR/current"
-ok "Código publicado em $RELEASE_DIR (current -> $RELEASE_DIR)"
+title "3/8 — Publicando o código em $APP_DIR"
+if [ "$SOURCE_DIR" = "$APP_DIR" ]; then
+    ok "Já rodando de dentro de $APP_DIR — nada para copiar."
+else
+    mkdir -p "$APP_DIR"
+    rsync -a \
+        --exclude ".git" --exclude ".github" \
+        --exclude "__pycache__" --exclude "*.pyc" \
+        --exclude "node_modules" --exclude ".env" \
+        --exclude "instance" --exclude "logs" --exclude "venv" \
+        --exclude "app/static/uploads" \
+        "$SOURCE_DIR/" "$APP_DIR/"
+    ok "Código copiado para $APP_DIR."
+    if [ -d "$SOURCE_DIR/.git" ] && confirm "Copiar também o histórico git (recomendado — permite 'git pull' em updates futuros)?" "s"; then
+        rsync -a "$SOURCE_DIR/.git" "$APP_DIR/"
+        ok "Histórico git copiado — dá para usar 'git pull' em $APP_DIR."
+    fi
+fi
+mkdir -p "$APP_DIR/app/static/uploads" "$APP_DIR/instance" "$APP_DIR/logs"
 
 # ---------------------------------------------------------------
 # 4) Configuração do .env (guiada)
 # ---------------------------------------------------------------
-title "4/9 — Configurando variáveis de ambiente"
-bash "$SCRIPT_DIR/configure-env.sh" "$APP_DIR/shared/.env"
+title "4/8 — Configurando variáveis de ambiente"
+bash "$SCRIPT_DIR/configure-env.sh" "$APP_DIR/.env"
 
 # ---------------------------------------------------------------
-# 5) Links simbólicos para dados persistentes
+# 5) Ambiente virtual Python + dependências
 # ---------------------------------------------------------------
-title "5/9 — Ligando pastas persistentes (uploads, logs, instance)"
-rm -rf "$APP_DIR/current/app/static/uploads"
-ln -sfn "$APP_DIR/shared/uploads" "$APP_DIR/current/app/static/uploads"
-rm -rf "$APP_DIR/current/logs"
-ln -sfn "$APP_DIR/shared/logs" "$APP_DIR/current/logs"
-rm -rf "$APP_DIR/current/instance"
-ln -sfn "$APP_DIR/shared/instance" "$APP_DIR/current/instance"
-ok "Links prontos — uploads/logs/banco sqlite sobrevivem a futuras atualizações."
-
-# ---------------------------------------------------------------
-# 6) Ambiente virtual Python + dependências
-# ---------------------------------------------------------------
-title "6/9 — Instalando dependências Python"
-if [ ! -x "$APP_DIR/shared/venv/bin/python" ]; then
-    python3 -m venv "$APP_DIR/shared/venv"
+title "5/8 — Instalando dependências Python"
+if [ ! -x "$APP_DIR/venv/bin/python" ]; then
+    python3 -m venv "$APP_DIR/venv"
 fi
-"$APP_DIR/shared/venv/bin/pip" install --upgrade pip wheel >/dev/null
-"$APP_DIR/shared/venv/bin/pip" install -r "$APP_DIR/current/requirements.txt"
-ok "Dependências Python instaladas em shared/venv."
+"$APP_DIR/venv/bin/pip" install --upgrade pip wheel >/dev/null
+"$APP_DIR/venv/bin/pip" install -r "$APP_DIR/requirements.txt"
+ok "Dependências Python instaladas em $APP_DIR/venv."
 
 if [ "$BUILD_FRONTEND" = "1" ]; then
     info "Construindo assets de front-end (Tailwind CSS)..."
-    (cd "$APP_DIR/current" && npm ci && npm run build)
+    (cd "$APP_DIR" && npm ci && npm run build)
     ok "Assets de front-end gerados."
 else
     warn "Build do Tailwind pulado — certifique-se de que app/static/css/tailwind.min.css já existe no pacote enviado."
 fi
 
 # ---------------------------------------------------------------
-# 7) Banco de dados: migrações + admin
+# 6) Banco de dados: migrações + admin
 # ---------------------------------------------------------------
-title "7/9 — Banco de dados"
+title "6/8 — Banco de dados"
 set -a
 # shellcheck disable=SC1091
-source "$APP_DIR/shared/.env"
+source "$APP_DIR/.env"
 set +a
 export FLASK_APP=wsgi.py
 
-(cd "$APP_DIR/current" && "$APP_DIR/shared/venv/bin/flask" db upgrade)
+(cd "$APP_DIR" && "$APP_DIR/venv/bin/flask" db upgrade)
 ok "Migrações aplicadas."
 
-(cd "$APP_DIR/current" && "$APP_DIR/shared/venv/bin/flask" create-admin)
+(cd "$APP_DIR" && "$APP_DIR/venv/bin/flask" create-admin)
 ok "Usuário administrador criado/atualizado (login: $ADMIN_EMAIL)."
 
 if confirm "Popular o site com conteúdo de demonstração (serviços, galeria de exemplo)?" "n"; then
-    (cd "$APP_DIR/current" && "$APP_DIR/shared/venv/bin/flask" seed-demo)
+    (cd "$APP_DIR" && "$APP_DIR/venv/bin/flask" seed-demo)
     ok "Conteúdo de demonstração criado."
 fi
 
 # ---------------------------------------------------------------
-# 8) Permissões
+# 7) Permissões
 # ---------------------------------------------------------------
-title "8/9 — Ajustando permissões"
+title "7/8 — Ajustando permissões"
 chown -R "$APP_USER:$APP_GROUP" "$APP_DIR"
-chmod 600 "$APP_DIR/shared/.env"
+chmod 600 "$APP_DIR/.env"
 ok "Permissões ajustadas para o usuário '$APP_USER'."
 
 # ---------------------------------------------------------------
-# 9) systemd + Nginx
+# 8) systemd + Nginx
 # ---------------------------------------------------------------
-title "9/9 — Ativando os serviços"
-cp "$APP_DIR/current/deploy/midia-indoor.service" /etc/systemd/system/midia-indoor.service
+title "8/8 — Ativando os serviços"
+sed -e "s#__APP_DIR__#${APP_DIR}#g" "$APP_DIR/deploy/midia-indoor.service" >/etc/systemd/system/midia-indoor.service
 systemctl daemon-reload
 systemctl enable --now midia-indoor
 sleep 2
@@ -196,22 +190,15 @@ fi
 bash "$SCRIPT_DIR/setup-nginx.sh" "$APP_DIR"
 
 if confirm "Configurar firewall básico (UFW: liberar SSH, HTTP e HTTPS)?" "s"; then
-    if command -v ufw >/dev/null 2>&1; then
-        ufw allow OpenSSH >/dev/null || true
-        ufw allow "Nginx Full" >/dev/null || true
-        yes | ufw enable >/dev/null || true
-        ok "UFW ativado (SSH + Nginx liberados)."
-    else
-        apt-get install -y ufw >/dev/null
-        ufw allow OpenSSH >/dev/null || true
-        ufw allow "Nginx Full" >/dev/null || true
-        yes | ufw enable >/dev/null || true
-        ok "UFW instalado e ativado (SSH + Nginx liberados)."
-    fi
+    command -v ufw >/dev/null 2>&1 || apt-get install -y ufw >/dev/null
+    ufw allow OpenSSH >/dev/null || true
+    ufw allow "Nginx Full" >/dev/null || true
+    yes | ufw enable >/dev/null || true
+    ok "UFW ativado (SSH + Nginx liberados)."
 fi
 
-SERVER_NAME_FINAL="$(grep -E '^SERVER_NAME=' "$APP_DIR/shared/.env" | cut -d= -f2-)"
-USE_HTTPS_FINAL="$(grep -E '^USE_HTTPS=' "$APP_DIR/shared/.env" | cut -d= -f2-)"
+SERVER_NAME_FINAL="$(grep -E '^SERVER_NAME=' "$APP_DIR/.env" | cut -d= -f2-)"
+USE_HTTPS_FINAL="$(grep -E '^USE_HTTPS=' "$APP_DIR/.env" | cut -d= -f2-)"
 if [ "$USE_HTTPS_FINAL" = "1" ]; then
     URL="https://$SERVER_NAME_FINAL"
 else
@@ -228,7 +215,7 @@ echo
 echo "Comandos úteis:"
 echo "  sudo systemctl status midia-indoor        # status da aplicação"
 echo "  sudo journalctl -u midia-indoor -f         # logs em tempo real"
-echo "  sudo bash deploy/scripts/update.sh          # publicar uma atualização com segurança"
+echo "  sudo bash deploy/scripts/update.sh          # publicar uma atualização"
 echo "  sudo bash deploy/scripts/rollback.sh        # voltar para a versão anterior"
-echo "  sudo bash deploy/scripts/configure-env.sh $APP_DIR/shared/.env   # reconfigurar variáveis"
+echo "  sudo bash deploy/scripts/configure-env.sh $APP_DIR/.env   # reconfigurar variáveis"
 echo

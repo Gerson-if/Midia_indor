@@ -140,29 +140,34 @@ segredo inseguro por engano.
 
 Deploy nativo (sem Docker) com um instalador guiado: Nginx + Gunicorn +
 systemd, com PostgreSQL ou SQLite à sua escolha, HTTPS automático via
-Let's Encrypt (se você tiver domínio) ou acesso direto por IP, e
-atualizações seguras com backup e rollback automáticos.
+Let's Encrypt (se você tiver domínio) ou acesso direto por IP. Layout
+de **pasta única** (sem releases/symlinks): o app inteiro fica em
+`/opt/midia-indoor`, e atualizar é essencialmente um `git pull`.
 
 Veja o guia completo em **[`deploy/README.md`](deploy/README.md)**.
 
-Resumo rápido — na VPS (Ubuntu 22.04/24.04), dentro da pasta do projeto:
+Resumo rápido — na VPS (Ubuntu 22.04/24.04), de preferência clonando
+via Git (facilita as atualizações depois):
 
 ```bash
+git clone <url-do-seu-repositorio> midia-indoor && cd midia-indoor
 sudo bash deploy/scripts/install.sh
 ```
 
 O script pergunta tudo que precisa (domínio ou IP, banco de dados,
 Redis, HTTPS, dados da empresa e do administrador) e deixa o site no ar.
 
-Para publicar atualizações depois, envie o novo código para a VPS e rode:
+Para publicar atualizações depois:
 
 ```bash
+cd /opt/midia-indoor
 sudo bash deploy/scripts/update.sh
 ```
 
-Isso faz backup do banco, publica a nova versão em paralelo, roda as
-migrações, só então troca para a nova versão e reverte automaticamente
-se algo falhar. Detalhes de cada script em [`deploy/README.md`](deploy/README.md).
+Isso faz backup do banco, aplica o `git pull`, roda as migrações,
+reinicia o serviço e confere `/healthz` — revertendo automaticamente
+(`git reset --hard`) se a nova versão não responder. Detalhes de cada
+script em [`deploy/README.md`](deploy/README.md).
 
 ## Segurança implementada
 

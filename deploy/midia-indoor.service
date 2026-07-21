@@ -8,10 +8,10 @@
 #   sudo systemctl restart midia-indoor
 #   sudo journalctl -u midia-indoor -f
 #
-# Este arquivo usa o layout "releases + current" (estilo blue/green):
-#   /opt/midia-indoor/current -> aponta para a release ativa
-#   /opt/midia-indoor/shared  -> .env, venv, uploads, logs e banco
-#     (compartilhados entre releases, preservados nas atualizações)
+# Layout de pasta única: __APP_DIR__ é o próprio código (git ou
+# cópia do zip), com venv/.env/uploads/logs/instance dentro dela.
+# O install.sh substitui __APP_DIR__ pelo caminho real ao copiar
+# este arquivo para /etc/systemd/system/.
 # =============================================================
 [Unit]
 Description=Nexo Midia - Flask + Gunicorn (mídia indoor digital)
@@ -22,9 +22,9 @@ Wants=postgresql.service
 Type=simple
 User=midia-indoor
 Group=midia-indoor
-WorkingDirectory=/opt/midia-indoor/current
-EnvironmentFile=/opt/midia-indoor/shared/.env
-ExecStart=/opt/midia-indoor/shared/venv/bin/gunicorn -c deploy/gunicorn.conf.py wsgi:app
+WorkingDirectory=__APP_DIR__
+EnvironmentFile=__APP_DIR__/.env
+ExecStart=__APP_DIR__/venv/bin/gunicorn -c deploy/gunicorn.conf.py wsgi:app
 ExecReload=/bin/kill -s HUP $MAINPID
 Restart=always
 RestartSec=5
@@ -36,7 +36,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
 ProtectHome=true
-ReadWritePaths=/opt/midia-indoor/shared
+ReadWritePaths=__APP_DIR__
 
 [Install]
 WantedBy=multi-user.target

@@ -5,7 +5,7 @@
 # Pode ser usado de duas formas:
 #   1) Chamado automaticamente pelo install.sh durante a instalação.
 #   2) Executado manualmente a qualquer momento para reconfigurar:
-#        sudo deploy/scripts/configure-env.sh /opt/midia-indoor/shared/.env
+#        sudo deploy/scripts/configure-env.sh /opt/midia-indoor/.env
 #
 # Se nenhum caminho for informado, usa "./.env" (raiz do projeto),
 # útil para configurar um ambiente de desenvolvimento local.

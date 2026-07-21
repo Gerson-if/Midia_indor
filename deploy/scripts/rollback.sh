@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # =============================================================
-# rollback.sh — volta manualmente para uma release anterior.
-# O update.sh já faz rollback automático se a atualização falhar;
-# use este script quando quiser voltar atrás por outro motivo
-# (ex.: bug percebido depois que tudo parecia estar ok).
+# rollback.sh — volta manualmente para um commit anterior.
+# O update.sh já reverte sozinho se a atualização falhar; use
+# este script quando quiser voltar atrás por outro motivo (bug
+# percebido depois que tudo parecia ok).
+#
+# Só funciona em instalações com histórico git (veja install.sh).
+# Sem git, restaure o backup mais recente em <APP_DIR>/backups/.
 #
 # Uso:
 #   sudo bash deploy/scripts/rollback.sh [/opt/midia-indoor]
@@ -15,42 +18,27 @@ source "$SCRIPT_DIR/lib.sh"
 need_root
 APP_DIR="${1:-/opt/midia-indoor}"
 
-[ -L "$APP_DIR/current" ] || die "$APP_DIR/current não encontrado."
-CURRENT="$(readlink -f "$APP_DIR/current")"
-
-mapfile -t RELEASES < <(ls -1dt "$APP_DIR"/releases/*/ 2>/dev/null | sed 's:/$::')
-[ "${#RELEASES[@]}" -ge 2 ] || die "Não há release anterior para reverter."
+[ -d "$APP_DIR/.git" ] || die "$APP_DIR não tem histórico git. Restaure manualmente pelo backup em $APP_DIR/backups/."
 
 title "Rollback — Nexo Mídia"
-info "Release ativa agora: $(basename "$CURRENT")"
-echo "Releases disponíveis:"
-i=1
-for r in "${RELEASES[@]}"; do
-    marker=""
-    [ "$r" = "$CURRENT" ] && marker=" (ativa)"
-    echo "   $i) $(basename "$r")$marker"
-    i=$((i + 1))
-done
+echo "Últimos commits:"
+git -C "$APP_DIR" log --oneline -10
 
-read -r -p "Escolha o número da release para ativar: " CHOICE
-[[ "$CHOICE" =~ ^[0-9]+$ ]] && [ "$CHOICE" -ge 1 ] && [ "$CHOICE" -le "${#RELEASES[@]}" ] || die "Opção inválida."
-TARGET="${RELEASES[$((CHOICE - 1))]}"
+read -r -p "Informe o hash do commit para o qual voltar: " TARGET
+git -C "$APP_DIR" cat-file -e "$TARGET" 2>/dev/null || die "Commit inválido."
 
-if [ "$TARGET" = "$CURRENT" ]; then
-    warn "Essa já é a release ativa. Nada a fazer."
-    exit 0
-fi
+confirm "Confirma reverter $APP_DIR para $TARGET? Isso reinicia o serviço." "s" || exit 0
 
-confirm "Confirma reverter para $(basename "$TARGET")? Isso reinicia o serviço." "s" || exit 0
-
-ln -sfn "$TARGET" "$APP_DIR/current"
+git -C "$APP_DIR" reset --hard "$TARGET"
+"$APP_DIR/venv/bin/pip" install -r "$APP_DIR/requirements.txt"
+(cd "$APP_DIR" && "$APP_DIR/venv/bin/flask" db upgrade) || warn "Migração não aplicada — verifique manualmente se o schema é compatível com $TARGET."
 systemctl restart midia-indoor
 sleep 2
 
-BIND="$(grep -E '^GUNICORN_BIND=' "$APP_DIR/shared/.env" | cut -d= -f2- || true)"
+BIND="$(grep -E '^GUNICORN_BIND=' "$APP_DIR/.env" | cut -d= -f2- || true)"
 BIND="${BIND:-127.0.0.1:8000}"
 if curl -fsS "http://$BIND/healthz" >/dev/null 2>&1; then
-    ok "Rollback concluído. Release ativa: $(basename "$TARGET")"
+    ok "Rollback concluído. Commit ativo: $TARGET"
 else
     err "Serviço reiniciado mas /healthz não respondeu. Verifique: sudo journalctl -u midia-indoor -n 100"
 fi

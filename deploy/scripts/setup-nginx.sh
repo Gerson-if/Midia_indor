@@ -15,7 +15,7 @@ need_root
 need_cmd nginx
 
 APP_DIR="${1:-/opt/midia-indoor}"
-ENV_FILE="$APP_DIR/shared/.env"
+ENV_FILE="$APP_DIR/.env"
 TEMPLATE="$SCRIPT_DIR/../nginx.conf.template"
 SITE_NAME="midia-indoor"
 SITE_AVAILABLE="/etc/nginx/sites-available/$SITE_NAME"
@@ -31,7 +31,7 @@ SERVER_NAMES="${SERVER_NAMES//\"/}"
 USE_HTTPS="${USE_HTTPS:-0}"
 MAX_UPLOAD_MB="${MAX_CONTENT_LENGTH_MB:-80}"
 GUNICORN_BIND="${GUNICORN_BIND:-127.0.0.1:8000}"
-STATIC_PATH="$APP_DIR/current/app/static"
+STATIC_PATH="$APP_DIR/app/static"
 
 title "Gerando configuração do Nginx"
 info "server_name: $SERVER_NAMES"
