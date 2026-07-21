@@ -7,20 +7,31 @@ Uso:
 import multiprocessing
 import os
 
+
+def env_int(name, default):
+    """Como os.environ.get(name, default) só usa o default quando a
+    variável NÃO existe, uma linha tipo 'GUNICORN_WORKERS=' no .env
+    (vazia de propósito, para usar o cálculo automático) fazia o
+    int('') quebrar o Gunicorn logo na inicialização. Aqui, vazio
+    também conta como "não definido"."""
+    value = os.environ.get(name)
+    return int(value) if value not in (None, "") else default
+
+
 # ---- Bind ----
-bind = os.environ.get("GUNICORN_BIND", "127.0.0.1:8000")
+bind = os.environ.get("GUNICORN_BIND") or "127.0.0.1:8000"
 
 # ---- Workers ----
 # Padrão conservador (2 workers) — adequado para VPS pequenas (1-2 vCPU).
 # Em servidores maiores, defina GUNICORN_WORKERS explicitamente
 # (regra prática: 2 * núcleos + 1).
-workers = int(os.environ.get("GUNICORN_WORKERS", min(4, multiprocessing.cpu_count() * 2 + 1)))
+workers = env_int("GUNICORN_WORKERS", min(4, multiprocessing.cpu_count() * 2 + 1))
 worker_class = "gthread"
-threads = int(os.environ.get("GUNICORN_THREADS", 2))
+threads = env_int("GUNICORN_THREADS", 2)
 worker_tmp_dir = "/dev/shm"  # evita I/O em disco lento para heartbeat dos workers
 
 # ---- Timeouts ----
-timeout = int(os.environ.get("GUNICORN_TIMEOUT", 30))
+timeout = env_int("GUNICORN_TIMEOUT", 30)
 graceful_timeout = 30
 keepalive = 5
 
@@ -31,7 +42,7 @@ max_requests_jitter = 100
 # ---- Logging ----
 accesslog = "-"  # stdout (coletado pelo systemd/journald via `journalctl -u midia-indoor`)
 errorlog = "-"
-loglevel = os.environ.get("GUNICORN_LOG_LEVEL", "info")
+loglevel = os.environ.get("GUNICORN_LOG_LEVEL") or "info"
 access_log_format = (
     '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)sus'
 )
