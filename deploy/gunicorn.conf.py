@@ -49,7 +49,24 @@ access_log_format = (
 
 # ---- Processo ----
 proc_name = "nexo-midia"
-preload_app = True  # compartilha memória entre workers (copy-on-write)
+# preload_app=False (era True): com preload_app=True, o código da aplicação
+# é importado UMA VEZ no processo mestre antes dos workers nascerem — por
+# isso, um `kill -HUP` (o que `systemctl reload midia-indoor` faz, via
+# ExecReload no midia-indoor.service) reinicia os workers, mas todos eles
+# continuam com o MESMO código antigo já carregado em memória no mestre.
+# Ou seja, "reload" não aplicava atualização nenhuma de código com
+# preload_app=True — só um `restart` completo (parar tudo, depois subir de
+# novo) fazia efeito, e isso significa uma janela real de indisponibilidade
+# a cada deploy (a porta fica fechada entre o "stop" e o "start"), com
+# usuários concorrentes recebendo erro de conexão bem no momento da
+# atualização. Com preload_app=False, cada worker importa o código por
+# conta própria, então um SIGHUP faz o mestre recarregar o código novo e
+# trocar os workers antigos pelos novos GRADATIVAMENTE (o antigo termina
+# as requisições em andamento antes de morrer) sem nunca fechar o socket
+# de escuta — deploy sem downtime. O custo é perder o compartilhamento de
+# memória copy-on-write entre workers, irrelevante frente a evitar quedas
+# de serviço durante atualização.
+preload_app = False
 
 # ---- Segurança ----
 limit_request_line = 4094

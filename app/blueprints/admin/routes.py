@@ -242,7 +242,7 @@ def services_manage():
             display_order=form.display_order.data or 0,
             is_active=form.is_active.data,
         )
-        _attach_image(form.image, service, "image_path", "content/services")
+        _attach_image(form.image, service, "image_path", "content/services", remove_field=form.remove_image)
         db.session.add(service)
         log_action("service.created", entity_type="Service", description=service.title)
         db.session.commit()
@@ -264,7 +264,7 @@ def service_edit(item_id):
         item.description = form.description.data
         item.display_order = form.display_order.data or 0
         item.is_active = form.is_active.data
-        _attach_image(form.image, item, "image_path", "content/services")
+        _attach_image(form.image, item, "image_path", "content/services", remove_field=form.remove_image)
         log_action("service.updated", entity_type="Service", entity_id=item.id, description=item.title)
         db.session.commit()
         flash("Serviço atualizado com sucesso.", "success")
@@ -300,7 +300,7 @@ def gallery_manage():
             display_order=form.display_order.data or 0,
             is_active=form.is_active.data,
         )
-        _attach_image(form.image, item, "image_path", "content/gallery")
+        _attach_image(form.image, item, "image_path", "content/gallery", remove_field=form.remove_image)
         db.session.add(item)
         log_action("gallery.created", entity_type="GalleryItem", description=item.title)
         db.session.commit()
@@ -322,7 +322,7 @@ def gallery_edit(item_id):
         item.category = form.category.data
         item.display_order = form.display_order.data or 0
         item.is_active = form.is_active.data
-        _attach_image(form.image, item, "image_path", "content/gallery")
+        _attach_image(form.image, item, "image_path", "content/gallery", remove_field=form.remove_image)
         log_action("gallery.updated", entity_type="GalleryItem", entity_id=item.id, description=item.title)
         db.session.commit()
         flash("Item de galeria atualizado com sucesso.", "success")
@@ -411,7 +411,7 @@ def partners_manage():
             display_order=form.display_order.data or 0,
             is_active=form.is_active.data,
         )
-        _attach_image(form.logo, item, "logo_path", "content/partners")
+        _attach_image(form.logo, item, "logo_path", "content/partners", remove_field=form.remove_logo)
         db.session.add(item)
         log_action("partner.created", entity_type="Partner", description=item.name)
         db.session.commit()
@@ -432,7 +432,7 @@ def partner_edit(item_id):
         item.name = form.name.data
         item.display_order = form.display_order.data or 0
         item.is_active = form.is_active.data
-        _attach_image(form.logo, item, "logo_path", "content/partners")
+        _attach_image(form.logo, item, "logo_path", "content/partners", remove_field=form.remove_logo)
         log_action("partner.updated", entity_type="Partner", entity_id=item.id, description=item.name)
         db.session.commit()
         flash("Parceiro atualizado com sucesso.", "success")
@@ -594,7 +594,25 @@ def user_delete(user_id):
 # ------------------------------------------------------------------ #
 # Helpers
 # ------------------------------------------------------------------ #
-def _attach_image(file_field, model_instance, attribute_name, subfolder):
+def _attach_image(file_field, model_instance, attribute_name, subfolder, remove_field=None):
+    """
+    Aplica upload/substituição/remoção de uma imagem em um model.
+
+    Antes, esta função só tratava substituição (upload de um novo
+    arquivo) — não havia como remover a mídia já cadastrada sem enviar
+    outro arquivo no lugar, pois os formulários de Serviços/Galeria/
+    Parceiros não tinham um campo de remoção (diferente do Hero/Logo/
+    Favicon em Configurações, que já suportavam isso). `remove_field`
+    é o BooleanField "remover imagem atual" do formulário, quando
+    existir.
+    """
+    if remove_field is not None and remove_field.data and not file_field.data:
+        old_path = getattr(model_instance, attribute_name)
+        if old_path:
+            delete_upload(old_path)
+        setattr(model_instance, attribute_name, None)
+        return
+
     if not file_field.data:
         return
     try:

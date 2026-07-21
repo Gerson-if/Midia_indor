@@ -21,6 +21,7 @@
         {{ form.logo.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
         {% if editing and editing.logo_path %}
         <img src="{{ url_for('static', filename=editing.logo_path) }}" class="w-16 h-16 rounded-lg object-cover mb-2 bg-white">
+        <label class="flex items-center gap-2 text-xs text-mid mb-2">{{ form.remove_logo() }} Remover logo atual</label>
         {% endif %}
         {{ form.logo(class_="w-full text-xs text-mid") }}
         <p class="text-[11px] text-low mt-1">{{ "Envie um logo apenas se quiser substituir o atual." if editing else "Opcional. A imagem é otimizada automaticamente." }}</p>

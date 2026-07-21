@@ -26,6 +26,7 @@
         {{ form.image.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
         {% if editing and editing.image_path %}
         <img src="{{ url_for('static', filename=editing.image_path) }}" class="w-20 h-20 rounded-lg object-cover mb-2">
+        <label class="flex items-center gap-2 text-xs text-mid mb-2">{{ form.remove_image() }} Remover imagem atual</label>
         {% endif %}
         {{ form.image(class_="w-full text-xs text-mid") }}
         <p class="text-[11px] text-low mt-1">{{ "Envie uma imagem apenas se quiser substituir a atual." if editing else "Opcional. A imagem é otimizada e redimensionada automaticamente." }}</p>

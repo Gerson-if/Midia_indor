@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from flask import url_for
+from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 
@@ -160,14 +161,37 @@ class SiteSettings(TimestampMixin, db.Model):
     def get_solo(cls):
         """Retorna (criando se necessário) a única linha de configuração."""
         instance = db.session.get(cls, 1)
-        if instance is None:
-            instance = cls(
-                id=1,
-                privacy_content=cls._default_privacy_content(),
-                terms_content=cls._default_terms_content(),
-            )
-            db.session.add(instance)
+        if instance is not None:
+            return instance
+
+        # Corrida de concorrência: com múltiplos usuários acessando o site
+        # ao mesmo tempo (ex.: logo após a instalação, antes de existir a
+        # linha de configuração), duas ou mais requisições podem chegar
+        # aqui simultaneamente, ambas verem "instance is None" e tentarem
+        # criar a linha id=1 ao mesmo tempo. Sem tratamento, a segunda a
+        # commitar recebe um IntegrityError (chave primária duplicada) e
+        # a requisição falha com erro 500 — exatamente o tipo de falha
+        # "só acontece com vários acessos ao mesmo tempo" relatado. Como
+        # o SGBD garante que só uma dessas escritas concorrentes vai
+        # vencer, tratamos a perdedora simplesmente re-buscando a linha
+        # que a vencedora acabou de criar, em vez de propagar o erro.
+        instance = cls(
+            id=1,
+            privacy_content=cls._default_privacy_content(),
+            terms_content=cls._default_terms_content(),
+        )
+        db.session.add(instance)
+        try:
             db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            instance = db.session.get(cls, 1)
+            if instance is None:
+                # Situação extremamente improvável (a linha sumiu entre o
+                # rollback e esta busca); melhor levantar um erro claro do
+                # que devolver None e quebrar os templates que dependem
+                # de "settings" sempre existir.
+                raise
         return instance
 
     @staticmethod
