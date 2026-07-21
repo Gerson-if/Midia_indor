@@ -239,7 +239,7 @@ def services_manage():
         service = Service(
             title=form.title.data,
             description=form.description.data,
-            display_order=form.display_order.data or 0,
+            display_order=_next_display_order(Service),
             is_active=form.is_active.data,
         )
         _attach_image(form.image, service, "image_path", "content/services", remove_field=form.remove_image)
@@ -262,7 +262,6 @@ def service_edit(item_id):
     if form.validate_on_submit():
         item.title = form.title.data
         item.description = form.description.data
-        item.display_order = form.display_order.data or 0
         item.is_active = form.is_active.data
         _attach_image(form.image, item, "image_path", "content/services", remove_field=form.remove_image)
         log_action("service.updated", entity_type="Service", entity_id=item.id, description=item.title)
@@ -297,7 +296,7 @@ def gallery_manage():
         item = GalleryItem(
             title=form.title.data,
             category=form.category.data,
-            display_order=form.display_order.data or 0,
+            display_order=_next_display_order(GalleryItem),
             is_active=form.is_active.data,
         )
         _attach_image(form.image, item, "image_path", "content/gallery", remove_field=form.remove_image)
@@ -320,7 +319,6 @@ def gallery_edit(item_id):
     if form.validate_on_submit():
         item.title = form.title.data
         item.category = form.category.data
-        item.display_order = form.display_order.data or 0
         item.is_active = form.is_active.data
         _attach_image(form.image, item, "image_path", "content/gallery", remove_field=form.remove_image)
         log_action("gallery.updated", entity_type="GalleryItem", entity_id=item.id, description=item.title)
@@ -356,7 +354,7 @@ def testimonials_manage():
             name=form.name.data,
             company_name=form.company_name.data,
             text=form.text.data,
-            display_order=form.display_order.data or 0,
+            display_order=_next_display_order(Testimonial),
             is_active=form.is_active.data,
         )
         db.session.add(item)
@@ -379,7 +377,6 @@ def testimonial_edit(item_id):
         item.name = form.name.data
         item.company_name = form.company_name.data
         item.text = form.text.data
-        item.display_order = form.display_order.data or 0
         item.is_active = form.is_active.data
         log_action("testimonial.updated", entity_type="Testimonial", entity_id=item.id, description=item.name)
         db.session.commit()
@@ -408,7 +405,7 @@ def partners_manage():
     if form.validate_on_submit():
         item = Partner(
             name=form.name.data,
-            display_order=form.display_order.data or 0,
+            display_order=_next_display_order(Partner),
             is_active=form.is_active.data,
         )
         _attach_image(form.logo, item, "logo_path", "content/partners", remove_field=form.remove_logo)
@@ -430,7 +427,6 @@ def partner_edit(item_id):
 
     if form.validate_on_submit():
         item.name = form.name.data
-        item.display_order = form.display_order.data or 0
         item.is_active = form.is_active.data
         _attach_image(form.logo, item, "logo_path", "content/partners", remove_field=form.remove_logo)
         log_action("partner.updated", entity_type="Partner", entity_id=item.id, description=item.name)
@@ -452,6 +448,38 @@ def partner_delete(item_id):
     db.session.commit()
     flash("Parceiro removido.", "info")
     return redirect(url_for("admin.partners_manage"))
+
+
+# ------------------------------------------------------------------ #
+# Reordenação dos cards (arrastar e soltar)
+# ------------------------------------------------------------------ #
+# Antes, a única forma de mudar a posição de um item era editá-lo e digitar
+# manualmente um número em "Ordem" — fácil de errar (dois itens com o mesmo
+# número, por exemplo) e nada intuitivo. Esses endpoints recebem a nova
+# ordem completa (lista de IDs, na ordem em que os cards ficaram após o
+# arrastar-e-soltar no navegador) e persistem de uma vez só.
+@admin_bp.route("/conteudo/servicos/reordenar", methods=["POST"])
+@roles_required(*EDIT_ROLES)
+def services_reorder():
+    return _reorder_items(Service, "service")
+
+
+@admin_bp.route("/conteudo/galeria/reordenar", methods=["POST"])
+@roles_required(*EDIT_ROLES)
+def gallery_reorder():
+    return _reorder_items(GalleryItem, "gallery")
+
+
+@admin_bp.route("/conteudo/depoimentos/reordenar", methods=["POST"])
+@roles_required(*EDIT_ROLES)
+def testimonials_reorder():
+    return _reorder_items(Testimonial, "testimonial")
+
+
+@admin_bp.route("/conteudo/parceiros/reordenar", methods=["POST"])
+@roles_required(*EDIT_ROLES)
+def partners_reorder():
+    return _reorder_items(Partner, "partner")
 
 
 # ------------------------------------------------------------------ #
@@ -594,6 +622,65 @@ def user_delete(user_id):
 # ------------------------------------------------------------------ #
 # Helpers
 # ------------------------------------------------------------------ #
+def _next_display_order(model):
+    """Calcula a próxima posição livre (final da lista) para um novo item.
+
+    Itens novos não pedem mais um número de "ordem" no formulário — entram
+    automaticamente no fim da lista e o usuário reordena depois arrastando
+    os cards, se quiser mudar a posição.
+    """
+    max_order = db.session.query(db.func.max(model.display_order)).scalar()
+    return 0 if max_order is None else max_order + 1
+
+
+def _reorder_items(model, log_prefix):
+    """
+    Persiste a nova ordem dos cards após um arrastar-e-soltar no navegador.
+
+    Espera um corpo JSON `{"order": [id1, id2, ...]}` com TODOS os IDs do
+    tipo, na nova ordem desejada — o índice de cada ID na lista vira seu
+    `display_order`. Validamos que a lista bate exatamente com os itens
+    existentes no banco antes de aplicar qualquer mudança, para não corromper
+    a ordenação se o navegador enviar uma lista desatualizada/incompleta
+    (ex.: um item foi excluído por outro usuário entre carregar a página e
+    arrastar um card).
+    """
+    payload = request.get_json(silent=True) or {}
+    order = payload.get("order")
+    if not isinstance(order, list) or not order:
+        return jsonify(success=False, message="Lista de ordenação inválida."), 400
+
+    try:
+        ordered_ids = [int(raw_id) for raw_id in order]
+    except (TypeError, ValueError):
+        return jsonify(success=False, message="IDs inválidos."), 400
+
+    items_by_id = {item.id: item for item in model.query.filter(model.id.in_(ordered_ids)).all()}
+    existing_ids = {row.id for row in model.query.with_entities(model.id).all()}
+
+    if set(ordered_ids) != existing_ids or len(ordered_ids) != len(items_by_id):
+        return (
+            jsonify(
+                success=False,
+                message="A lista está desatualizada (um item pode ter sido criado/removido por outro usuário). Recarregue a página e tente novamente.",
+            ),
+            409,
+        )
+
+    for position, item_id in enumerate(ordered_ids):
+        items_by_id[item_id].display_order = position
+
+    try:
+        log_action(f"{log_prefix}.reordered", entity_type=model.__name__, description=f"Nova ordem: {ordered_ids}")
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Erro ao reordenar %s", model.__name__)
+        return jsonify(success=False, message="Erro ao salvar a nova ordem."), 500
+
+    return jsonify(success=True)
+
+
 def _attach_image(file_field, model_instance, attribute_name, subfolder, remove_field=None):
     """
     Aplica upload/substituição/remoção de uma imagem em um model.

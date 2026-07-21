@@ -318,3 +318,88 @@ def test_site_settings_get_solo_survives_concurrent_creation(app, db):
         settings = SiteSettings.get_solo()
         assert settings is not None
         assert settings.id == 1
+
+
+def test_new_service_appends_to_end_of_order(client, admin_user, db):
+    """
+    O formulário não pede mais um número de "ordem" manualmente — cada
+    item novo entra automaticamente no final da lista (maior display_order
+    já existente + 1), e a reordenação passa a ser feita via drag-and-drop
+    (endpoint de reordenação), não editando um número no formulário.
+    """
+    login(client, "admin@teste.com", "SenhaForte123!")
+
+    client.post(
+        "/admin/conteudo/servicos",
+        data={"title": "Primeiro", "description": "desc", "is_active": "y"},
+        follow_redirects=True,
+    )
+    client.post(
+        "/admin/conteudo/servicos",
+        data={"title": "Segundo", "description": "desc", "is_active": "y"},
+        follow_redirects=True,
+    )
+
+    primeiro = Service.query.filter_by(title="Primeiro").first()
+    segundo = Service.query.filter_by(title="Segundo").first()
+    assert primeiro.display_order < segundo.display_order
+
+
+def test_services_reorder_endpoint_persists_new_order(client, admin_user, db):
+    login(client, "admin@teste.com", "SenhaForte123!")
+
+    a = Service(title="A", description="d", display_order=0)
+    b = Service(title="B", description="d", display_order=1)
+    c = Service(title="C", description="d", display_order=2)
+    db.session.add_all([a, b, c])
+    db.session.commit()
+
+    resp = client.post(
+        "/admin/conteudo/servicos/reordenar",
+        json={"order": [c.id, a.id, b.id]},
+    )
+    assert resp.status_code == 200
+    assert resp.get_json()["success"] is True
+
+    db.session.refresh(a)
+    db.session.refresh(b)
+    db.session.refresh(c)
+    assert c.display_order == 0
+    assert a.display_order == 1
+    assert b.display_order == 2
+
+
+def test_services_reorder_rejects_incomplete_list(client, admin_user, db):
+    """Se a lista enviada não bater com os itens existentes (ex.: um item
+    foi excluído por outro usuário entretanto), a reordenação é rejeitada
+    em vez de aplicar uma ordem parcial/inconsistente."""
+    login(client, "admin@teste.com", "SenhaForte123!")
+
+    a = Service(title="A", description="d", display_order=0)
+    b = Service(title="B", description="d", display_order=1)
+    db.session.add_all([a, b])
+    db.session.commit()
+
+    resp = client.post(
+        "/admin/conteudo/servicos/reordenar",
+        json={"order": [a.id]},
+    )
+    assert resp.status_code == 409
+    assert resp.get_json()["success"] is False
+
+
+def test_services_reorder_requires_editor_role(client, admin_user, db):
+    from app.models import User, UserRole
+
+    viewer = User(name="Visualizador", email="viewer@teste.com", role=UserRole.VIEWER)
+    viewer.set_password("SenhaForte123!")
+    db.session.add(viewer)
+    db.session.commit()
+
+    a = Service(title="A", description="d", display_order=0)
+    db.session.add(a)
+    db.session.commit()
+
+    login(client, "viewer@teste.com", "SenhaForte123!")
+    resp = client.post("/admin/conteudo/servicos/reordenar", json={"order": [a.id]})
+    assert resp.status_code == 403

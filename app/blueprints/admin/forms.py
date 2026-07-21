@@ -26,9 +26,13 @@ class ProposalStatusForm(FlaskForm):
 
 
 class ServiceForm(FlaskForm):
+    # display_order não é mais um campo do formulário: itens novos entram
+    # automaticamente no final da lista, e a reordenação passou a ser feita
+    # arrastando os cards (ver admin.services_reorder), não digitando um
+    # número — mais rápido e sem risco de dois itens ficarem com a mesma
+    # posição por engano.
     title = StringField("Título", validators=[DataRequired(), Length(max=120)])
     description = TextAreaField("Descrição", validators=[DataRequired(), Length(max=400)])
-    display_order = IntegerField("Ordem", validators=[Optional(), NumberRange(min=0)], default=0)
     is_active = BooleanField("Ativo", default=True)
     image = FileField("Imagem", validators=[Optional(), FileAllowed(["jpg", "jpeg", "png", "webp", "gif"])])
     remove_image = BooleanField("Remover imagem atual")
@@ -37,7 +41,6 @@ class ServiceForm(FlaskForm):
 class GalleryItemForm(FlaskForm):
     title = StringField("Título", validators=[DataRequired(), Length(max=120)])
     category = StringField("Categoria", validators=[DataRequired(), Length(max=80)])
-    display_order = IntegerField("Ordem", validators=[Optional(), NumberRange(min=0)], default=0)
     is_active = BooleanField("Ativo", default=True)
     image = FileField("Imagem", validators=[Optional(), FileAllowed(["jpg", "jpeg", "png", "webp", "gif"])])
     remove_image = BooleanField("Remover imagem atual")
@@ -47,13 +50,11 @@ class TestimonialForm(FlaskForm):
     name = StringField("Nome", validators=[DataRequired(), Length(max=120)])
     company_name = StringField("Empresa", validators=[DataRequired(), Length(max=120)])
     text = TextAreaField("Depoimento", validators=[DataRequired(), Length(max=600)])
-    display_order = IntegerField("Ordem", validators=[Optional(), NumberRange(min=0)], default=0)
     is_active = BooleanField("Ativo", default=True)
 
 
 class PartnerForm(FlaskForm):
     name = StringField("Nome da marca", validators=[DataRequired(), Length(max=120)])
-    display_order = IntegerField("Ordem", validators=[Optional(), NumberRange(min=0)], default=0)
     is_active = BooleanField("Ativo", default=True)
     logo = FileField("Logo", validators=[Optional(), FileAllowed(["jpg", "jpeg", "png", "webp", "gif"])])
     remove_logo = BooleanField("Remover logo atual")

@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Ambiente virtual
+venv/
+.venv/
+
+# Node / build front-end
+node_modules/
+
+# Ambiente local
+.env
+instance/
+logs/
+app/static/uploads/
+
+# Editor/OS
+.DS_Store
