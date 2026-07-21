@@ -51,14 +51,30 @@ if [[ "$ACCESS_MODE" == Tenho* ]]; then
     HTTPS_CHOICE=""
     choose "Como ativar o HTTPS neste domínio?" HTTPS_CHOICE \
         "Let's Encrypt automático (gratuito, recomendado)" \
+        "Outra CA grátis automática — ZeroSSL/Buypass (se Let's Encrypt não funcionar no seu provedor)" \
         "Já tenho/vou comprar um certificado de uma CA (DigiCert etc.) via CSR" \
         "Não ativar HTTPS agora"
-    CUSTOM_SSL_CERT=""; CUSTOM_SSL_KEY=""; CUSTOM_SSL_CHAIN=""; LE_EMAIL=""
+    CUSTOM_SSL_CERT=""; CUSTOM_SSL_KEY=""; CUSTOM_SSL_CHAIN=""; LE_EMAIL=""; ACME_CA=""
     case "$HTTPS_CHOICE" in
         "Let's Encrypt"*)
             SSL_MODE="letsencrypt"
             USE_HTTPS="1"
             ask "E-mail para avisos do certificado Let's Encrypt" "$(cur ADMIN_EMAIL 'admin@example.com')" LE_EMAIL
+            ;;
+        "Outra CA"*)
+            SSL_MODE="acme"
+            USE_HTTPS="1"
+            info "Essas CAs também são 100% gratuitas e automáticas (emitem e renovam sozinhas, como o Let's Encrypt)."
+            info "Use quando o Let's Encrypt especificamente não funcionar no seu provedor (raro, mas acontece)."
+            ACME_CA_CHOICE=""
+            choose "Qual CA gratuita usar?" ACME_CA_CHOICE \
+                "ZeroSSL (certificados de 90 dias, renovação automática)" \
+                "Buypass (certificados de 180 dias, renovação automática)"
+            case "$ACME_CA_CHOICE" in
+                "ZeroSSL"*) ACME_CA="zerossl" ;;
+                "Buypass"*) ACME_CA="buypass" ;;
+            esac
+            ask "E-mail para a conta na CA (usado só para avisos de expiração)" "$(cur ADMIN_EMAIL 'admin@example.com')" LE_EMAIL
             ;;
         "Já tenho"*)
             SSL_MODE="custom"
@@ -225,9 +241,11 @@ FLASK_DEBUG=0
 SERVER_NAME="${SERVER_NAME_PRIMARY}"
 SERVER_NAMES="${SERVER_NAMES}"
 USE_HTTPS=${USE_HTTPS}
-# SSL_MODE: letsencrypt (domínio) | selfsigned (acesso por IP) | custom (certificado comprado via CSR) | none (HTTP)
+# SSL_MODE: letsencrypt (domínio) | acme (outra CA grátis via acme.sh) | selfsigned (acesso por IP) | custom (certificado comprado via CSR) | none (HTTP)
 SSL_MODE="${SSL_MODE}"
 LETSENCRYPT_EMAIL="${LE_EMAIL}"
+# ACME_CA: qual CA usar quando SSL_MODE=acme (zerossl | buypass)
+ACME_CA="${ACME_CA:-}"
 # ---- Certificado comprado via CSR (só usado quando SSL_MODE=custom) ----
 CUSTOM_SSL_CERT="${CUSTOM_SSL_CERT}"
 CUSTOM_SSL_KEY="${CUSTOM_SSL_KEY}"

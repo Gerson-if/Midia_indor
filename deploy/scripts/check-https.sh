@@ -18,7 +18,7 @@ ENV_FILE="$APP_DIR/.env"
 [ -f "$ENV_FILE" ] || die "Não encontrei $ENV_FILE."
 
 # shellcheck disable=SC1090
-source <(grep -E '^(SERVER_NAMES|USE_HTTPS|SSL_MODE|CUSTOM_SSL_CERT|CUSTOM_SSL_KEY|CUSTOM_SSL_CHAIN)=' "$ENV_FILE" | sed 's/^/export /')
+source <(grep -E '^(SERVER_NAMES|USE_HTTPS|SSL_MODE|ACME_CA|CUSTOM_SSL_CERT|CUSTOM_SSL_KEY|CUSTOM_SSL_CHAIN)=' "$ENV_FILE" | sed 's/^/export /')
 SERVER_NAMES="${SERVER_NAMES//\"/}"
 SSL_MODE="${SSL_MODE:-}"
 [ -z "$SSL_MODE" ] && SSL_MODE="desconhecido (arquivo .env antigo)"
@@ -103,6 +103,44 @@ letsencrypt)
     fi
 
     title "6) Conteúdo misto (recursos http:// numa página https://)"
+    MIXED="$(curl -fsSk --max-time 8 "https://$PRIMARY_DOMAIN/" 2>/dev/null | grep -oE 'src="http://[^"]+"|href="http://[^"]+"' | grep -v "$PRIMARY_DOMAIN" | head -5 || true)"
+    if [ -n "$MIXED" ]; then
+        warn "Encontrado conteúdo misto na página inicial (causa o cadeado 'quebrado'/com aviso):"
+        echo "$MIXED" | sed 's/^/    /'
+    else
+        ok "Nenhum recurso http:// óbvio encontrado na página inicial."
+    fi
+    ;;
+
+acme)
+    need_cmd openssl
+    CERT_LIVE_DIR="/etc/nginx/ssl/midia-indoor-acme"
+    CERT_FULLCHAIN="$CERT_LIVE_DIR/fullchain.pem"
+    PRIMARY_DOMAIN="$(echo "$SERVER_NAMES" | awk '{print $1}')"
+
+    title "1) Certificado em disco (CA: ${ACME_CA:-desconhecida})"
+    if [ -s "$CERT_FULLCHAIN" ]; then
+        ok "Encontrado em $CERT_FULLCHAIN"
+        openssl x509 -in "$CERT_FULLCHAIN" -noout -subject -issuer -enddate -ext subjectAltName 2>/dev/null | sed 's/^/  /'
+    else
+        err "Não encontrei certificado em $CERT_FULLCHAIN. Rode: sudo deploy/scripts/setup-nginx.sh $APP_DIR"
+    fi
+
+    title "2) Renovação automática (cron do acme.sh)"
+    if crontab -l 2>/dev/null | grep -q 'acme.sh'; then
+        ok "Cron do acme.sh está instalado."
+    else
+        warn "Não encontrei o cron do acme.sh. Rode: sudo /root/.acme.sh/acme.sh --install-cronjob"
+    fi
+
+    title "3) Site respondendo em HTTPS"
+    if curl -fsSk --max-time 8 -o /dev/null -w "HTTP %{http_code} — TLS: %{ssl_verify_result} (0 = válido)\n" "https://$PRIMARY_DOMAIN/healthz"; then
+        ok "https://$PRIMARY_DOMAIN/healthz respondeu."
+    else
+        err "https://$PRIMARY_DOMAIN/healthz não respondeu. Confira: sudo systemctl status nginx midia-indoor"
+    fi
+
+    title "4) Conteúdo misto (recursos http:// numa página https://)"
     MIXED="$(curl -fsSk --max-time 8 "https://$PRIMARY_DOMAIN/" 2>/dev/null | grep -oE 'src="http://[^"]+"|href="http://[^"]+"' | grep -v "$PRIMARY_DOMAIN" | head -5 || true)"
     if [ -n "$MIXED" ]; then
         warn "Encontrado conteúdo misto na página inicial (causa o cadeado 'quebrado'/com aviso):"

@@ -69,7 +69,7 @@ done
 [ -f "$ENV_FILE" ] || die "Não encontrei $ENV_FILE. Rode primeiro o install.sh ou configure-env.sh."
 
 # shellcheck disable=SC1090
-source <(grep -E '^(SERVER_NAMES|USE_HTTPS|SSL_MODE|LETSENCRYPT_EMAIL|MAX_CONTENT_LENGTH_MB|GUNICORN_BIND|CUSTOM_SSL_CERT|CUSTOM_SSL_KEY|CUSTOM_SSL_CHAIN)=' "$ENV_FILE" | sed 's/^/export /')
+source <(grep -E '^(SERVER_NAMES|USE_HTTPS|SSL_MODE|ACME_CA|LETSENCRYPT_EMAIL|MAX_CONTENT_LENGTH_MB|GUNICORN_BIND|CUSTOM_SSL_CERT|CUSTOM_SSL_KEY|CUSTOM_SSL_CHAIN)=' "$ENV_FILE" | sed 's/^/export /')
 
 SERVER_NAMES="${SERVER_NAMES:-_}"
 SERVER_NAMES="${SERVER_NAMES//\"/}"
@@ -96,6 +96,12 @@ fi
 CUSTOM_SSL_CERT="${CUSTOM_SSL_CERT:-}"
 CUSTOM_SSL_KEY="${CUSTOM_SSL_KEY:-}"
 CUSTOM_SSL_CHAIN="${CUSTOM_SSL_CHAIN:-}"
+ACME_CA="${ACME_CA:-}"
+if [ "$SSL_MODE" = "acme" ] && [ -z "$ACME_CA" ]; then
+    warn "SSL_MODE=acme mas ACME_CA não está definido no .env (zerossl ou buypass)."
+    warn "Rode configure-env.sh e escolha a CA — caindo para HTTP simples por enquanto."
+    SSL_MODE="none"
+fi
 if [ "$SSL_MODE" = "custom" ]; then
     if [ -z "$CUSTOM_SSL_CERT" ] || [ -z "$CUSTOM_SSL_KEY" ]; then
         warn "SSL_MODE=custom mas CUSTOM_SSL_CERT/CUSTOM_SSL_KEY não estão definidos no .env."
@@ -113,6 +119,7 @@ title "Gerando configuração do Nginx"
 info "server_name: $SERVER_NAMES"
 case "$SSL_MODE" in
     letsencrypt) info "HTTPS: Let's Encrypt (domínio público)" ;;
+    acme)        info "HTTPS: ${ACME_CA} via acme.sh (domínio público, CA alternativa grátis)" ;;
     selfsigned)  info "HTTPS: certificado autoassinado (acesso por IP)" ;;
     custom)      info "HTTPS: certificado comprado via CSR (manual)" ;;
     *)           info "HTTPS: desativado (HTTP simples)" ;;
@@ -529,6 +536,148 @@ HOOK
             warn "Verifique URLs salvas no banco de dados (logo, imagens de capa, etc.) e troque para https:// ou caminhos relativos."
         fi
     fi
+
+elif [ "$SSL_MODE" = "acme" ]; then
+    # ---- CA gratuita alternativa (ZeroSSL / Buypass), via acme.sh ----
+    # Usado quando o Let's Encrypt especificamente não funciona no
+    # provedor do usuário. O acme.sh fala o protocolo ACME v2 com
+    # qualquer uma dessas CAs, e no caso do ZeroSSL registra a conta
+    # sozinho (EAB automático) só com o e-mail — sem precisar cadastro
+    # manual no painel deles.
+    ACME_HOME="/root/.acme.sh"
+    ACME_BIN="$ACME_HOME/acme.sh"
+
+    if [ ! -x "$ACME_BIN" ]; then
+        title "Instalando acme.sh (primeira vez)"
+        need_cmd git
+        ACME_SRC_DIR="$(mktemp -d)"
+        if git clone --depth 1 https://github.com/acmesh-official/acme.sh.git "$ACME_SRC_DIR/acme.sh" >/dev/null 2>&1; then
+            ( cd "$ACME_SRC_DIR/acme.sh" && ./acme.sh --install --home "$ACME_HOME" --nocron >/dev/null 2>&1 )
+            rm -rf "$ACME_SRC_DIR"
+        fi
+        [ -x "$ACME_BIN" ] || die "Não consegui instalar o acme.sh (git clone/instalação falhou). Confira sua conexão com github.com e rode de novo."
+        ok "acme.sh instalado em $ACME_HOME."
+        # ---- Renovação automática: cron próprio do acme.sh (não usa systemd timer) ----
+        ( "$ACME_BIN" --install-cronjob --home "$ACME_HOME" >/dev/null 2>&1 ) || warn "Não consegui instalar o cron de renovação automático — rode 'sudo $ACME_BIN --install-cronjob' manualmente."
+    else
+        ok "acme.sh já está instalado em $ACME_HOME."
+    fi
+
+    case "$ACME_CA" in
+        zerossl) ACME_SERVER="zerossl" ;;
+        buypass) ACME_SERVER="buypass" ;;
+        *) die "ACME_CA inválido: '$ACME_CA' (esperado 'zerossl' ou 'buypass'). Rode configure-env.sh de novo." ;;
+    esac
+
+    CERT_LIVE_DIR="/etc/nginx/ssl/midia-indoor-acme"
+    CERT_FULLCHAIN="$CERT_LIVE_DIR/fullchain.pem"
+    CERT_PRIVKEY="$CERT_LIVE_DIR/privkey.pem"
+    CERT_CHAIN="$CERT_LIVE_DIR/chain.pem"
+    mkdir -p "$CERT_LIVE_DIR"
+
+    HAVE_CERT=0
+    [ -s "$CERT_FULLCHAIN" ] && [ -s "$CERT_PRIVKEY" ] && HAVE_CERT=1
+
+    if [ "$HAVE_CERT" = "0" ]; then
+        title "Ainda não há certificado emitido — publicando vhost HTTP temporário para a validação"
+        TMP_CONF="$(mktemp)"
+        sed \
+            -e "s#__SERVER_NAMES__#${SERVER_NAMES}#g" \
+            -e "s#__STATIC_PATH__#${STATIC_PATH}#g" \
+            -e "s#__GUNICORN_BIND__#${GUNICORN_BIND}#g" \
+            -e "s#__MAX_UPLOAD_MB__#${MAX_UPLOAD_MB}#g" \
+            "$TEMPLATE_HTTP" >"$TMP_CONF"
+        if ! safe_deploy_site "$TMP_CONF"; then
+            rm -f "$TMP_CONF"
+            die "Não consegui publicar nem o vhost HTTP temporário. Veja /tmp/nginx-test.log."
+        fi
+        rm -f "$TMP_CONF"
+
+        title "Verificando DNS do(s) domínio(s)"
+        PUBLIC_IP="$(detect_public_ip)"
+        if [ -n "$PUBLIC_IP" ]; then
+            info "IP público detectado deste servidor: $PUBLIC_IP"
+            for d in $SERVER_NAMES; do
+                RESOLVED_IPS="$(getent ahostsv4 "$d" 2>/dev/null | awk '{print $1}' | sort -u | tr '\n' ' ')"
+                if [ -z "$RESOLVED_IPS" ]; then
+                    warn "$d não resolveu para nenhum IP (DNS ainda não propagou?)."
+                elif ! grep -qw "$PUBLIC_IP" <<<"$RESOLVED_IPS"; then
+                    warn "$d resolve para [$RESOLVED_IPS], mas este servidor é [$PUBLIC_IP] — confira o registro DNS tipo A."
+                else
+                    ok "$d aponta corretamente para este servidor."
+                fi
+            done
+        fi
+
+        title "Emitindo certificado HTTPS (${ACME_CA})"
+        DOMAIN_ARGS=()
+        for d in $SERVER_NAMES; do
+            DOMAIN_ARGS+=(-d "$d")
+        done
+        ACME_LOG="/tmp/acme-issue-$(date +%s).log"
+        ACCOUNT_EMAIL_ARG=()
+        [ -n "${LETSENCRYPT_EMAIL:-}" ] && ACCOUNT_EMAIL_ARG=(--accountemail "$LETSENCRYPT_EMAIL")
+
+        if "$ACME_BIN" --issue --home "$ACME_HOME" --server "$ACME_SERVER" \
+            -w /var/www/certbot "${DOMAIN_ARGS[@]}" "${ACCOUNT_EMAIL_ARG[@]}" \
+            --keylength ec-256 >"$ACME_LOG" 2>&1; then
+            ok "Certificado emitido com sucesso via ${ACME_CA}."
+            "$ACME_BIN" --install-cert --home "$ACME_HOME" -d "$PRIMARY_DOMAIN" --ecc \
+                --fullchain-file "$CERT_FULLCHAIN" \
+                --key-file "$CERT_PRIVKEY" \
+                --ca-file "$CERT_CHAIN" \
+                --reloadcmd "nginx -t && systemctl reload nginx" >>"$ACME_LOG" 2>&1
+            HAVE_CERT=1
+        else
+            warn "Falha ao emitir certificado via ${ACME_CA}. O site continua em HTTP por enquanto."
+            warn "Log completo em: $ACME_LOG"
+            echo "----------------------------------------------------------------"
+            tail -n 25 "$ACME_LOG" | sed 's/^/    /'
+            echo "----------------------------------------------------------------"
+            if grep -qiE 'connection (refused|timed out)|timeout|could not connect' "$ACME_LOG"; then
+                err "DIAGNÓSTICO: parece que a porta 80 deste servidor não está acessível pela internet (firewall/provedor bloqueando)."
+                err "Isso afeta QUALQUER CA que valide por HTTP — troque para Cloudflare na frente do domínio, ou peça ao provedor para liberar a porta 80."
+            elif grep -qiE 'rate limit|too many' "$ACME_LOG"; then
+                err "DIAGNÓSTICO: limite de tentativas atingido nesta CA — espere o prazo indicado no log ou tente a outra CA (zerossl/buypass)."
+            elif grep -qiE 'NXDOMAIN|dns' "$ACME_LOG"; then
+                err "DIAGNÓSTICO: problema de DNS — confira: dig +short $PRIMARY_DOMAIN"
+            fi
+            warn "Depois de corrigir, rode este script de novo: sudo bash deploy/scripts/setup-nginx.sh $APP_DIR"
+        fi
+    else
+        ok "Certificado já existe em $CERT_LIVE_DIR — reaproveitando (o acme.sh cuida da renovação automática via cron)."
+    fi
+
+    if [ "$HAVE_CERT" = "1" ]; then
+        title "Ativando HTTPS no Nginx"
+        TMP_CONF="$(mktemp)"
+        sed \
+            -e "s#__SERVER_NAMES__#${SERVER_NAMES}#g" \
+            -e "s#__STATIC_PATH__#${STATIC_PATH}#g" \
+            -e "s#__GUNICORN_BIND__#${GUNICORN_BIND}#g" \
+            -e "s#__MAX_UPLOAD_MB__#${MAX_UPLOAD_MB}#g" \
+            -e "s#__SSL_CERT__#${CERT_FULLCHAIN}#g" \
+            -e "s#__SSL_KEY__#${CERT_PRIVKEY}#g" \
+            -e "s#__SSL_CHAIN__#${CERT_CHAIN}#g" \
+            "$TEMPLATE_LETSENCRYPT" >"$TMP_CONF"
+        apply_http2_compat "$TMP_CONF"
+
+        if safe_deploy_site "$TMP_CONF"; then
+            ok "Nginx configurado e recarregado — HTTPS ativo com certificado ${ACME_CA}."
+        else
+            rm -f "$TMP_CONF"
+            die "Certificado emitido, mas o Nginx recusou a configuração HTTPS. Veja /tmp/nginx-test.log e rode novamente."
+        fi
+        rm -f "$TMP_CONF"
+
+        if curl -fsSk --max-time 8 "https://$PRIMARY_DOMAIN/healthz" >/dev/null 2>&1; then
+            ok "Confirmado: https://$PRIMARY_DOMAIN/healthz responde normalmente."
+        else
+            warn "O certificado foi emitido, mas https://$PRIMARY_DOMAIN/healthz não respondeu no teste local — confira DNS/firewall/porta 443."
+        fi
+        info "Renovação automática cuidada pelo cron do próprio acme.sh (verifique com: sudo crontab -l | grep acme.sh)."
+    fi
+
 else
     TMP_CONF="$(mktemp)"
     sed \

@@ -188,6 +188,36 @@ sudo bash deploy/scripts/setup-nginx.sh /opt/midia-indoor
 O certificado autoassinado é automaticamente substituído pelo
 certificado público do Let's Encrypt.
 
+### 5.2b Let's Encrypt não funciona no seu provedor? Use ZeroSSL ou Buypass (também grátis)
+
+Alguns provedores/hostings bloqueiam a porta 80 por padrão, e isso faz
+a emissão do Let's Encrypt falhar mesmo com o domínio configurado
+corretamente. Se for esse o seu caso, o projeto tem uma segunda opção
+de CA **igualmente gratuita e automática** (emite e renova sozinha),
+usando o [acme.sh](https://github.com/acmesh-official/acme.sh) por
+baixo dos panos:
+
+```bash
+sudo bash deploy/scripts/configure-env.sh /opt/midia-indoor/.env
+# escolha "Tenho um domínio" -> "Outra CA grátis automática — ZeroSSL/Buypass"
+# e depois ZeroSSL ou Buypass
+sudo bash deploy/scripts/setup-nginx.sh /opt/midia-indoor
+```
+
+Na primeira vez, o `setup-nginx.sh` instala o `acme.sh` sozinho (clona
+de `github.com/acmesh-official/acme.sh`), emite o certificado pela CA
+escolhida e já deixa a renovação automática configurada (cron próprio
+do `acme.sh` — não depende do `certbot.timer`). Se a emissão falhar, o
+script mostra o log e o diagnóstico da causa mais provável, do mesmo
+jeito que já faz para o Let's Encrypt.
+
+Importante: se a causa da falha do Let's Encrypt for **porta 80
+bloqueada pelo provedor**, trocar de CA não resolve sozinho — todas
+essas CAs gratuitas automáticas validam por HTTP na porta 80. Nesse
+caso, a saída é usar a Cloudflare na frente do domínio (grátis) ou
+partir para um certificado comprado via CSR (seção 5.3), que não
+depende da porta 80 estar aberta.
+
 ### 5.3 Certificado comprado de uma CA (DigiCert etc.) via CSR
 
 Se preferir (ou precisar, por política interna/compliance) usar um

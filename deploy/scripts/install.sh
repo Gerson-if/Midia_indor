@@ -73,6 +73,7 @@ fi
 if confirm "Ativar HTTPS automático (Let's Encrypt) mais adiante, se você tiver domínio?" "s"; then
     apt-get install -y --no-install-recommends certbot python3-certbot-nginx
 fi
+info "Se preferir uma CA grátis alternativa (ZeroSSL/Buypass, via acme.sh) em vez do Let's Encrypt, não precisa instalar nada agora — o setup-nginx.sh instala o acme.sh sozinho quando você escolher essa opção em configure-env.sh."
 
 BUILD_FRONTEND=0
 if confirm "Construir os assets de front-end (Tailwind CSS) agora? (requer Node.js/npm)" "s"; then
