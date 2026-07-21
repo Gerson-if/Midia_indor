@@ -77,6 +77,12 @@ letsencrypt)
         err "https://$PRIMARY_DOMAIN/healthz não respondeu. Confira: sudo systemctl status nginx midia-indoor"
     fi
 
+    if curl -fsSkI --max-time 8 "https://$PRIMARY_DOMAIN/" 2>/dev/null | grep -qi '^strict-transport-security:'; then
+        ok "Cabeçalho HSTS presente (o navegador vai lembrar de sempre usar HTTPS neste domínio)."
+    else
+        warn "Cabeçalho HSTS não encontrado na resposta — confira se o vhost ativo é o gerado por setup-nginx.sh."
+    fi
+
     title "5) O Nginx está servindo o mesmo certificado que está em disco?"
     if [ -s "$CERT_FULLCHAIN" ]; then
         DISK_SERIAL="$(openssl x509 -in "$CERT_FULLCHAIN" -noout -serial 2>/dev/null | cut -d= -f2)"

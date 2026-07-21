@@ -24,12 +24,42 @@
 }
 
 *{ box-sizing:border-box; }
-html{ scroll-behavior:smooth; }
+
+/* ---- Trava qualquer overflow horizontal acidental ----
+   Sem isso, 1px de overflow em qualquer elemento (arredondamento de
+   layout, imagem, etc.) faz o navegador abrir uma barra de rolagem
+   lateral e o conteúdo "descentraliza". Isso fica mais visível em
+   mobile ao dar zoom (pinch-zoom): pequenas diferenças de arredondamento
+   de subpixel que passam despercebidas em 100% de zoom ficam visíveis.
+   html+body com overflow-x:hidden nunca deveria esconder conteúdo
+   relevante (nada no layout depende de rolagem horizontal), então é
+   seguro fazer isso. */
+html{
+  scroll-behavior:smooth;
+  overflow-x:hidden;
+  width:100%;
+}
 body{
   background:var(--ink);
   color:var(--text-hi);
   font-family:var(--font-body);
   -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+  width:100%;
+  position:relative;
+  overscroll-behavior-x:none;
+}
+
+/* ---- Cabeçalho fixo: estabiliza durante pinch-zoom em mobile ----
+   `position:fixed` combinado com `backdrop-filter` (usado na classe
+   .glass) é conhecido por "tremer"/desalinhar do topo da tela durante
+   o gesto de pinça em Safari/Chrome mobile. Forçar uma camada de
+   composição própria (GPU) resolve isso na grande maioria dos
+   aparelhos, sem mudar a aparência. */
+header.glass{
+  -webkit-transform:translateZ(0);
+  transform:translateZ(0);
+  will-change:transform;
 }
 h1,h2,h3,h4,.font-display{ font-family:var(--font-display); letter-spacing:-0.02em; }
 .font-mono{ font-family:var(--font-mono); }
@@ -46,7 +76,18 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   border-radius:4px;
 }
 
-.container-nx{ max-width:var(--maxw); margin-inline:auto; padding-inline:1.25rem; }
+.container-nx{ max-width:var(--maxw); margin-inline:auto; padding-inline:1.25rem; width:100%; }
+
+/* ---- Altura de tela cheia estável em mobile ----
+   100vh no mobile é medido com a barra de endereço recolhida, então
+   o conteúdo fica maior que a área realmente visível quando ela está
+   à mostra (e "pula" ao rolar/ela some). 100dvh acompanha a área
+   visível de verdade. Navegadores sem suporte simplesmente ignoram
+   este bloco e continuam com o 100vh do Tailwind. */
+@supports (min-height: 100dvh){
+  .min-h-screen{ min-height:100dvh; }
+  .h-screen{ height:100dvh; }
+}
 
 .glass{
   background:linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02));
