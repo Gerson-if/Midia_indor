@@ -398,15 +398,45 @@ elif [ "$SSL_MODE" = "letsencrypt" ]; then
             EMAIL_ARG=(--register-unsafely-without-email)
         fi
 
+        CERTBOT_LOG="/tmp/certbot-issue-$(date +%s).log"
         if certbot certonly --webroot -w /var/www/certbot \
             --cert-name "$PRIMARY_DOMAIN" "${DOMAIN_ARGS[@]}" "${EMAIL_ARG[@]}" \
-            --agree-tos --non-interactive; then
+            --agree-tos --non-interactive >"$CERTBOT_LOG" 2>&1; then
             ok "Certificado HTTPS emitido com sucesso."
             HAVE_CERT=1
         else
             warn "Falha ao emitir certificado. O site continua funcionando em HTTP por enquanto."
-            warn "Verifique se o domínio já aponta (registro DNS tipo A) para o IP desta VPS e rode este script novamente:"
-            warn "  sudo bash deploy/scripts/setup-nginx.sh $APP_DIR"
+            warn "Log completo do Certbot em: $CERTBOT_LOG"
+            echo "----------------------------------------------------------------"
+            tail -n 25 "$CERTBOT_LOG" | sed 's/^/    /'
+            echo "----------------------------------------------------------------"
+
+            # ---- Diagnóstico automático da causa mais provável, a partir
+            #      do próprio log do Certbot — evita o usuário ter que
+            #      caçar a linha relevante em um log grande. ----
+            if grep -qiE 'connection (refused|timed out)|timeout during connect|no route to host' "$CERTBOT_LOG"; then
+                err "DIAGNÓSTICO: o Certbot não conseguiu conectar na porta 80 deste servidor a partir da internet."
+                err "Isso quase sempre é firewall/grupo de segurança bloqueando a porta 80 — não é um problema do domínio."
+                err "Confira: 1) 'sudo ufw status' (ou o firewall do seu provedor de nuvem) libera a porta 80 e 443 para 0.0.0.0/0;"
+                err "         2) se a VPS está atrás de um proxy/CDN (Cloudflare etc.), tente colocá-lo em modo 'DNS only' durante a emissão;"
+                err "         3) confirme com outra máquina: curl -I http://$PRIMARY_DOMAIN/.well-known/acme-challenge/teste (deve ao menos conectar, não precisa dar 200)."
+                err "Se seu provedor/host simplesmente NÃO permite abrir a porta 80 (alguns hostings compartilhados restringem isso),"
+                err "Let's Encrypt não vai funcionar por esse método — as alternativas são: (a) usar Cloudflare na frente do domínio,"
+                err "com SSL 'Full' — o certificado fica com a Cloudflare e a porta 80 não precisa ficar exposta ao mundo pelo desafio HTTP; ou"
+                err "(b) comprar um certificado de uma CA e instalar via modo 'custom' (deploy/scripts/generate-csr.sh) — não exige a porta 80 aberta."
+            elif grep -qiE 'too many (certificates|failed authorizations)|rate limit' "$CERTBOT_LOG"; then
+                err "DIAGNÓSTICO: limite de tentativas da Let's Encrypt atingido para este domínio (rate limit)."
+                err "Não adianta tentar de novo agora — espere o prazo indicado no log acima (geralmente até 1 semana) ou use"
+                err "o ambiente de teste do Certbot (--staging) só para validar a configuração sem gastar tentativas reais."
+            elif grep -qiE 'NXDOMAIN|DNS problem|no valid A records? found' "$CERTBOT_LOG"; then
+                err "DIAGNÓSTICO: o domínio não resolveu (DNS) durante a validação — confira o registro tipo A com: dig +short $PRIMARY_DOMAIN"
+            elif grep -qiE 'CAA' "$CERTBOT_LOG"; then
+                err "DIAGNÓSTICO: há um registro DNS CAA bloqueando a Let's Encrypt como autoridade certificadora para este domínio."
+                err "Confira: dig CAA $PRIMARY_DOMAIN — se existir um registro CAA, ele precisa incluir 'letsencrypt.org'."
+            else
+                err "Não reconheci automaticamente a causa — o trecho do log acima costuma indicar o motivo exato."
+            fi
+            warn "Depois de corrigir, rode este script de novo: sudo bash deploy/scripts/setup-nginx.sh $APP_DIR"
         fi
     else
         ok "Certificado já existe em $CERT_LIVE_DIR — reaproveitando (o Certbot cuida da renovação automática)."

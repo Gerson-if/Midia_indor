@@ -32,6 +32,37 @@ APP_DIR="${1:-/opt/midia-indoor}"
 [ -f "$APP_DIR/wsgi.py" ] || die "Não encontrei wsgi.py em $APP_DIR."
 [ -f "$APP_DIR/.env" ] || die "$APP_DIR/.env não encontrado."
 
+# ---------------------------------------------------------------
+# Rede de segurança: se QUALQUER passo depois do "git pull" falhar
+# (dependência Python que não instala, build do front-end que quebra,
+# etc.), sem isso o script simplesmente parava no meio — deixando o
+# código novo no disco só PARCIALMENTE aplicado, mas o serviço ainda
+# rodando o processo antigo (com templates/estáticos já trocados no
+# disco). É exatamente esse descompasso entre "código no disco" e
+# "processo em memória" que costuma dar em página quebrada/comportamento
+# estranho até alguém reiniciar o serviço manualmente. Agora, qualquer
+# falha depois do pull desfaz o código automaticamente (git mode).
+PREV_COMMIT=""
+GIT_MODE=0
+[ -d "$APP_DIR/.git" ] && GIT_MODE=1
+
+on_update_error() {
+    local line="$1"
+    err "Falha inesperada em update.sh (linha $line)."
+    if [ "$GIT_MODE" = "1" ] && [ -n "$PREV_COMMIT" ]; then
+        err "Revertendo o código para o commit anterior ($PREV_COMMIT) para não deixar o servidor com código parcialmente atualizado..."
+        git -C "$APP_DIR" reset --hard "$PREV_COMMIT" || true
+        systemctl restart midia-indoor 2>/dev/null || true
+        err "Revertido. O serviço foi reiniciado com a versão anterior."
+    else
+        err "Deploy via zip/rsync não tem rollback automático de código. O backup do banco/.env está em $APP_DIR/backups/."
+        err "O serviço NÃO foi reiniciado — a versão antiga ainda deve estar rodando."
+    fi
+    err "Veja o erro real com: sudo journalctl -u midia-indoor -n 100"
+    err "Corrija o problema indicado acima e rode o update.sh novamente."
+}
+trap 'on_update_error $LINENO' ERR
+
 title "Atualização — Nexo Mídia ($APP_DIR)"
 
 # ---------------------------------------------------------------
@@ -64,8 +95,7 @@ ls -1t "$BACKUP_DIR"/env-* 2>/dev/null | tail -n +11 | xargs -r rm -f
 # 2) Publicar o código novo
 # ---------------------------------------------------------------
 title "2/4 — Publicando o código novo"
-PREV_COMMIT=""
-if [ -d "$APP_DIR/.git" ]; then
+if [ "$GIT_MODE" = "1" ]; then
     PREV_COMMIT="$(git -C "$APP_DIR" rev-parse HEAD)"
     git -C "$APP_DIR" pull --ff-only
     ok "git pull concluído (era $PREV_COMMIT)."
@@ -90,12 +120,23 @@ title "3/4 — Dependências e migrações"
 ok "Dependências Python atualizadas."
 
 if [ -f "$APP_DIR/package.json" ] && command -v npm >/dev/null 2>&1; then
-    (cd "$APP_DIR" && npm ci && npm run build) && ok "Assets de front-end reconstruídos."
+    if (cd "$APP_DIR" && npm ci && npm run build); then
+        ok "Assets de front-end reconstruídos."
+    else
+        err "Falha ao instalar/compilar os assets de front-end (npm ci / npm run build)."
+        err "Causas comuns: sem acesso à internet/registro npm nesta VPS, ou uma dependência incompatível com a versão do Node instalada."
+        exit 1
+    fi
 fi
 
 export FLASK_APP=wsgi.py
 if ! (cd "$APP_DIR" && "$APP_DIR/venv/bin/flask" db upgrade); then
+    trap - ERR
     err "Falha ao aplicar as migrações. O serviço NÃO foi reiniciado."
+    if [ "$GIT_MODE" = "1" ] && [ -n "$PREV_COMMIT" ]; then
+        err "Revertendo o código para o commit anterior ($PREV_COMMIT), já que as migrações não passaram (evita rodar código novo contra o schema antigo)..."
+        git -C "$APP_DIR" reset --hard "$PREV_COMMIT" || true
+    fi
     err "Corrija o problema e rode o update.sh novamente. Backup do banco está em $BACKUP_DIR."
     exit 1
 fi
@@ -106,6 +147,7 @@ chown -R midia-indoor:midia-indoor "$APP_DIR"
 # 4) Reiniciar e checar /healthz
 # ---------------------------------------------------------------
 title "4/4 — Reiniciando e verificando"
+trap - ERR   # a partir daqui o script já tem seu próprio tratamento específico de falha/rollback abaixo
 systemctl restart midia-indoor
 
 BIND="$(grep -E '^GUNICORN_BIND=' "$APP_DIR/.env" | cut -d= -f2- || true)"
