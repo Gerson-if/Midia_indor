@@ -2,7 +2,8 @@
 # =============================================================
 # check-https.sh — verifica o estado do HTTPS em produção:
 # domínio configurado, validade do certificado, se a renovação
-# automática está ativa e se o site realmente responde em HTTPS.
+# automática está ativa e se o site realmente responde em HTTPS
+# com o cadeado correto (sem avisos de segurança).
 #
 # Uso:
 #   sudo deploy/scripts/check-https.sh [/opt/midia-indoor]
@@ -29,14 +30,17 @@ echo
 
 case "$SSL_MODE" in
 letsencrypt)
-    need_cmd certbot
+    need_cmd openssl
     PRIMARY_DOMAIN="$(echo "$SERVER_NAMES" | awk '{print $1}')"
+    CERT_LIVE_DIR="/etc/letsencrypt/live/$PRIMARY_DOMAIN"
+    CERT_FULLCHAIN="$CERT_LIVE_DIR/fullchain.pem"
 
-    title "1) Certificado (Certbot)"
-    if certbot certificates --cert-name "$PRIMARY_DOMAIN" 2>/dev/null | grep -q "Certificate Name:"; then
-        certbot certificates --cert-name "$PRIMARY_DOMAIN" 2>/dev/null | sed -n '/Certificate Name:/,/Certificate Path:/p'
+    title "1) Certificado em disco"
+    if [ -s "$CERT_FULLCHAIN" ]; then
+        ok "Encontrado em $CERT_FULLCHAIN"
+        openssl x509 -in "$CERT_FULLCHAIN" -noout -subject -issuer -enddate -ext subjectAltName 2>/dev/null | sed 's/^/  /'
     else
-        warn "Não encontrei um certificado do Certbot para '$PRIMARY_DOMAIN'. Rode setup-nginx.sh para emitir."
+        err "Não encontrei certificado em $CERT_FULLCHAIN. Rode: sudo deploy/scripts/setup-nginx.sh $APP_DIR"
     fi
 
     title "2) Renovação automática"
@@ -50,12 +54,20 @@ letsencrypt)
     else
         warn "certbot.timer não encontrado neste sistema."
     fi
-
-    title "3) Teste de renovação (--dry-run, não altera o certificado atual)"
-    if certbot renew --cert-name "$PRIMARY_DOMAIN" --dry-run >/tmp/certbot-dry-run.log 2>&1; then
-        ok "Simulação de renovação passou sem erros."
+    if [ -x "/etc/letsencrypt/renewal-hooks/deploy/reload-nginx-midia-indoor.sh" ]; then
+        ok "Hook de recarregar o Nginx após renovação está instalado."
     else
-        warn "Simulação de renovação falhou — veja /tmp/certbot-dry-run.log"
+        warn "Hook de recarregar o Nginx após renovação NÃO está instalado."
+        warn "Rode setup-nginx.sh novamente para instalá-lo (sem isso, um certificado renovado só entra em uso após reiniciar o Nginx manualmente)."
+    fi
+
+    if command -v certbot >/dev/null 2>&1; then
+        title "3) Teste de renovação (--dry-run, não altera o certificado atual)"
+        if certbot renew --cert-name "$PRIMARY_DOMAIN" --dry-run >/tmp/certbot-dry-run.log 2>&1; then
+            ok "Simulação de renovação passou sem erros."
+        else
+            warn "Simulação de renovação falhou — veja /tmp/certbot-dry-run.log"
+        fi
     fi
 
     title "4) Site respondendo em HTTPS"
@@ -65,14 +77,32 @@ letsencrypt)
         err "https://$PRIMARY_DOMAIN/healthz não respondeu. Confira: sudo systemctl status nginx midia-indoor"
     fi
 
-    title "5) Data de validade do certificado (via TLS, direto do domínio)"
-    if command -v openssl >/dev/null 2>&1; then
-        EXPIRY="$(echo | openssl s_client -servername "$PRIMARY_DOMAIN" -connect "$PRIMARY_DOMAIN:443" 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)"
-        if [ -n "$EXPIRY" ]; then
-            ok "Válido até: $EXPIRY"
+    title "5) O Nginx está servindo o mesmo certificado que está em disco?"
+    if [ -s "$CERT_FULLCHAIN" ]; then
+        DISK_SERIAL="$(openssl x509 -in "$CERT_FULLCHAIN" -noout -serial 2>/dev/null | cut -d= -f2)"
+        LIVE_CERT="$(echo | openssl s_client -servername "$PRIMARY_DOMAIN" -connect "$PRIMARY_DOMAIN:443" 2>/dev/null)"
+        LIVE_SERIAL="$(echo "$LIVE_CERT" | openssl x509 -noout -serial 2>/dev/null | cut -d= -f2)"
+        EXPIRY="$(echo "$LIVE_CERT" | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)"
+        if [ -z "$LIVE_SERIAL" ]; then
+            warn "Não consegui ler o certificado via TLS (firewall bloqueando a porta 443 a partir daqui, ou o Nginx não está escutando em 443?)."
+        elif [ "$DISK_SERIAL" = "$LIVE_SERIAL" ]; then
+            ok "Confirmado: o Nginx está servindo exatamente o certificado válido em disco (série $DISK_SERIAL)."
+            [ -n "$EXPIRY" ] && ok "Válido até: $EXPIRY"
         else
-            warn "Não consegui ler a validade via TLS (firewall bloqueando 443 a partir daqui?)."
+            err "MISMATCH: o certificado servido pelo Nginx (série $LIVE_SERIAL) é diferente do que está em disco (série $DISK_SERIAL)."
+            err "Esta é a causa mais comum do navegador mostrar o domínio como 'não seguro'/com aviso mesmo com um certificado válido instalado."
+            err "Possíveis causas: outro vhost concorrente na porta 443, cache do navegador de uma visita anterior, ou CDN/proxy na frente do servidor servindo um certificado diferente."
+            err "Rode: sudo nginx -T | grep -A2 'listen 443'   para ver todos os vhosts que escutam 443."
         fi
+    fi
+
+    title "6) Conteúdo misto (recursos http:// numa página https://)"
+    MIXED="$(curl -fsSk --max-time 8 "https://$PRIMARY_DOMAIN/" 2>/dev/null | grep -oE 'src="http://[^"]+"|href="http://[^"]+"' | grep -v "$PRIMARY_DOMAIN" | head -5 || true)"
+    if [ -n "$MIXED" ]; then
+        warn "Encontrado conteúdo misto na página inicial (causa o cadeado 'quebrado'/com aviso):"
+        echo "$MIXED" | sed 's/^/    /'
+    else
+        ok "Nenhum recurso http:// óbvio encontrado na página inicial."
     fi
     ;;
 

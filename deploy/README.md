@@ -13,10 +13,13 @@ deploy/
 │   ├── install.sh        # instalação inicial guiada (rodar 1x)
 │   ├── configure-env.sh  # assistente para (re)gerar o .env
 │   ├── setup-nginx.sh    # gera/atualiza a config do Nginx (+ HTTPS)
+│   ├── check-https.sh    # diagnostica o estado do HTTPS/certificado
 │   ├── update.sh         # publica uma atualização (git pull + migração)
 │   ├── rollback.sh       # volta para um commit anterior (git)
 │   └── lib.sh            # funções internas (não executar direto)
-├── nginx.conf.template   # modelo usado pelo setup-nginx.sh
+├── nginx.conf.template            # HTTP simples (sem HTTPS)
+├── nginx-selfsigned.conf.template # HTTPS autoassinado (sem domínio)
+├── nginx-letsencrypt.conf.template# HTTPS com Let's Encrypt (com domínio)
 ├── midia-indoor.service  # unit do systemd instalada pelo install.sh
 └── gunicorn.conf.py      # configuração do Gunicorn
 ```
@@ -183,6 +186,36 @@ sudo bash deploy/scripts/setup-nginx.sh /opt/midia-indoor
 O certificado autoassinado é automaticamente substituído pelo
 certificado público do Let's Encrypt.
 
+### 5.3 Como o HTTPS é mantido (e por que o cadeado não deveria sumir)
+
+Desde esta versão, o `setup-nginx.sh` **não deixa mais o Certbot editar
+o `nginx.conf` diretamente** (não usamos `certbot --nginx`). O Certbot
+só cuida de emitir/renovar o certificado; quem monta o bloco HTTPS do
+Nginx é o nosso próprio template (`nginx-letsencrypt.conf.template`),
+sempre reaplicado. Isso evita o problema mais comum de projetos assim:
+rodar o script de novo e ele apagar sem querer o bloco SSL que o
+Certbot tinha inserido, fazendo o cadeado sumir mesmo com um
+certificado válido em disco.
+
+Além disso, toda alteração no vhost é feita com backup automático: se
+a nova configuração não passar em `nginx -t`, a anterior (que estava
+funcionando) é restaurada e o site não fica fora do ar.
+
+Se mesmo assim o navegador mostrar o domínio como "não totalmente
+seguro" com um certificado instalado, rode:
+
+```bash
+sudo bash deploy/scripts/check-https.sh /opt/midia-indoor
+```
+
+Esse comando confere, entre outras coisas, se o Nginx está servindo
+**exatamente** o certificado que está em disco (o motivo mais comum
+do aviso persistir) e se há algum recurso carregado em `http://` numa
+página `https://` (conteúdo misto). Depois de corrigir qualquer coisa
+no servidor, vale também testar em uma aba anônima do navegador, já
+que uma visita anterior por HTTP ou com um certificado antigo pode ter
+ficado em cache localmente.
+
 ## 6. Comandos úteis do dia a dia
 
 ```bash
@@ -205,6 +238,10 @@ curl -i http://127.0.0.1:8000/healthz   # testar a aplicação diretamente (sem 
 - **Certbot falhou ao emitir certificado** — confirme que o domínio já
   resolve (registro DNS tipo A) para o IP da VPS: `dig +short seudominio.com`.
   Depois rode `sudo bash deploy/scripts/setup-nginx.sh` de novo.
+- **Certificado instalado, mas o navegador ainda mostra aviso/sem
+  cadeado** — rode `sudo bash deploy/scripts/check-https.sh`; ele
+  confere se o Nginx está servindo o certificado certo e se há
+  conteúdo misto (`http://` numa página `https://`). Veja a seção 5.3.
 - **Navegador avisa "conexão não é privada" ao acessar por IP** — normal
   quando o HTTPS está no modo autoassinado (sem domínio ainda); veja a
   seção 5.1. Não é um erro de configuração.
