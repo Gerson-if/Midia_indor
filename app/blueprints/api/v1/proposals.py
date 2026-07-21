@@ -14,7 +14,7 @@ STAFF_ROLES = ("admin", "editor", "viewer")
 
 @api_v1_bp.route("/proposals", methods=["POST"])
 @csrf.exempt  # endpoint de API pensado para integrações externas (autenticadas por outros meios em produção)
-@limiter.limit("5 per minute; 20 per hour")
+@limiter.limit("30 per minute; 300 per hour")
 def create_proposal():
     """
     Cria uma solicitação via API (uso futuro: app mobile, formulários

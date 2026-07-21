@@ -31,6 +31,7 @@ class ServiceForm(FlaskForm):
     display_order = IntegerField("Ordem", validators=[Optional(), NumberRange(min=0)], default=0)
     is_active = BooleanField("Ativo", default=True)
     image = FileField("Imagem", validators=[Optional(), FileAllowed(["jpg", "jpeg", "png", "webp", "gif"])])
+    remove_image = BooleanField("Remover imagem atual")
 
 
 class GalleryItemForm(FlaskForm):
@@ -39,6 +40,7 @@ class GalleryItemForm(FlaskForm):
     display_order = IntegerField("Ordem", validators=[Optional(), NumberRange(min=0)], default=0)
     is_active = BooleanField("Ativo", default=True)
     image = FileField("Imagem", validators=[Optional(), FileAllowed(["jpg", "jpeg", "png", "webp", "gif"])])
+    remove_image = BooleanField("Remover imagem atual")
 
 
 class TestimonialForm(FlaskForm):
@@ -54,6 +56,7 @@ class PartnerForm(FlaskForm):
     display_order = IntegerField("Ordem", validators=[Optional(), NumberRange(min=0)], default=0)
     is_active = BooleanField("Ativo", default=True)
     logo = FileField("Logo", validators=[Optional(), FileAllowed(["jpg", "jpeg", "png", "webp", "gif"])])
+    remove_logo = BooleanField("Remover logo atual")
 
 
 class SiteSettingsForm(FlaskForm):

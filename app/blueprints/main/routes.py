@@ -29,7 +29,12 @@ def index():
 
 
 @main_bp.route("/solicitar-proposta", methods=["POST"])
-@limiter.limit("5 per minute; 20 per hour")
+# Limite por IP elevado: várias pessoas atrás do mesmo IP (rede de
+# escritório/condomínio/shopping, NAT de operadora móvel) preenchendo o
+# formulário publicamente ao mesmo tempo não deve ser tratado como abuso.
+# O honeypot (form.confirm_hp) já cobre a maior parte da proteção
+# antibot; este limite existe só para conter picos anormais.
+@limiter.limit("30 per minute; 300 per hour")
 def submit_proposal():
     """
     Recebe o formulário de contato do site. Aceita tanto submissão HTML

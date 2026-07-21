@@ -1,3 +1,5 @@
+import io
+
 from app.models import Proposal, Service
 from tests.conftest import login
 
@@ -227,3 +229,92 @@ def test_flash_messages_rendered_as_toast_data(client, admin_user):
     resp = client.get("/admin/")
     html = resp.get_data(as_text=True)
     assert "toast.js" in html
+
+
+def _tiny_jpeg_bytes():
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (10, 10), color="red").save(buf, format="JPEG")
+    buf.seek(0)
+    return buf
+
+
+def test_service_image_upload_then_remove(client, admin_user, db):
+    """
+    Antes, os formulários de Serviços/Galeria/Parceiros não tinham como
+    remover a mídia já cadastrada (só substituir enviando outro arquivo),
+    diferente do Hero/Logo/Favicon em Configurações. Este teste cobre o
+    fluxo completo: upload -> prévia aparece -> remoção funciona.
+    """
+    login(client, "admin@teste.com", "SenhaForte123!")
+
+    resp = client.post(
+        "/admin/conteudo/servicos",
+        data={
+            "title": "Com Imagem",
+            "description": "Serviço com imagem",
+            "display_order": 1,
+            "is_active": "y",
+            "image": (_tiny_jpeg_bytes(), "foto.jpg"),
+        },
+        content_type="multipart/form-data",
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    service = Service.query.filter_by(title="Com Imagem").first()
+    assert service is not None
+    assert service.image_path is not None
+
+    # A prévia deve aparecer na tela de edição.
+    resp = client.get(f"/admin/conteudo/servicos/{service.id}/editar")
+    assert service.image_path in resp.get_data(as_text=True)
+
+    # Remover a imagem atual (sem enviar um arquivo novo).
+    resp = client.post(
+        f"/admin/conteudo/servicos/{service.id}/editar",
+        data={
+            "title": "Com Imagem",
+            "description": "Serviço com imagem",
+            "display_order": 1,
+            "is_active": "y",
+            "remove_image": "y",
+        },
+        content_type="multipart/form-data",
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    db.session.refresh(service)
+    assert service.image_path is None
+
+
+def test_site_settings_get_solo_survives_concurrent_creation(app, db):
+    """
+    SiteSettings.get_solo() cria a linha singleton (id=1) na primeira
+    chamada. Sob acesso concorrente (vários usuários batendo no site ao
+    mesmo tempo logo após a instalação, antes de a linha existir), duas
+    requisições podiam ver "não existe" ao mesmo tempo e as duas tentar
+    criar a linha id=1 -> a segunda a commitar recebia IntegrityError e
+    quebrava a requisição com erro 500. Simulamos a corrida diretamente
+    inserindo a linha "por baixo" entre a leitura e o commit de
+    get_solo(), e garantimos que ele se recupera em vez de propagar o
+    erro.
+    """
+    from app.models import SiteSettings
+
+    with app.app_context():
+        assert SiteSettings.query.get(1) is None
+
+        # Simula outra requisição/processo que já criou a linha entre a
+        # checagem "instance is None" e o commit desta chamada.
+        concorrente = SiteSettings(id=1)
+        db.session.add(concorrente)
+        db.session.commit()
+        db.session.expunge(concorrente)
+
+        # Força get_solo() a passar pelo caminho de criação mesmo com a
+        # linha já existindo, para exercitar o tratamento do IntegrityError.
+        db.session.expire_all()
+        settings = SiteSettings.get_solo()
+        assert settings is not None
+        assert settings.id == 1

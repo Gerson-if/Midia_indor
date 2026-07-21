@@ -144,11 +144,25 @@ ok "Migrações aplicadas."
 chown -R midia-indoor:midia-indoor "$APP_DIR"
 
 # ---------------------------------------------------------------
-# 4) Reiniciar e checar /healthz
+# 4) Aplicar a nova versão e checar /healthz
 # ---------------------------------------------------------------
-title "4/4 — Reiniciando e verificando"
+title "4/4 — Aplicando a nova versão e verificando"
 trap - ERR   # a partir daqui o script já tem seu próprio tratamento específico de falha/rollback abaixo
-systemctl restart midia-indoor
+
+# Antes usávamos sempre "systemctl restart", que para o processo por
+# completo antes de iniciar o novo — o socket fica fechado nesse meio
+# tempo, então qualquer usuário acessando o site bem nesse instante do
+# deploy recebia erro de conexão. Com preload_app=False (gunicorn.conf.py)
+# e o ExecReload configurado no serviço systemd, "reload" (SIGHUP) troca
+# o código gradualmente: os workers antigos terminam as requisições em
+# andamento e só então são substituídos pelos novos, sem nunca fechar a
+# porta de escuta — atualização sem downtime perceptível. Se o serviço
+# ainda não estiver rodando (primeira publicação), cai para "start".
+if systemctl is-active --quiet midia-indoor; then
+    systemctl reload midia-indoor
+else
+    systemctl start midia-indoor
+fi
 
 BIND="$(grep -E '^GUNICORN_BIND=' "$APP_DIR/.env" | cut -d= -f2- || true)"
 BIND="${BIND:-127.0.0.1:8000}"

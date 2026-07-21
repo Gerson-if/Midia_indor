@@ -71,8 +71,30 @@ class BaseConfig:
     )
 
     # ---- Rate limiting ----
+    # "memory://" guarda os contadores no processo (dict em memória): funciona
+    # bem para um único processo, mas o Gunicorn de produção roda vários
+    # workers (deploy/gunicorn.conf.py) — cada worker é um PROCESSO separado
+    # com sua própria memória, então cada um mantém sua própria contagem.
+    # Resultado: o mesmo cliente pode ser liberado num worker e bloqueado
+    # noutro para a mesma janela de tempo, e a reciclagem periódica dos
+    # workers (max_requests) zera contadores no meio da janela — um
+    # comportamento inconsistente de "às vezes libera, às vezes nega" bem
+    # difícil de diagnosticar sob carga concorrente. Use um Redis
+    # (RATELIMIT_STORAGE_URI=redis://...) em produção para contagem
+    # compartilhada e consistente entre todos os workers/processos; veja o
+    # aviso emitido em ProductionConfig.validate() quando isso não estiver
+    # configurado.
     RATELIMIT_STORAGE_URI = os.environ.get("RATELIMIT_STORAGE_URI", "memory://")
-    RATELIMIT_DEFAULT = os.environ.get("RATELIMIT_DEFAULT", "200 per day;50 per hour")
+    # Limites elevados para acomodar acesso concorrente legítimo de vários
+    # usuários por trás do mesmo IP público (rede corporativa, shopping,
+    # NAT de operadora móvel) — comum neste tipo de negócio (painéis de
+    # mídia indoor instalados em locais com várias pessoas na mesma rede).
+    # O valor anterior (200/dia; 50/hora) por IP já era insuficiente para
+    # UM único usuário navegando normalmente, e ficava pior ainda quando
+    # várias pessoas atrás do mesmo IP acessavam ao mesmo tempo — todas
+    # elas compartilhando (e esgotando) a mesma cota, gerando exatamente
+    # o erro 429 "Muitas requisições" relatado em acessos simultâneos.
+    RATELIMIT_DEFAULT = os.environ.get("RATELIMIT_DEFAULT", "2000 per day;400 per hour")
     RATELIMIT_HEADERS_ENABLED = True
 
     # ---- Empresa / WhatsApp (usado nos templates e geração de mensagens) ----
@@ -173,6 +195,24 @@ class ProductionConfig(BaseConfig):
         insecure_defaults = {"dev-key-insegura-troque-me", "dev-salt-troque-me"}
         if cls.SECRET_KEY in insecure_defaults:
             raise RuntimeError("SECRET_KEY insegura detectada em produção. Defina uma chave forte.")
+
+        if cls.RATELIMIT_STORAGE_URI.startswith("memory://"):
+            # Não é um erro fatal (a aplicação continua funcionando com um
+            # único worker), mas com múltiplos workers do Gunicorn (o padrão
+            # em produção) cada processo mantém sua própria contagem de rate
+            # limit, causando bloqueios inconsistentes sob acesso concorrente
+            # — avisamos alto e claro no log de inicialização em vez de
+            # deixar isso passar silenciosamente.
+            import logging
+
+            logging.getLogger("app.startup").warning(
+                "RATELIMIT_STORAGE_URI está usando 'memory://' em produção. "
+                "Com múltiplos workers do Gunicorn, cada processo conta as "
+                "requisições separadamente, causando bloqueios (429 'Muitas "
+                "requisições') inconsistentes sob acesso concorrente. "
+                "Configure um Redis (RATELIMIT_STORAGE_URI=redis://host:6379/0) "
+                "para contagem compartilhada entre workers."
+            )
 
 
 CONFIG_MAP = {

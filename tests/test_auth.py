@@ -48,3 +48,31 @@ def test_logout_clears_session(client, admin_user):
 
     resp = client.get("/admin/", follow_redirects=False)
     assert resp.status_code == 302
+
+
+def test_login_survives_concurrent_version_conflict(client, admin_user, db, app, monkeypatch):
+    """
+    User.version_id (controle de concorrência otimista) faz um segundo
+    commit sobre a mesma linha, feito enquanto a primeira requisição
+    ainda está em andamento, levantar StaleDataError. Antes, o login()
+    não tratava isso: bastava duas requisições de login concorrentes
+    para o mesmo usuário (duas abas, ou o navegador reenviando após uma
+    falha de rede) para uma delas quebrar com erro 500 no meio do
+    commit de bookkeeping (contador de tentativas / último login).
+    Simulamos a corrida forçando o version_id da linha em memória a
+    ficar desatualizado antes do commit do fluxo de login.
+    """
+    with app.app_context():
+        from app.models import User
+
+        user = User.query.filter_by(email="admin@teste.com").first()
+        # Simula outra transação concorrente que já avançou o version_id
+        # da linha no banco entre a leitura desta requisição e o commit.
+        db.session.execute(
+            User.__table__.update().where(User.id == user.id).values(version_id=user.version_id + 1)
+        )
+        db.session.commit()
+
+    resp = login(client, "admin@teste.com", "SenhaForte123!")
+    assert resp.status_code == 200
+    assert "Visão Geral" in resp.get_data(as_text=True)
