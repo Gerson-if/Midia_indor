@@ -98,6 +98,13 @@ choose "Qual banco de dados usar?" DB_CHOICE \
 if [[ "$DB_CHOICE" == PostgreSQL* ]]; then
     ask "Nome do banco" "$(cur PG_DB_NAME 'nexo_midia')" PG_DB_NAME
     ask "Usuário do banco" "$(cur PG_DB_USER 'nexo_user')" PG_DB_USER
+    # Normaliza para minúsculas: identificadores do Postgres sem aspas são
+    # dobrados para minúsculo automaticamente na criação, então nomes com
+    # maiúscula ("Digital_promo") causavam "database ... does not exist"
+    # ao conectar (o real era "digital_promo"). Evitamos a pegadinha toda
+    # já usando minúsculas em todo lugar.
+    PG_DB_NAME="$(echo "$PG_DB_NAME" | tr '[:upper:]' '[:lower:]')"
+    PG_DB_USER="$(echo "$PG_DB_USER" | tr '[:upper:]' '[:lower:]')"
     EXISTING_PG_PW="$(cur PG_DB_PASSWORD '')"
     if [ -n "$EXISTING_PG_PW" ] && confirm "Manter a senha do banco já configurada?" "s"; then
         PG_DB_PASSWORD="$EXISTING_PG_PW"
@@ -113,13 +120,13 @@ if [[ "$DB_CHOICE" == PostgreSQL* ]]; then
                 DO \$\$
                 BEGIN
                    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '${PG_DB_USER}') THEN
-                      CREATE ROLE ${PG_DB_USER} LOGIN PASSWORD '${PG_DB_PASSWORD}';
+                      CREATE ROLE "${PG_DB_USER}" LOGIN PASSWORD '${PG_DB_PASSWORD}';
                    ELSE
-                      ALTER ROLE ${PG_DB_USER} WITH PASSWORD '${PG_DB_PASSWORD}';
+                      ALTER ROLE "${PG_DB_USER}" WITH PASSWORD '${PG_DB_PASSWORD}';
                    END IF;
                 END
                 \$\$;
-                SELECT 'CREATE DATABASE ${PG_DB_NAME} OWNER ${PG_DB_USER}'
+                SELECT 'CREATE DATABASE "${PG_DB_NAME}" OWNER "${PG_DB_USER}"'
                 WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '${PG_DB_NAME}')\gexec
 SQL
             ok "Banco '${PG_DB_NAME}' e usuário '${PG_DB_USER}' prontos."
