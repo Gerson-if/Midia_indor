@@ -58,8 +58,9 @@ Principais decisões:
 python3 -m venv venv
 source venv/bin/activate
 
-# 2. Instalar dependências (inclui as de desenvolvimento/testes)
-pip install -r requirements-dev.txt
+# 2. Instalar dependências (requirements.txt já inclui as de testes/qualidade
+#    de código — pytest, flake8, black, isort etc. — não há um arquivo separado)
+pip install -r requirements.txt
 
 # 3. Configurar variáveis de ambiente
 cp .env.example .env
