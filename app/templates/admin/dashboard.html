@@ -5,19 +5,19 @@
 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
   <div class="card p-6 border-t-4" style="border-top-color: var(--amber)">
     <p class="text-sm text-mid font-mono uppercase mb-2">Novas Solicitações</p>
-    <p class="text-3xl font-display font-bold text-white">{{ new_proposals }}</p>
+    <p class="text-3xl font-display font-bold text-hi">{{ new_proposals }}</p>
   </div>
   <div class="card p-6 border-t-4" style="border-top-color: var(--cyan)">
     <p class="text-sm text-mid font-mono uppercase mb-2">Total de Solicitações</p>
-    <p class="text-3xl font-display font-bold text-white">{{ total_proposals }}</p>
+    <p class="text-3xl font-display font-bold text-hi">{{ total_proposals }}</p>
   </div>
   <div class="card p-6 border-t-4" style="border-top-color: var(--amber)">
     <p class="text-sm text-mid font-mono uppercase mb-2">Convertidas</p>
-    <p class="text-3xl font-display font-bold text-white">{{ converted }}</p>
+    <p class="text-3xl font-display font-bold text-hi">{{ converted }}</p>
   </div>
   <div class="card p-6 border-t-4" style="border-top-color: var(--cyan)">
     <p class="text-sm text-mid font-mono uppercase mb-2">Locais Ativos</p>
-    <p class="text-3xl font-display font-bold text-white">{{ active_gallery }}</p>
+    <p class="text-3xl font-display font-bold text-hi">{{ active_gallery }}</p>
   </div>
 </div>
 
@@ -39,15 +39,15 @@
 <div class="card overflow-hidden">
   <div class="flex justify-between items-center p-4 border-b border-line bg-panel2">
     <h3 class="font-display text-lg text-hi">Últimas solicitações</h3>
-    <a href="{{ url_for('admin.proposals_list') }}" class="text-xs hover:underline" style="color: var(--cyan)">Ver todas &rarr;</a>
+    <a href="{{ url_for('admin.proposals_list') }}" class="text-xs hover:underline" style="color: var(--cyan-text)">Ver todas &rarr;</a>
   </div>
   {# ---- Mobile (< sm): lista em cards, sem tabela/scroll lateral ---- #}
   <div class="sm:hidden divide-y divide-line">
     {% for p in recent_proposals %}
     <a href="{{ url_for('admin.proposal_detail', proposal_id=p.id) }}" class="block p-4 hover:bg-panel2 transition-colors">
       <div class="flex items-start justify-between gap-3 mb-1.5">
-        <p class="font-semibold text-white text-sm truncate">{{ p.name }}</p>
-        <span class="shrink-0 px-2 py-1 text-xs rounded-md font-mono {{ 'text-ink' if p.status.value == 'novo' else 'bg-line text-mid' }}"
+        <p class="font-semibold text-hi text-sm truncate">{{ p.name }}</p>
+        <span class="shrink-0 px-2 py-1 text-xs rounded-md font-mono {{ 'text-onbrand' if p.status.value == 'novo' else 'bg-line text-mid' }}"
               style="{{ 'background-color: var(--amber)' if p.status.value == 'novo' else '' }}">{{ p.status_label }}</span>
       </div>
       <p class="text-xs text-mid font-mono mb-0.5">{{ p.created_at.strftime('%d/%m/%Y %H:%M') }}</p>
@@ -74,14 +74,14 @@
         {% for p in recent_proposals %}
         <tr class="border-b border-line hover:bg-panel2 transition-colors">
           <td class="px-4 py-3 text-mid whitespace-nowrap">{{ p.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
-          <td class="px-4 py-3 font-semibold text-white">{{ p.name }}</td>
+          <td class="px-4 py-3 font-semibold text-hi">{{ p.name }}</td>
           <td class="px-4 py-3 text-mid">{{ p.phone }}</td>
           <td class="px-4 py-3">
-            <span class="px-2 py-1 text-xs rounded-md font-mono {{ 'text-ink' if p.status.value == 'novo' else 'bg-line text-mid' }}"
+            <span class="px-2 py-1 text-xs rounded-md font-mono {{ 'text-onbrand' if p.status.value == 'novo' else 'bg-line text-mid' }}"
                   style="{{ 'background-color: var(--amber)' if p.status.value == 'novo' else '' }}">{{ p.status_label }}</span>
           </td>
           <td class="px-4 py-3 text-right whitespace-nowrap">
-            <a href="{{ url_for('admin.proposal_detail', proposal_id=p.id) }}" class="hover:text-white px-2" style="color: var(--cyan)">Ver detalhes</a>
+            <a href="{{ url_for('admin.proposal_detail', proposal_id=p.id) }}" class="hover:text-hi px-2" style="color: var(--cyan-text)">Ver detalhes</a>
           </td>
         </tr>
         {% else %}
@@ -97,8 +97,12 @@
 <script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.min.js') }}"></script>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    const gridColor = 'rgba(255,255,255,.06)';
-    const tickColor = '#AEB6C2';
+    // Lê as cores do tema atual (claro/escuro) em vez de valores fixos,
+    // para o gráfico continuar legível quando o admin troca o tema em
+    // Configurações → Aparência.
+    const rootStyles = getComputedStyle(document.documentElement);
+    const gridColor = rootStyles.getPropertyValue('--chart-grid').trim() || 'rgba(255,255,255,.06)';
+    const tickColor = rootStyles.getPropertyValue('--text-mid').trim() || '#AEB6C2';
 
     const timelineCtx = document.getElementById('timelineChart');
     if (timelineCtx) {

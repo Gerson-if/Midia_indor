@@ -26,15 +26,15 @@
     {% for p in proposals %}
     <div class="p-4">
       <div class="flex items-start justify-between gap-3 mb-1.5">
-        <p class="font-semibold text-white text-sm truncate">{{ p.name }}</p>
-        <span class="shrink-0 px-2 py-1 text-xs rounded-md font-mono {{ 'text-ink' if p.status.value == 'novo' else 'bg-line text-mid' }}"
+        <p class="font-semibold text-hi text-sm truncate">{{ p.name }}</p>
+        <span class="shrink-0 px-2 py-1 text-xs rounded-md font-mono {{ 'text-onbrand' if p.status.value == 'novo' else 'bg-line text-mid' }}"
               style="{{ 'background-color: var(--amber)' if p.status.value == 'novo' else '' }}">{{ p.status_label }}</span>
       </div>
       <p class="text-xs text-mid font-mono mb-1">{{ p.created_at.strftime('%d/%m/%Y %H:%M') }} &middot; {{ p.public_ref }}</p>
       <p class="text-xs text-mid truncate">{{ p.email }}</p>
       <p class="text-xs text-mid mb-2">{{ p.phone }}</p>
       <div class="flex items-center gap-4 text-xs">
-        <a href="{{ url_for('admin.proposal_detail', proposal_id=p.id) }}" style="color: var(--cyan)">Detalhes</a>
+        <a href="{{ url_for('admin.proposal_detail', proposal_id=p.id) }}" style="color: var(--cyan-text)">Detalhes</a>
         <a href="{{ url_for('admin.proposal_whatsapp_redirect', proposal_id=p.id) }}" target="_blank" class="text-[#25D366]">WhatsApp</a>
       </div>
     </div>
@@ -62,16 +62,16 @@
       <tr class="border-b border-line hover:bg-panel2 transition-colors">
         <td class="px-4 py-3 text-mid whitespace-nowrap">{{ p.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
         <td class="px-4 py-3 text-low font-mono text-xs">{{ p.public_ref }}</td>
-        <td class="px-4 py-3 font-semibold text-white">{{ p.name }}</td>
+        <td class="px-4 py-3 font-semibold text-hi">{{ p.name }}</td>
         <td class="px-4 py-3 text-mid">{{ p.email }}</td>
         <td class="px-4 py-3 text-mid">{{ p.phone }}</td>
         <td class="px-4 py-3">
-          <span class="px-2 py-1 text-xs rounded-md font-mono {{ 'text-ink' if p.status.value == 'novo' else 'bg-line text-mid' }}"
+          <span class="px-2 py-1 text-xs rounded-md font-mono {{ 'text-onbrand' if p.status.value == 'novo' else 'bg-line text-mid' }}"
                 style="{{ 'background-color: var(--amber)' if p.status.value == 'novo' else '' }}">{{ p.status_label }}</span>
         </td>
         <td class="px-4 py-3 text-right whitespace-nowrap">
-          <a href="{{ url_for('admin.proposal_detail', proposal_id=p.id) }}" class="hover:text-white px-2" style="color: var(--cyan)">Detalhes</a>
-          <a href="{{ url_for('admin.proposal_whatsapp_redirect', proposal_id=p.id) }}" target="_blank" class="hover:text-white px-2 text-[#25D366]">WhatsApp</a>
+          <a href="{{ url_for('admin.proposal_detail', proposal_id=p.id) }}" class="hover:text-hi px-2" style="color: var(--cyan-text)">Detalhes</a>
+          <a href="{{ url_for('admin.proposal_whatsapp_redirect', proposal_id=p.id) }}" target="_blank" class="hover:text-hi px-2 text-[#25D366]">WhatsApp</a>
         </td>
       </tr>
       {% else %}

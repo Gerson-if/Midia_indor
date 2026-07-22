@@ -2,6 +2,14 @@
 {% block title %}{{ settings.company_name }} — Mídia Indoor Digital{% endblock %}
 {% block extra_head %}
 <link href="{{ url_for('static', filename='vendor/aos/aos.css') }}" rel="stylesheet">
+{# "Fundo dos cards" tem um valor padrão de fábrica (#131A24 — o --panel
+   escuro original), salvo antes de existir a opção de tema claro/escuro.
+   Se o admin nunca customizou esse campo, o fundo do card precisa
+   acompanhar o tema atual (--panel), senão os cards de Vantagens/
+   Depoimentos ficam escuros e com texto ilegível quando o site está no
+   tema claro. Só respeitamos o valor salvo ao pé da letra quando o admin
+   realmente escolheu uma cor diferente dos padrões conhecidos. #}
+{% set _card_bg_is_default = settings.card_background_color and settings.card_background_color.lower() in ('#131a24', '#ffffff', '#fff') %}
 <style>
   :root {
     --amber: {{ settings.color_primary }};
@@ -9,7 +17,7 @@
     --services-accent: {{ settings.services_accent_color }};
     --gallery-accent: {{ settings.gallery_accent_color }};
     --testimonials-accent: {{ settings.testimonials_accent_color }};
-    --site-card-bg: {{ settings.card_background_color }};
+    --site-card-bg: {{ 'var(--panel)' if _card_bg_is_default else settings.card_background_color }};
     --site-card-radius: {{ settings.card_border_radius }}px;
   }
   .site-card { background: var(--site-card-bg); border-radius: var(--site-card-radius); }
@@ -36,7 +44,7 @@
       {% if settings.logo_path %}
       <img src="{{ url_for('static', filename=settings.logo_path) }}" alt="{{ settings.company_name }}" class="w-8 h-8 rounded-md object-contain shrink-0">
       {% else %}
-      <span class="w-8 h-8 rounded-md flex items-center justify-center text-ink font-bold shrink-0" style="background-color: var(--amber)">
+      <span class="w-8 h-8 rounded-md flex items-center justify-center text-onbrand font-bold shrink-0" style="background-color: var(--amber)">
         {{ settings.company_name[0] if settings.company_name else 'N' }}
       </span>
       {% endif %}
@@ -49,7 +57,7 @@
       <a href="#contato" class="btn btn-primary !py-1.5 !px-4 text-xs" style="background-color: var(--amber)">Anunciar</a>
     </div>
     <button type="button" id="mobile-nav-toggle" aria-expanded="false" aria-controls="mobile-nav-menu" aria-label="Abrir menu"
-            class="md:hidden shrink-0 w-10 h-10 flex items-center justify-center rounded-lg text-hi hover:bg-white/5 -mr-2">
+            class="md:hidden shrink-0 w-10 h-10 flex items-center justify-center rounded-lg text-hi hover:bg-[var(--overlay-med)] -mr-2">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
         <path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/>
       </svg>
@@ -65,11 +73,18 @@
   </div>
 </header>
 
+{# Com vídeo/imagem de capa, o texto do Hero precisa continuar branco sobre
+   o escurecedor preto, em QUALQUER tema (não dá pra prever se a mídia
+   enviada é clara ou escura). Sem mídia, não faz sentido escurecer um
+   gradiente que já segue as cores do tema — aí o texto acompanha o tema
+   normalmente, senão o topo do site ficaria sempre escuro mesmo com o
+   tema claro selecionado. #}
+{% set has_hero_media = (settings.hero_media_type == 'video' and settings.hero_video_path) or (settings.hero_media_type == 'image' and settings.hero_image_path) %}
 <section id="top" class="relative min-h-screen flex items-center pt-24 pb-20 overflow-hidden bg-ink">
   <div class="absolute inset-0 w-full h-full z-0 pointer-events-none">
     {# Gradiente de fundo sempre presente: garante que nunca fique "em branco",
        mesmo enquanto o vídeo carrega ou se nenhuma mídia foi configurada. #}
-    <div class="absolute inset-0" style="background: linear-gradient(160deg, {{ settings.color_primary }}22, {{ settings.color_secondary }}22), #0A0E16;"></div>
+    <div class="absolute inset-0" style="background: linear-gradient(160deg, {{ settings.color_primary }}22, {{ settings.color_secondary }}22), var(--ink);"></div>
 
     {% if settings.hero_media_type == 'video' and settings.hero_video_path %}
     <video id="hero-video"
@@ -81,15 +96,15 @@
     <img src="{{ url_for('static', filename=settings.hero_image_path) }}" alt="" class="absolute inset-0 w-full h-full object-cover">
     {% endif %}
   </div>
-  <div class="absolute inset-0 z-10 bg-black" style="opacity:{{ settings.hero_overlay_opacity }}"></div>
+  <div class="absolute inset-0 z-10 bg-black" style="opacity:{{ settings.hero_overlay_opacity if has_hero_media else 0 }}"></div>
 
   <div class="container-nx relative z-20 text-center max-w-4xl mx-auto" data-aos="fade-up">
-    <span class="pill-live mb-6 mx-auto"><span class="dot" style="background-color: var(--amber)"></span>Telas ao vivo</span>
-    <h1 class="font-display text-4xl sm:text-5xl md:text-7xl font-bold leading-[1.1] text-white mb-6 break-words">{{ settings.hero_title }}</h1>
-    <p class="text-mid text-lg md:text-xl mb-10 max-w-2xl mx-auto">{{ settings.hero_subtitle }}</p>
+    <span class="pill-live mb-6 mx-auto" style="{{ 'color:rgba(255,255,255,.85); border-color:rgba(255,255,255,.25);' if has_hero_media }}"><span class="dot" style="background-color: var(--amber)"></span>Telas ao vivo</span>
+    <h1 class="font-display text-4xl sm:text-5xl md:text-7xl font-bold leading-[1.1] mb-6 break-words" style="color:{{ '#fff' if has_hero_media else 'var(--text-hi)' }}">{{ settings.hero_title }}</h1>
+    <p class="text-lg md:text-xl mb-10 max-w-2xl mx-auto" style="color:{{ 'rgba(255,255,255,.78)' if has_hero_media else 'var(--text-mid)' }}">{{ settings.hero_subtitle }}</p>
     <div class="flex flex-wrap justify-center gap-4">
       <a href="#contato" class="btn btn-primary px-8 py-4 text-lg" style="background-color: var(--amber)">{{ settings.hero_cta_primary_label or 'Anuncie Conosco' }}</a>
-      <a href="#galeria" class="btn btn-ghost px-8 py-4 text-lg bg-black/30 backdrop-blur-md">{{ settings.hero_cta_secondary_label or 'Conhecer Locais' }}</a>
+      <a href="#galeria" class="btn btn-ghost px-8 py-4 text-lg bg-black/30 backdrop-blur-md" style="{{ 'color:#fff; border-color:rgba(255,255,255,.3);' if has_hero_media }}">{{ settings.hero_cta_secondary_label or 'Conhecer Locais' }}</a>
     </div>
   </div>
 </section>
@@ -154,7 +169,7 @@
       <div class="card site-card p-6 border-l-4" style="border-left-color: var(--testimonials-accent)">
         <p class="text-hi text-lg italic mb-4">&ldquo;{{ t.text }}&rdquo;</p>
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-full flex items-center justify-center font-display text-ink font-bold" style="background-color: var(--testimonials-accent)">{{ t.name[0] }}</div>
+          <div class="w-10 h-10 rounded-full flex items-center justify-center font-display text-onbrand font-bold" style="background-color: var(--testimonials-accent)">{{ t.name[0] }}</div>
           <div>
             <p class="text-sm font-semibold text-hi">{{ t.name }}</p>
             <p class="text-xs font-mono" style="color: var(--testimonials-accent)">{{ t.company_name }}</p>
@@ -241,7 +256,7 @@
   <div class="container-nx grid md:grid-cols-3 gap-8 text-center md:text-left">
     <div>
       <a href="#top" class="flex items-center justify-center md:justify-start gap-2 font-display font-semibold text-lg text-hi mb-2">
-        <span class="w-6 h-6 rounded flex items-center justify-center text-ink font-bold text-xs" style="background-color: var(--amber)">{{ settings.company_name[0] if settings.company_name else 'N' }}</span>
+        <span class="w-6 h-6 rounded flex items-center justify-center text-onbrand font-bold text-xs" style="background-color: var(--amber)">{{ settings.company_name[0] if settings.company_name else 'N' }}</span>
         <span>{{ settings.company_name }}</span>
       </a>
       <p class="text-xs text-mid max-w-sm mx-auto md:mx-0">Soluções digitais em mídia indoor.</p>

@@ -65,7 +65,7 @@
         <div class="w-16 h-16 rounded-lg bg-panel2 shrink-0 flex items-center justify-center text-low text-xs">sem foto</div>
         {% endif %}
         <div class="flex-1 min-w-0">
-          <p class="font-semibold text-white truncate">{{ item.title }}</p>
+          <p class="font-semibold text-hi truncate">{{ item.title }}</p>
           <p class="text-xs text-mid truncate">{{ item.description }}</p>
           <p class="text-[11px] font-mono {{ 'text-green-400' if item.is_active else 'text-low' }}">{{ 'Ativo' if item.is_active else 'Inativo' }}</p>
         </div>

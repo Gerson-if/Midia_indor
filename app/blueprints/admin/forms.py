@@ -106,6 +106,11 @@ class SiteSettingsForm(FlaskForm):
     testimonials_accent_color = StringField("Destaque — Depoimentos", validators=[DataRequired(), Length(max=9)])
     card_background_color = StringField("Fundo dos cards", validators=[DataRequired(), Length(max=9)])
     card_border_radius = IntegerField("Arredondamento dos cards (px)", validators=[Optional(), NumberRange(min=0, max=40)])
+    theme = RadioField(
+        "Tema do sistema",
+        choices=[("dark", "Escuro"), ("light", "Claro")],
+        validators=[DataRequired()],
+    )
 
     # ---- Páginas legais ----
     privacy_content = TextAreaField("Conteúdo — Política de Privacidade", validators=[Optional(), Length(max=20000)])

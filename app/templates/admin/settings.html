@@ -4,7 +4,7 @@
 {% block extra_head %}
 <style>
   .tab-btn{ display:flex; align-items:center; gap:.5rem; padding:.55rem 1rem; border-radius:9px; font-size:.8rem; font-weight:600; color:var(--text-mid); white-space:nowrap; transition:background .15s,color .15s; }
-  .tab-btn:hover{ color:var(--text-hi); background:rgba(255,255,255,.04); }
+  .tab-btn:hover{ color:var(--text-hi); background:var(--overlay-soft); }
   .tab-btn.active{ background:var(--amber); color:#1A1204; }
   .tab-panel{ display:none; }
   .tab-panel.active{ display:block; }
@@ -243,6 +243,20 @@
     <!-- ================= APARÊNCIA ================= -->
     <div class="tab-panel space-y-6" id="tab-aparencia">
       <div class="card p-6 space-y-4">
+        <h3 class="font-display text-lg text-hi mb-2">Tema do sistema</h3>
+        <p class="text-xs text-low -mt-2">
+          Vale para o site público e para o painel, para todo mundo que acessar — não é uma preferência do navegador de cada visitante.
+        </p>
+        <div class="flex gap-3">
+          {% for subfield in form.theme %}
+          <label class="theme-choice flex items-center gap-2 text-sm text-mid cursor-pointer border border-line rounded-lg px-4 py-2.5 {{ 'theme-choice-active' if subfield.checked }}">
+            {{ subfield(class_="theme-choice-input") }} {{ subfield.label.text }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="card p-6 space-y-4">
         <h3 class="font-display text-lg text-hi mb-2">Cores da Marca</h3>
         <div class="grid grid-cols-2 gap-3 max-w-sm">
           <div>
@@ -302,8 +316,8 @@
           {{ form.terms_content(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none font-mono", rows="8") }}
         </div>
         <div class="flex gap-4 text-xs">
-          <a href="{{ url_for('main.privacidade') }}" target="_blank" class="hover:underline" style="color: var(--cyan)">Ver política publicada &rarr;</a>
-          <a href="{{ url_for('main.termos') }}" target="_blank" class="hover:underline" style="color: var(--cyan)">Ver termos publicados &rarr;</a>
+          <a href="{{ url_for('main.privacidade') }}" target="_blank" class="hover:underline" style="color: var(--cyan-text)">Ver política publicada &rarr;</a>
+          <a href="{{ url_for('main.termos') }}" target="_blank" class="hover:underline" style="color: var(--cyan-text)">Ver termos publicados &rarr;</a>
         </div>
       </div>
     </div>
@@ -325,7 +339,7 @@
               {% if settings.logo_path %}
               <img src="{{ url_for('static', filename=settings.logo_path) }}" class="w-8 h-8 rounded-md object-contain">
               {% else %}
-              <span class="w-8 h-8 rounded-md flex items-center justify-center text-ink font-bold" id="preview-logo-fallback" style="background-color: {{ settings.color_primary }}">{{ (settings.company_name or 'N')[0] }}</span>
+              <span class="w-8 h-8 rounded-md flex items-center justify-center text-onbrand font-bold" id="preview-logo-fallback" style="background-color: {{ settings.color_primary }}">{{ (settings.company_name or 'N')[0] }}</span>
               {% endif %}
               <span id="preview-company-header">{{ settings.company_name }}</span>
             </div>
@@ -336,9 +350,10 @@
           </div>
 
           <!-- Hero: mesmas classes do index.html, em escala reduzida -->
+          {% set preview_has_media = (settings.hero_media_type == 'video' and settings.hero_video_path) or (settings.hero_media_type == 'image' and settings.hero_image_path) %}
           <div class="relative flex items-center justify-center overflow-hidden bg-ink" style="min-height:560px; padding:60px 24px;">
             <div class="absolute inset-0 w-full h-full z-0 pointer-events-none">
-              <div id="preview-bg" class="absolute inset-0" style="background: linear-gradient(160deg, {{ settings.color_primary }}22, {{ settings.color_secondary }}22), #0A0E16;"></div>
+              <div id="preview-bg" class="absolute inset-0" style="background: linear-gradient(160deg, {{ settings.color_primary }}22, {{ settings.color_secondary }}22), var(--ink);"></div>
               <video id="preview-video" src="{{ url_for('static', filename=settings.hero_video_path) if settings.hero_video_path else '' }}"
                      autoplay loop muted playsinline
                      class="absolute inset-0 w-full h-full object-cover"
@@ -347,15 +362,15 @@
                    class="absolute inset-0 w-full h-full object-cover"
                    style="display: {{ 'block' if settings.hero_media_type == 'image' and settings.hero_image_path else 'none' }};">
             </div>
-            <div id="preview-overlay" class="absolute inset-0 z-10 bg-black" style="opacity: {{ settings.hero_overlay_opacity }};"></div>
+            <div id="preview-overlay" class="absolute inset-0 z-10 bg-black" style="opacity: {{ settings.hero_overlay_opacity if preview_has_media else 0 }};"></div>
 
             <div class="container-nx relative z-20 text-center max-w-4xl mx-auto">
-              <span class="pill-live mb-6 mx-auto"><span class="dot" style="background-color: {{ settings.color_primary }}"></span>Telas ao vivo</span>
-              <h1 id="preview-title" class="font-display text-5xl md:text-6xl font-bold leading-[1.1] text-white mb-6">{{ settings.hero_title or "Título do Hero" }}</h1>
-              <p id="preview-subtitle" class="text-mid text-lg md:text-xl mb-10 max-w-2xl mx-auto">{{ settings.hero_subtitle or "Subtítulo do Hero" }}</p>
+              <span class="pill-live mb-6 mx-auto" style="{{ 'color:rgba(255,255,255,.85); border-color:rgba(255,255,255,.25);' if preview_has_media }}"><span class="dot" style="background-color: {{ settings.color_primary }}"></span>Telas ao vivo</span>
+              <h1 id="preview-title" class="font-display text-5xl md:text-6xl font-bold leading-[1.1] mb-6" style="color:{{ '#fff' if preview_has_media else 'var(--text-hi)' }}">{{ settings.hero_title or "Título do Hero" }}</h1>
+              <p id="preview-subtitle" class="text-lg md:text-xl mb-10 max-w-2xl mx-auto" style="color:{{ 'rgba(255,255,255,.78)' if preview_has_media else 'var(--text-mid)' }}">{{ settings.hero_subtitle or "Subtítulo do Hero" }}</p>
               <div class="flex flex-wrap justify-center gap-4">
                 <span id="preview-cta-primary" class="btn btn-primary px-8 py-4 text-lg" style="background-color: {{ settings.color_primary }};">{{ settings.hero_cta_primary_label or "Anuncie Conosco" }}</span>
-                <span id="preview-cta-secondary" class="btn btn-ghost px-8 py-4 text-lg bg-black/30 backdrop-blur-md">{{ settings.hero_cta_secondary_label or "Conhecer Locais" }}</span>
+                <span id="preview-cta-secondary" class="btn btn-ghost px-8 py-4 text-lg bg-black/30 backdrop-blur-md" style="{{ 'color:#fff; border-color:rgba(255,255,255,.3);' if preview_has_media }}">{{ settings.hero_cta_secondary_label or "Conhecer Locais" }}</span>
               </div>
             </div>
           </div>
@@ -482,6 +497,15 @@
     }
     mediaToggles.forEach((el) => el.addEventListener('change', updateMediaVisibility));
     updateMediaVisibility();
+
+    // ---- Realce visual do tema selecionado (Claro/Escuro) ----
+    const themeInputs = document.querySelectorAll('.theme-choice-input');
+    function updateThemeChoiceHighlight() {
+      themeInputs.forEach((input) => {
+        input.closest('.theme-choice').classList.toggle('theme-choice-active', input.checked);
+      });
+    }
+    themeInputs.forEach((el) => el.addEventListener('change', updateThemeChoiceHighlight));
 
     // ---- Preview instantâneo do favicon/logo escolhidos (antes de salvar) ----
     const favInput = document.querySelector('input[name="favicon"]');

@@ -150,6 +150,12 @@ class SiteSettings(TimestampMixin, db.Model):
     card_background_color = db.Column(db.String(9), nullable=False, default="#131A24")
     card_border_radius = db.Column(db.Integer, nullable=False, default=12)
 
+    # ---- Tema visual do sistema inteiro (site público + painel) ----
+    # "dark" (padrão) ou "light". Configurável só pelo admin, em
+    # Configurações → Aparência, e vale para todo mundo que acessa o
+    # sistema (não é uma preferência por visitante/navegador).
+    theme = db.Column(db.String(10), nullable=False, default="dark")
+
     # ---- Páginas legais (editáveis pelo painel, sem tocar em código) ----
     privacy_content = db.Column(db.Text, nullable=True)
     terms_content = db.Column(db.Text, nullable=True)

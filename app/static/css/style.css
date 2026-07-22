@@ -1,17 +1,47 @@
 :root{
-  --ink:        #0A0E16;   
-  --ink-soft:   #0E141D;   
-  --panel:      #131A24;   
-  --panel-2:    #1A2330;   
-  --line:       #232C3B;   
+  --ink:        #0A0E16;
+  --ink-soft:   #0E141D;
+  --panel:      #131A24;
+  --panel-2:    #1A2330;
+  --line:       #232C3B;
   --line-soft:  #1B2330;
-  --amber:      #FFB020;   
+  --amber:      #FFB020;
   --amber-dim:  #7A5518;
-  --cyan:       #37D6C7;   
-  --paper:      #F5F3EE;   
+  --cyan:       #37D6C7;
+  --paper:      #F5F3EE;
   --text-hi:    #ECEEF2;
   --text-mid:   #AEB6C2;
   --text-low:   #6C7686;
+
+  /* Variantes de amber/cyan usadas como TEXTO puro sobre o fundo do
+     painel (links, categorias, destaques). No tema escuro são idênticas
+     à cor de marca; no tema claro ficam mais escuras para manter
+     contraste legível sobre fundo branco/claro. */
+  --amber-text: var(--amber);
+  --cyan-text:  var(--cyan);
+
+  /* Cor de texto usada SOBRE fundos de marca (âmbar), ex.: iniciais em
+     avatares/selos e botões primários. Fixa nos dois temas — não pode
+     seguir --ink (que fica claro no tema claro), senão o texto sobre o
+     fundo âmbar ficaria ilegível. */
+  --on-brand: #1A1204;
+
+  /* Sobreposições neutras (hover/realce/vidro) e sombras, usadas em vez
+     de rgba(255,255,255,x)/rgba(0,0,0,x) fixos para que continuem
+     fazendo sentido em qualquer tema (clarear no escuro, escurecer no
+     claro). */
+  --overlay-faint:  rgba(255,255,255,.02);
+  --overlay-soft:   rgba(255,255,255,.04);
+  --overlay-med:    rgba(255,255,255,.05);
+  --overlay-strong: rgba(255,255,255,.06);
+  --overlay-border: rgba(255,255,255,.08);
+  --noise-line:     rgba(255,255,255,.035);
+  --screen-sheen:   rgba(255,255,255,.06);
+  --screen-shadow:  rgba(0,0,0,.4);
+  --modal-backdrop: rgba(6,9,14,.6);
+  --modal-shadow:   rgba(0,0,0,.45);
+  --shadow-ambient: rgba(0,0,0,.5);
+  --chart-grid:     rgba(255,255,255,.06);
 
   --font-display: 'Space Grotesk', system-ui, sans-serif;
   --font-body:    'IBM Plex Sans', system-ui, sans-serif;
@@ -21,6 +51,41 @@
   --radius-md: 12px;
   --radius-lg: 20px;
   --maxw: 1240px;
+}
+
+/* ---- Tema claro ----
+   Ativado via `<html data-theme="light">`, controlado pelo admin em
+   Configurações → Aparência (vale para todo mundo que acessa o site e
+   o painel, não é uma preferência do navegador de cada visitante).
+   Como as cores usam variáveis CSS em todo o CSS/Tailwind, redefinir
+   estas variáveis já é suficiente para trocar o tema do sistema
+   inteiro, sem precisar duplicar regras. */
+[data-theme="light"]{
+  --ink:        #F6F4EE;
+  --ink-soft:   #EFEBDF;
+  --panel:      #FFFFFF;
+  --panel-2:    #F2EFE6;
+  --line:       #E3DECF;
+  --line-soft:  #EAE5D8;
+  --text-hi:    #1C2330;
+  --text-mid:   #55606F;
+  --text-low:   #838C99;
+
+  --amber-text: #9A6400;
+  --cyan-text:  #0E7C74;
+
+  --overlay-faint:  rgba(10,14,22,.02);
+  --overlay-soft:   rgba(10,14,22,.045);
+  --overlay-med:    rgba(10,14,22,.055);
+  --overlay-strong: rgba(10,14,22,.07);
+  --overlay-border: rgba(10,14,22,.1);
+  --noise-line:     rgba(10,14,22,.02);
+  --screen-sheen:   rgba(255,255,255,.8);
+  --screen-shadow:  rgba(10,14,22,.14);
+  --modal-backdrop: rgba(32,28,18,.32);
+  --modal-shadow:   rgba(20,16,8,.18);
+  --shadow-ambient: rgba(20,16,8,.16);
+  --chart-grid:     rgba(10,14,22,.09);
 }
 
 *{ box-sizing:border-box; }
@@ -64,7 +129,9 @@ header.glass{
 h1,h2,h3,h4,.font-display{ font-family:var(--font-display); letter-spacing:-0.02em; }
 .font-mono{ font-family:var(--font-mono); }
 
-::selection{ background:var(--amber); color:var(--ink); }
+/* Texto sempre escuro sobre a seleção âmbar, independente do tema —
+   var(--ink) mudaria para um tom claro no tema claro e ficaria ilegível. */
+::selection{ background:var(--amber); color:#1A1204; }
 
 @media (prefers-reduced-motion: reduce){
   *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; scroll-behavior:auto !important; }
@@ -90,8 +157,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 
 .glass{
-  background:linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02));
-  border:1px solid rgba(255,255,255,0.08);
+  background:linear-gradient(180deg, var(--overlay-strong), var(--overlay-faint));
+  border:1px solid var(--overlay-border);
   backdrop-filter:blur(16px);
   -webkit-backdrop-filter:blur(16px);
 }
@@ -119,7 +186,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .btn-ghost{
   background:transparent; color:var(--text-hi); border:1px solid var(--line);
 }
-.btn-ghost:hover{ border-color:var(--text-mid); background:rgba(255,255,255,0.04); }
+.btn-ghost:hover{ border-color:var(--text-mid); background:var(--overlay-soft); }
 
 /* ---- Botões de ação pequenos dos cards do admin (Editar/Excluir) ----
    Antes eram links de texto simples; depois viraram "pílulas" com texto
@@ -135,7 +202,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .icon-btn:active{ transform:scale(.9); }
 .icon-btn svg{ width:12px; height:12px; flex-shrink:0; }
 .icon-btn span{ display:none; }
-.icon-btn-edit{ color:var(--cyan); background:rgba(55,214,199,.07); border-color:rgba(55,214,199,.16); }
+.icon-btn-edit{ color:var(--cyan-text); background:rgba(55,214,199,.07); border-color:rgba(55,214,199,.16); }
 .icon-btn-edit:hover{ background:rgba(55,214,199,.14); border-color:rgba(55,214,199,.35); }
 .icon-btn-danger{ color:#F87171; background:rgba(248,113,113,.07); border-color:rgba(248,113,113,.16); }
 .icon-btn-danger:hover{ background:rgba(248,113,113,.14); border-color:rgba(248,113,113,.35); }
@@ -146,7 +213,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   width:1.6rem; height:1.6rem; border-radius:7px; flex-shrink:0; touch-action:none;
   transition:background .15s ease, color .15s ease;
 }
-.drag-handle:hover{ background:rgba(255,255,255,.05); color:var(--text-mid); }
+.drag-handle:hover{ background:var(--overlay-med); color:var(--text-mid); }
 .drag-handle:active{ cursor:grabbing; }
 
 .card-draggable{ transition:opacity .15s ease, box-shadow .2s ease, border-color .2s ease; }
@@ -165,12 +232,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
    com um clique fora, Esc ou nos botões. */
 .confirm-modal-overlay{
   position:fixed; inset:0; z-index:200; display:flex; align-items:center; justify-content:center;
-  background:rgba(6,9,14,.6); padding:1rem;
+  background:var(--modal-backdrop); padding:1rem;
 }
 .confirm-modal-overlay.hidden{ display:none; }
 .confirm-modal{
   width:100%; max-width:19rem; background:var(--panel); border:1px solid var(--line);
-  border-radius:12px; padding:1.1rem 1.1rem 1rem; box-shadow:0 16px 40px rgba(0,0,0,.45);
+  border-radius:12px; padding:1.1rem 1.1rem 1rem; box-shadow:0 16px 40px var(--modal-shadow);
   animation:confirm-modal-in .16s ease;
 }
 @keyframes confirm-modal-in{ from{ opacity:0; transform:translateY(4px) scale(.97); } to{ opacity:1; transform:translateY(0) scale(1); } }
@@ -181,7 +248,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   border:1px solid transparent; transition:background .15s ease, border-color .15s ease;
 }
 .confirm-modal-cancel{ color:var(--text-mid); background:transparent; border-color:var(--line); }
-.confirm-modal-cancel:hover{ background:rgba(255,255,255,.05); }
+.confirm-modal-cancel:hover{ background:var(--overlay-med); }
 .confirm-modal-confirm{ color:#F87171; background:rgba(248,113,113,.1); border-color:rgba(248,113,113,.3); }
 .confirm-modal-confirm:hover{ background:rgba(248,113,113,.2); border-color:rgba(248,113,113,.5); }
 
@@ -197,6 +264,19 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   display:inline-block; font-size:.7rem; color:var(--text-mid); font-family:var(--font-mono);
   max-width:14rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:middle;
 }
+/* Ambas as classes acima fixam "display" no próprio seletor de uma classe
+   só — mesma especificidade da utilitária .hidden{display:none} do
+   Tailwind, então quem carrega por último (este arquivo, depois do
+   tailwind.min.css) "ganhava" e o botão/badge ficava sempre visível
+   mesmo com a classe .hidden aplicada pelo JS. Precisa de uma regra mais
+   específica (duas classes) para garantir que .hidden sempre vença. */
+.media-preview-remove.hidden, .media-filename-badge.hidden{ display:none; }
+
+/* ---- Seletor de tema (Configurações → Aparência) ---- */
+.theme-choice{ transition:background .15s ease, border-color .15s ease, color .15s ease; }
+.theme-choice:hover{ border-color:var(--text-mid); }
+.theme-choice-input{ accent-color:var(--amber); }
+.theme-choice-active{ border-color:var(--amber); background:rgba(255,176,32,.08); color:var(--text-hi); }
 
 .pill-live{
   display:inline-flex; align-items:center; gap:.5rem;
@@ -222,12 +302,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .screen::before{ 
   content:''; position:absolute; inset:0; border-radius:inherit;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.06), inset 0 0 0 1px rgba(0,0,0,.4);
+  box-shadow:inset 0 1px 0 var(--screen-sheen), inset 0 0 0 1px var(--screen-shadow);
   pointer-events:none; z-index:3;
 }
 .screen::after{ 
   content:''; position:absolute; inset:0; z-index:2; pointer-events:none;
-  background:repeating-linear-gradient(180deg, rgba(255,255,255,0.035) 0px, rgba(255,255,255,0.035) 1px, transparent 1px, transparent 3px);
+  background:repeating-linear-gradient(180deg, var(--noise-line) 0px, var(--noise-line) 1px, transparent 1px, transparent 3px);
   mix-blend-mode:overlay;
   opacity:.5;
 }
@@ -237,6 +317,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   position:absolute; inset:0; pointer-events:none; opacity:.05; z-index:2;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
+/* No claro, o grão fica mais "sujo" sobre fundo branco — reduz a opacidade. */
+[data-theme="light"] .grain{ opacity:.025; }
 
 .card{
   background:var(--panel); border:1px solid var(--line); border-radius:var(--radius-md);

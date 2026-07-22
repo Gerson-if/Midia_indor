@@ -520,6 +520,7 @@ def settings_manage():
             settings.card_background_color = form.card_background_color.data
             if form.card_border_radius.data is not None:
                 settings.card_border_radius = form.card_border_radius.data
+            settings.theme = form.theme.data
 
             settings.privacy_content = normalize_newlines(form.privacy_content.data)
             settings.terms_content = normalize_newlines(form.terms_content.data)

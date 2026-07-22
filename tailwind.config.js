@@ -4,8 +4,11 @@ module.exports = {
     "./app/templates/**/*.html",
     "./app/static/js/**/*.js",
   ],
-  // Sem "darkMode" dinâmico: o painel e o site público usam sempre o
-  // tema escuro definido nas variáveis CSS (app/static/css/style.css).
+  // O tema (claro/escuro) é definido em runtime via `<html data-theme="...">`
+  // (ver app/static/css/style.css), lido de SiteSettings.theme e escolhido
+  // pelo admin em Configurações → Aparência — não usamos o "darkMode" do
+  // Tailwind porque não é uma preferência de SO/navegador por visitante,
+  // e sim uma configuração única para o sistema inteiro.
   theme: {
     extend: {
       colors: {
@@ -21,6 +24,7 @@ module.exports = {
         hi: "var(--text-hi)",
         mid: "var(--text-mid)",
         low: "var(--text-low)",
+        onbrand: "var(--on-brand)",
       },
       fontFamily: {
         display: ["Space Grotesk", "system-ui", "sans-serif"],

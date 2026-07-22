@@ -64,8 +64,8 @@
         <div class="w-14 h-14 rounded-lg bg-panel2 shrink-0"></div>
         {% endif %}
         <div class="flex-1 min-w-0">
-          <p class="font-semibold text-white truncate text-sm">{{ item.title }}</p>
-          <p class="text-xs" style="color: var(--amber)">{{ item.category }}</p>
+          <p class="font-semibold text-hi truncate text-sm">{{ item.title }}</p>
+          <p class="text-xs" style="color: var(--amber-text)">{{ item.category }}</p>
         </div>
         <div class="flex items-center gap-1.5 shrink-0">
           <a href="{{ url_for('admin.gallery_edit', item_id=item.id) }}#form-card" class="icon-btn icon-btn-edit" title="Editar">

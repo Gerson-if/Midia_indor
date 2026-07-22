@@ -11,29 +11,29 @@
       {% if global_settings and global_settings.logo_path %}
       <img src="{{ url_for('static', filename=global_settings.logo_path) }}" alt="{{ APP_NAME }}" class="w-12 h-12 rounded-lg object-contain">
       {% else %}
-      <span class="w-12 h-12 rounded-lg flex items-center justify-center text-ink font-display font-bold text-2xl" style="background-color: #FFB020">{{ APP_NAME[0] if APP_NAME else 'N' }}</span>
+      <span class="w-12 h-12 rounded-lg flex items-center justify-center text-onbrand font-display font-bold text-2xl" style="background-color: #FFB020">{{ APP_NAME[0] if APP_NAME else 'N' }}</span>
       {% endif %}
     </div>
-    <h2 class="font-display text-2xl text-center mb-6 text-white">Acesso ao Painel</h2>
+    <h2 class="font-display text-2xl text-center mb-6 text-hi">Acesso ao Painel</h2>
 
     <form method="POST" action="{{ url_for('auth.login') }}" class="space-y-5">
       {{ form.hidden_tag() }}
       <div>
         <label class="block text-xs font-mono uppercase text-low mb-1">E-mail</label>
-        {{ form.email(class_="w-full bg-panel2 border border-line rounded-lg px-4 py-3 text-sm focus:outline-none text-white transition-colors", placeholder="seu@email.com", autofocus=true, required=true, type="email", autocomplete="email") }}
+        {{ form.email(class_="w-full bg-panel2 border border-line rounded-lg px-4 py-3 text-sm focus:outline-none text-hi transition-colors", placeholder="seu@email.com", autofocus=true, required=true, type="email", autocomplete="email") }}
         {% for e in form.email.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
       </div>
       <div>
         <label class="block text-xs font-mono uppercase text-low mb-1">Senha</label>
-        {{ form.password(class_="w-full bg-panel2 border border-line rounded-lg px-4 py-3 text-sm focus:outline-none text-white transition-colors", placeholder="••••••••", required=true, autocomplete="current-password") }}
+        {{ form.password(class_="w-full bg-panel2 border border-line rounded-lg px-4 py-3 text-sm focus:outline-none text-hi transition-colors", placeholder="••••••••", required=true, autocomplete="current-password") }}
         {% for e in form.password.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
       </div>
       <label class="flex items-center gap-2 text-xs text-mid">
         {{ form.remember_me() }} Manter conectado
       </label>
 
-      <button type="submit" class="btn btn-primary w-full justify-center py-3 text-base text-ink font-bold" style="background-color: #FFB020">Entrar</button>
-      <a href="{{ url_for('main.index') }}" class="block text-center text-xs text-mid hover:text-white mt-4">&larr; Voltar ao site</a>
+      <button type="submit" class="btn btn-primary w-full justify-center py-3 text-base text-onbrand font-bold" style="background-color: #FFB020">Entrar</button>
+      <a href="{{ url_for('main.index') }}" class="block text-center text-xs text-mid hover:text-hi mt-4">&larr; Voltar ao site</a>
     </form>
   </div>
 </div>

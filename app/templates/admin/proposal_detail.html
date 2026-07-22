@@ -19,7 +19,7 @@
     <div class="card p-6">
       <h3 class="font-display text-lg text-hi mb-4">Dados do Cliente</h3>
       <dl class="grid sm:grid-cols-2 gap-4 text-sm">
-        <div><dt class="text-low font-mono text-xs uppercase">Nome</dt><dd class="text-white font-semibold">{{ proposal.name }}</dd></div>
+        <div><dt class="text-low font-mono text-xs uppercase">Nome</dt><dd class="text-hi font-semibold">{{ proposal.name }}</dd></div>
         <div><dt class="text-low font-mono text-xs uppercase">E-mail</dt><dd class="text-mid">{{ proposal.email }}</dd></div>
         <div><dt class="text-low font-mono text-xs uppercase">Telefone</dt><dd class="text-mid">{{ proposal.phone }}</dd></div>
         <div><dt class="text-low font-mono text-xs uppercase">Empresa</dt><dd class="text-mid">{{ proposal.company_name or "—" }}</dd></div>
@@ -37,7 +37,7 @@
     <div class="card p-6">
       <h3 class="font-display text-lg text-hi mb-4">Histórico da solicitação</h3>
       <ul class="space-y-3">
-        <li class="text-sm text-mid border-l-2 pl-3" style="border-color: var(--cyan)">
+        <li class="text-sm text-mid border-l-2 pl-3" style="border-color: var(--cyan-text)">
           <span class="text-xs font-mono text-low">{{ proposal.created_at.strftime('%d/%m/%Y %H:%M') }}</span> —
           Solicitação recebida via {{ proposal.source }} (IP {{ proposal.ip_address or "desconhecido" }})
         </li>
@@ -73,8 +73,8 @@
     <div class="card p-6 text-sm">
       <h3 class="font-display text-lg text-hi mb-3">Contato</h3>
       {% if proposal.contacted_at %}
-        <p class="text-mid">Contatado em <span class="text-white">{{ proposal.contacted_at.strftime('%d/%m/%Y %H:%M') }}</span></p>
-        <p class="text-mid">Por <span class="text-white">{{ proposal.contacted_by.name if proposal.contacted_by else "—" }}</span></p>
+        <p class="text-mid">Contatado em <span class="text-hi">{{ proposal.contacted_at.strftime('%d/%m/%Y %H:%M') }}</span></p>
+        <p class="text-mid">Por <span class="text-hi">{{ proposal.contacted_by.name if proposal.contacted_by else "—" }}</span></p>
       {% else %}
         <p class="text-low">Ainda não contatado.</p>
       {% endif %}

@@ -58,7 +58,7 @@
         {% else %}
         <div class="w-12 h-12 rounded-lg bg-panel2 shrink-0"></div>
         {% endif %}
-        <p class="flex-1 min-w-0 font-semibold text-white text-sm truncate">{{ item.name }}</p>
+        <p class="flex-1 min-w-0 font-semibold text-hi text-sm truncate">{{ item.name }}</p>
         <div class="flex items-center gap-1.5 shrink-0">
           <a href="{{ url_for('admin.partner_edit', item_id=item.id) }}#form-card" class="icon-btn icon-btn-edit" title="Editar">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>

@@ -143,6 +143,7 @@ def test_settings_update(client, admin_user, db):
             "testimonials_accent_color": "#37D6C7",
             "card_background_color": "#131A24",
             "card_border_radius": "12",
+            "theme": "dark",
             "version_id": settings.version_id,
         },
         follow_redirects=True,
@@ -173,6 +174,7 @@ def test_settings_hero_media_toggle_and_removal(client, admin_user, db):
         "testimonials_accent_color": "#37D6C7",
         "card_background_color": "#131A24",
         "card_border_radius": "12",
+        "theme": "dark",
         "version_id": settings.version_id,
         "remove_hero_video": "y",
     }
@@ -204,6 +206,7 @@ def test_privacy_and_terms_content_editable_and_rendered(client, admin_user, db)
             "testimonials_accent_color": "#37D6C7",
             "card_background_color": "#131A24",
             "card_border_radius": "12",
+            "theme": "dark",
             "version_id": settings.version_id,
             "privacy_content": "## Título Customizado\nTexto customizado de privacidade.",
             "terms_content": "## Regras Customizadas\nTexto customizado de termos.",
@@ -455,3 +458,54 @@ def test_admin_delete_forms_use_custom_confirm_modal_not_native_confirm(client, 
         html = resp.get_data(as_text=True)
         assert "return confirm(" not in html, f"{url} ainda usa confirm() nativo"
         assert "data-confirm-message=" in html, f"{url} não tem o modal de confirmação"
+
+
+def test_theme_defaults_to_dark_on_public_site_and_admin(client, admin_user, db):
+    """O tema é escuro por padrão em qualquer página nova, tanto no site
+    público quanto no painel — sem precisar de configuração manual."""
+    resp = client.get("/")
+    assert resp.status_code == 200
+    assert 'data-theme="dark"' in resp.get_data(as_text=True)
+
+    login(client, "admin@teste.com", "SenhaForte123!")
+    resp = client.get("/admin/")
+    assert resp.status_code == 200
+    assert 'data-theme="dark"' in resp.get_data(as_text=True)
+
+
+def test_changing_theme_to_light_reflects_on_public_site_and_admin(client, admin_user, db):
+    """Trocar o tema em Configurações → Aparência é uma configuração única
+    para o sistema inteiro: precisa valer tanto para quem visita o site
+    público quanto para quem usa o painel, não só para quem salvou."""
+    from app.models import SiteSettings
+
+    login(client, "admin@teste.com", "SenhaForte123!")
+    settings = SiteSettings.get_solo()
+    resp = client.post(
+        "/admin/configuracoes",
+        data={
+            "company_name": settings.company_name,
+            "company_whatsapp": settings.company_whatsapp,
+            "color_primary": settings.color_primary,
+            "color_secondary": settings.color_secondary,
+            "hero_overlay_opacity": "0.5",
+            "hero_media_type": "video",
+            "services_accent_color": "#FFB020",
+            "gallery_accent_color": "#FFB020",
+            "testimonials_accent_color": "#37D6C7",
+            "card_background_color": "#131A24",
+            "card_border_radius": "12",
+            "theme": "light",
+            "version_id": settings.version_id,
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    db.session.refresh(settings)
+    assert settings.theme == "light"
+
+    resp = client.get("/")
+    assert 'data-theme="light"' in resp.get_data(as_text=True)
+
+    resp = client.get("/admin/")
+    assert 'data-theme="light"' in resp.get_data(as_text=True)
