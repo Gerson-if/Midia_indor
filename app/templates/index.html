@@ -59,6 +59,9 @@
       <a href="#servicos" class="hover:text-hi transition-colors">Vantagens</a>
       <a href="#galeria" class="hover:text-hi transition-colors">Telas</a>
       <a href="#depoimentos" class="hover:text-hi transition-colors">Clientes</a>
+      {% for section in custom_sections %}
+      <a href="#{{ section.slug }}" class="hover:text-hi transition-colors">{{ section.nav_label }}</a>
+      {% endfor %}
       <a href="#contato" class="btn btn-primary !py-1.5 !px-4 text-xs" style="background-color: var(--amber)">Anunciar</a>
     </div>
     <button type="button" id="mobile-nav-toggle" aria-expanded="false" aria-controls="mobile-nav-menu" aria-label="Abrir menu"
@@ -73,6 +76,9 @@
       <a href="#servicos" class="py-3 border-b border-line hover:text-hi transition-colors">Vantagens</a>
       <a href="#galeria" class="py-3 border-b border-line hover:text-hi transition-colors">Telas</a>
       <a href="#depoimentos" class="py-3 border-b border-line hover:text-hi transition-colors">Clientes</a>
+      {% for section in custom_sections %}
+      <a href="#{{ section.slug }}" class="py-3 border-b border-line hover:text-hi transition-colors">{{ section.nav_label }}</a>
+      {% endfor %}
       <a href="#contato" class="btn btn-primary justify-center !py-3 mt-3 text-xs normal-case" style="background-color: var(--amber)">Anunciar</a>
     </div>
   </div>
@@ -186,6 +192,38 @@
   </div>
 </section>
 
+{# Seções criadas livremente pelo admin em Configurações → Seções
+   Personalizadas — mesmo layout de cartões usado em "Vantagens", só que
+   com quantas seções o admin quiser, cada uma com seu próprio título,
+   descrição e conjunto de cartões. #}
+{% for section in custom_sections %}
+<section id="{{ section.slug }}" class="py-24 border-t border-line">
+  <div class="container-nx">
+    <div class="text-center mb-16" data-aos="fade-up">
+      <h2 class="font-display text-3xl md:text-4xl font-semibold text-hi mb-4">{{ section.heading }}</h2>
+      {% if section.subtitle %}
+      <p class="text-mid max-w-2xl mx-auto">{{ section.subtitle }}</p>
+      {% endif %}
+    </div>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {% for card in section.active_items %}
+      <div class="card site-card p-6" data-aos="fade-up" data-aos-delay="{{ loop.index0 * 100 }}">
+        {% if card.image_path %}
+        <div class="card-img-wrapper">
+          <img src="{{ url_for('static', filename=card.image_path) }}" alt="{{ card.title }}">
+        </div>
+        {% endif %}
+        <h3 class="font-display text-lg font-semibold text-hi mb-2">{{ card.title }}</h3>
+        {% if card.description %}
+        <p class="text-mid text-sm">{{ card.description }}</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endfor %}
+
 <section id="contato" class="py-24 relative overflow-hidden">
   <div class="absolute inset-0 opacity-10" style="background:radial-gradient(circle at center, var(--amber) 0%, transparent 70%)"></div>
   <div class="container-nx relative z-10 max-w-5xl mx-auto">
@@ -198,9 +236,19 @@
         <h3 class="text-xl font-display font-semibold mb-4 text-hi">Solicite uma proposta</h3>
 
         {% if proposal_sent %}
-        <p class="text-green-400 text-sm mb-4 font-mono text-center border border-green-500/30 bg-green-500/10 rounded-lg py-3">
-          Proposta enviada com sucesso! Em breve entraremos em contato.
-        </p>
+        {# Mensagem de confirmação mais elaborada (título + explicação +
+           próximo passo), no lugar da linha única e seca de antes — o
+           formulário continua logo abaixo, então o cliente pode enviar
+           outra solicitação normalmente se quiser, sem precisar recarregar
+           a página. #}
+        <div class="mb-6 rounded-xl border border-green-500/30 bg-green-500/10 p-5 text-center" data-aos="zoom-in">
+          <div class="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-3">
+            <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
+          </div>
+          <p class="text-hi font-display font-semibold text-lg mb-1">Solicitação recebida com sucesso!</p>
+          <p class="text-mid text-sm">Obrigado pelo interesse em anunciar com a {{ settings.company_name }}. Nossa equipe vai analisar os detalhes e entrar em contato em breve.</p>
+          <p class="text-low text-xs mt-3">Precisa enviar outra solicitação ou complementar alguma informação? É só preencher o formulário abaixo novamente.</p>
+        </div>
         {% endif %}
 
         {% if form.errors %}
@@ -247,11 +295,13 @@
             Chamar no WhatsApp
           </a>
         </div>
+        {% if settings.company_email or settings.company_address %}
         <div class="space-y-2">
           <p class="text-sm font-mono uppercase text-low">Mais contatos</p>
-          <p class="text-hi font-medium">{{ settings.company_email }}</p>
-          <p class="text-mid">{{ settings.company_address }}</p>
+          {% if settings.company_email %}<p class="text-hi font-medium">{{ settings.company_email }}</p>{% endif %}
+          {% if settings.company_address %}<p class="text-mid">{{ settings.company_address }}</p>{% endif %}
         </div>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -423,6 +473,20 @@
       mobileMenuBtn.addEventListener('click', toggleMenu);
       mobileMenu.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeMenu));
       document.addEventListener('keydown', (evt) => { if (evt.key === 'Escape') closeMenu(); });
+
+      // Antes, com o menu mobile aberto, começar a rolar a página não
+      // fechava ele — o visitante precisava tocar de novo no ícone pra
+      // recolher. Aqui, assim que o usuário rola (pra qualquer direção,
+      // mesmo que pouco), o menu se recolhe sozinho, do jeito que a
+      // maioria dos sites/apps já se comporta. Usamos passive:true (não
+      // chamamos preventDefault) pra não travar o scroll no mobile.
+      window.addEventListener(
+        'scroll',
+        () => {
+          if (!mobileMenu.classList.contains('hidden')) closeMenu();
+        },
+        { passive: true }
+      );
     }
   });
 </script>

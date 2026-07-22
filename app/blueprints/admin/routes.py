@@ -1,8 +1,12 @@
+import re
+
 from flask import abort, current_app, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app.blueprints.admin import admin_bp
 from app.blueprints.admin.forms import (
+    CustomSectionForm,
+    CustomSectionItemForm,
     GalleryItemForm,
     PartnerForm,
     ProposalStatusForm,
@@ -12,12 +16,30 @@ from app.blueprints.admin.forms import (
     UserForm,
 )
 from app.extensions import db
-from app.models import AuditLog, GalleryItem, Partner, Proposal, Service, SiteSettings, Testimonial, User, UserRole
+from app.models import (
+    AuditLog,
+    CustomSection,
+    CustomSectionItem,
+    GalleryItem,
+    Partner,
+    Proposal,
+    Service,
+    SiteSettings,
+    Testimonial,
+    User,
+    UserRole,
+)
 from app.models.proposal import ProposalStatus
 from app.services.uploads import UploadError, delete_upload, save_favicon, save_image, save_video
 from app.services.whatsapp import build_client_whatsapp_link
 from app.utils.decorators import admin_required, log_action, roles_required
 from app.utils.legal_content import normalize_newlines
+
+# Âncoras já usadas pelas seções fixas do site (index.html) — uma seção
+# personalizada não pode gerar um slug igual a um desses, senão dois
+# elementos com o mesmo id="" quebram a navegação por link (#âncora) e o
+# scroll pode acabar levando para o lugar errado.
+RESERVED_SLUGS = {"topo", "hero", "servicos", "galeria", "depoimentos", "contato"}
 from sqlalchemy.orm.exc import StaleDataError
 
 STAFF_ROLES = (UserRole.ADMIN, UserRole.EDITOR, UserRole.VIEWER)
@@ -467,6 +489,196 @@ def partner_delete(item_id):
 
 
 # ------------------------------------------------------------------ #
+# Conteúdo do site: Seções personalizadas (criadas livremente pelo admin)
+# ------------------------------------------------------------------ #
+@admin_bp.route("/conteudo/secoes", methods=["GET", "POST"])
+@roles_required(*EDIT_ROLES)
+def custom_sections_manage():
+    form = CustomSectionForm()
+    if form.validate_on_submit():
+        section = CustomSection(
+            nav_label=form.nav_label.data,
+            heading=form.heading.data,
+            subtitle=form.subtitle.data,
+            slug=_unique_section_slug(form.nav_label.data),
+            display_order=_next_display_order(CustomSection),
+            is_active=form.is_active.data,
+        )
+        db.session.add(section)
+        log_action("custom_section.created", entity_type="CustomSection", description=section.nav_label)
+        db.session.commit()
+        flash("Seção criada. Agora adicione os cartões dela.", "success")
+        return redirect(url_for("admin.custom_section_items_manage", section_id=section.id))
+
+    sections = CustomSection.query.order_by(CustomSection.display_order).all()
+    return render_template("admin/content_custom_sections.html", form=form, sections=sections, editing=None)
+
+
+@admin_bp.route("/conteudo/secoes/<int:section_id>/editar", methods=["GET", "POST"])
+@roles_required(*EDIT_ROLES)
+def custom_section_edit(section_id):
+    section = CustomSection.query.get_or_404(section_id)
+    form = CustomSectionForm(obj=section) if request.method == "GET" else CustomSectionForm()
+
+    if form.validate_on_submit():
+        # O slug só é regerado se o nome no menu mudou de fato — evita que
+        # links já compartilhados (#slug-antigo) quebrem só por causa de um
+        # ajuste de maiúscula/espaço no rótulo.
+        if form.nav_label.data.strip() != section.nav_label:
+            section.slug = _unique_section_slug(form.nav_label.data, exclude_id=section.id)
+        section.nav_label = form.nav_label.data
+        section.heading = form.heading.data
+        section.subtitle = form.subtitle.data
+        section.is_active = form.is_active.data
+        log_action("custom_section.updated", entity_type="CustomSection", entity_id=section.id, description=section.nav_label)
+        db.session.commit()
+        flash("Seção atualizada com sucesso.", "success")
+        return redirect(url_for("admin.custom_sections_manage"))
+
+    sections = CustomSection.query.order_by(CustomSection.display_order).all()
+    return render_template("admin/content_custom_sections.html", form=form, sections=sections, editing=section)
+
+
+@admin_bp.route("/conteudo/secoes/<int:section_id>/excluir", methods=["POST"])
+@roles_required(*EDIT_ROLES)
+def custom_section_delete(section_id):
+    section = CustomSection.query.get_or_404(section_id)
+    # Remove os arquivos de imagem dos cartões antes de excluir a seção —
+    # o cascade do banco apaga as linhas, mas não os arquivos no disco.
+    for item in section.items:
+        delete_upload(item.image_path)
+    log_action("custom_section.deleted", entity_type="CustomSection", entity_id=section.id, description=section.nav_label)
+    db.session.delete(section)
+    db.session.commit()
+    flash("Seção removida.", "info")
+    return redirect(url_for("admin.custom_sections_manage"))
+
+
+@admin_bp.route("/conteudo/secoes/reordenar", methods=["POST"])
+@roles_required(*EDIT_ROLES)
+def custom_sections_reorder():
+    return _reorder_items(CustomSection, "custom_section")
+
+
+@admin_bp.route("/conteudo/secoes/<int:section_id>/itens", methods=["GET", "POST"])
+@roles_required(*EDIT_ROLES)
+def custom_section_items_manage(section_id):
+    section = CustomSection.query.get_or_404(section_id)
+    form = CustomSectionItemForm()
+    if form.validate_on_submit():
+        item = CustomSectionItem(
+            section_id=section.id,
+            title=form.title.data,
+            description=form.description.data,
+            display_order=_next_display_order_scoped(CustomSectionItem, section_id=section.id),
+            is_active=form.is_active.data,
+        )
+        _attach_image(form.image, item, "image_path", "content/custom_sections", remove_field=form.remove_image)
+        db.session.add(item)
+        log_action("custom_section_item.created", entity_type="CustomSectionItem", description=item.title)
+        db.session.commit()
+        flash("Cartão adicionado.", "success")
+        return redirect(url_for("admin.custom_section_items_manage", section_id=section.id))
+
+    items = CustomSectionItem.query.filter_by(section_id=section.id).order_by(CustomSectionItem.display_order).all()
+    return render_template(
+        "admin/content_custom_section_items.html", form=form, section=section, items=items, editing=None
+    )
+
+
+@admin_bp.route("/conteudo/secoes/<int:section_id>/itens/<int:item_id>/editar", methods=["GET", "POST"])
+@roles_required(*EDIT_ROLES)
+def custom_section_item_edit(section_id, item_id):
+    section = CustomSection.query.get_or_404(section_id)
+    item = CustomSectionItem.query.filter_by(id=item_id, section_id=section.id).first_or_404()
+    form = CustomSectionItemForm(obj=item) if request.method == "GET" else CustomSectionItemForm()
+
+    if form.validate_on_submit():
+        item.title = form.title.data
+        item.description = form.description.data
+        item.is_active = form.is_active.data
+        _attach_image(form.image, item, "image_path", "content/custom_sections", remove_field=form.remove_image)
+        log_action("custom_section_item.updated", entity_type="CustomSectionItem", entity_id=item.id, description=item.title)
+        db.session.commit()
+        flash("Cartão atualizado com sucesso.", "success")
+        return redirect(url_for("admin.custom_section_items_manage", section_id=section.id))
+
+    items = CustomSectionItem.query.filter_by(section_id=section.id).order_by(CustomSectionItem.display_order).all()
+    return render_template(
+        "admin/content_custom_section_items.html", form=form, section=section, items=items, editing=item
+    )
+
+
+@admin_bp.route("/conteudo/secoes/<int:section_id>/itens/<int:item_id>/excluir", methods=["POST"])
+@roles_required(*EDIT_ROLES)
+def custom_section_item_delete(section_id, item_id):
+    section = CustomSection.query.get_or_404(section_id)
+    item = CustomSectionItem.query.filter_by(id=item_id, section_id=section.id).first_or_404()
+    delete_upload(item.image_path)
+    log_action("custom_section_item.deleted", entity_type="CustomSectionItem", entity_id=item.id, description=item.title)
+    db.session.delete(item)
+    db.session.commit()
+    flash("Cartão removido.", "info")
+    return redirect(url_for("admin.custom_section_items_manage", section_id=section.id))
+
+
+@admin_bp.route("/conteudo/secoes/<int:section_id>/itens/reordenar", methods=["POST"])
+@roles_required(*EDIT_ROLES)
+def custom_section_items_reorder(section_id):
+    # Escopado a UMA seção: diferente de _reorder_items (usado pelas
+    # listas globais de Vantagens/Galeria/etc.), os cartões de seções
+    # personalizadas são divididos entre várias seções — reordenar os de
+    # uma não pode mexer nos de outra.
+    CustomSection.query.get_or_404(section_id)
+    payload = request.get_json(silent=True) or {}
+    order = payload.get("order")
+    if not isinstance(order, list) or not order:
+        return jsonify(success=False, message="Lista de ordenação inválida."), 400
+
+    try:
+        ordered_ids = [int(raw_id) for raw_id in order]
+    except (TypeError, ValueError):
+        return jsonify(success=False, message="IDs inválidos."), 400
+
+    items_by_id = {
+        item.id: item
+        for item in CustomSectionItem.query.filter(
+            CustomSectionItem.id.in_(ordered_ids), CustomSectionItem.section_id == section_id
+        ).all()
+    }
+    existing_ids = {
+        row.id
+        for row in CustomSectionItem.query.filter_by(section_id=section_id).with_entities(CustomSectionItem.id).all()
+    }
+
+    if set(ordered_ids) != existing_ids or len(ordered_ids) != len(items_by_id):
+        return (
+            jsonify(
+                success=False,
+                message="A lista está desatualizada (um cartão pode ter sido criado/removido por outro usuário). Recarregue a página e tente novamente.",
+            ),
+            409,
+        )
+
+    for position, item_id in enumerate(ordered_ids):
+        items_by_id[item_id].display_order = position
+
+    try:
+        log_action(
+            "custom_section_item.reordered",
+            entity_type="CustomSectionItem",
+            description=f"Seção {section_id}: nova ordem {ordered_ids}",
+        )
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Erro ao reordenar CustomSectionItem")
+        return jsonify(success=False, message="Erro ao salvar a nova ordem."), 500
+
+    return jsonify(success=True)
+
+
+# ------------------------------------------------------------------ #
 # Reordenação dos cards (arrastar e soltar)
 # ------------------------------------------------------------------ #
 # Antes, a única forma de mudar a posição de um item era editá-lo e digitar
@@ -650,6 +862,50 @@ def _next_display_order(model):
     """
     max_order = db.session.query(db.func.max(model.display_order)).scalar()
     return 0 if max_order is None else max_order + 1
+
+
+def _next_display_order_scoped(model, **filters):
+    """Mesma ideia de _next_display_order, mas dentro de um subconjunto
+    (ex.: só os cartões de UMA seção personalizada), não da tabela inteira.
+    """
+    max_order = db.session.query(db.func.max(model.display_order)).filter_by(**filters).scalar()
+    return 0 if max_order is None else max_order + 1
+
+
+def _slugify(text: str) -> str:
+    """Converte um texto livre num slug seguro pra usar como #âncora HTML."""
+    text = (text or "").strip().lower()
+    # Troca qualquer sequência de caracteres não alfanuméricos por um único
+    # hífen — cobre acentos, espaços, pontuação etc. (não tentamos
+    # transliterar acentos individualmente; o resultado só perde esses
+    # caracteres, o que é aceitável para um id interno de âncora).
+    text = re.sub(r"[^a-z0-9]+", "-", text).strip("-")
+    return text or "secao"
+
+
+def _unique_section_slug(nav_label: str, exclude_id: int | None = None) -> str:
+    """
+    Gera um slug único (e nunca igual às âncoras fixas do site) a partir
+    do nome no menu. Se já existir um igual (de outra seção, ou colidindo
+    com uma âncora reservada), acrescenta um sufixo numérico crescente
+    até achar um livre — nunca falha silenciosamente nem levanta erro de
+    unicidade no banco por causa de dois admins criando seções com nomes
+    parecidos ao mesmo tempo.
+    """
+    base = _slugify(nav_label)
+    if base in RESERVED_SLUGS:
+        base = f"secao-{base}"
+
+    slug = base
+    suffix = 2
+    while True:
+        query = CustomSection.query.filter_by(slug=slug)
+        if exclude_id is not None:
+            query = query.filter(CustomSection.id != exclude_id)
+        if query.first() is None:
+            return slug
+        slug = f"{base}-{suffix}"
+        suffix += 1
 
 
 def _reorder_items(model, log_prefix):

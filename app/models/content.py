@@ -109,6 +109,73 @@ class Partner(TimestampMixin, db.Model):
         return {"id": self.id, "name": self.name, "logo_url": _static_url(self.logo_path)}
 
 
+class CustomSection(TimestampMixin, db.Model):
+    """
+    Seção extra do site, criada livremente pelo admin (além das seções
+    fixas Vantagens/Galeria/Depoimentos, que têm layout próprio). Cada
+    seção personalizada vira um item no menu (nav_label) e um bloco na
+    página inicial com um título, uma descrição opcional e uma grade de
+    cartões (CustomSectionItem) — pensada para casos que não se encaixam
+    nas seções prontas (ex.: "Planos", "Perguntas Frequentes", "Equipe").
+    """
+
+    __tablename__ = "custom_sections"
+
+    id = db.Column(db.Integer, primary_key=True)
+    # Usado como #âncora do menu (ex.: #secao-planos) — precisa ser único
+    # e não pode colidir com as âncoras fixas do site (ver RESERVED_SLUGS
+    # em app/blueprints/admin/routes.py), senão dois elementos com o
+    # mesmo id quebrariam a navegação por link.
+    slug = db.Column(db.String(60), unique=True, nullable=False, index=True)
+    nav_label = db.Column(db.String(60), nullable=False)
+    heading = db.Column(db.String(150), nullable=False)
+    subtitle = db.Column(db.String(300), nullable=True)
+    display_order = db.Column(db.Integer, nullable=False, default=0)
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
+
+    items = db.relationship(
+        "CustomSectionItem",
+        backref="section",
+        cascade="all, delete-orphan",
+        order_by="CustomSectionItem.display_order",
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "slug": self.slug,
+            "nav_label": self.nav_label,
+            "heading": self.heading,
+            "subtitle": self.subtitle,
+            "items": [i.to_dict() for i in self.items if i.is_active],
+        }
+
+
+class CustomSectionItem(TimestampMixin, db.Model):
+    """Cartão dentro de uma CustomSection (título, descrição, imagem)."""
+
+    __tablename__ = "custom_section_items"
+
+    id = db.Column(db.Integer, primary_key=True)
+    section_id = db.Column(
+        db.Integer, db.ForeignKey("custom_sections.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    title = db.Column(db.String(120), nullable=False)
+    description = db.Column(db.String(400), nullable=True)
+    image_path = db.Column(db.String(255), nullable=True)
+    display_order = db.Column(db.Integer, nullable=False, default=0)
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "title": self.title,
+            "description": self.description,
+            "image_url": _static_url(self.image_path),
+            "is_active": self.is_active,
+        }
+
+
 class SiteSettings(TimestampMixin, db.Model):
     """
     Configuração singleton (uma única linha, id=1) com os dados editáveis

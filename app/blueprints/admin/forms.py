@@ -54,6 +54,21 @@ class GalleryItemForm(FlaskForm):
     remove_image = BooleanField("Remover imagem atual")
 
 
+class CustomSectionForm(FlaskForm):
+    nav_label = StringField("Nome no menu", validators=[DataRequired(), Length(max=60)])
+    heading = StringField("Título da seção", validators=[DataRequired(), Length(max=150)])
+    subtitle = TextAreaField("Descrição (opcional)", validators=[Optional(), Length(max=300)])
+    is_active = BooleanField("Ativa (visível no site)", default=True)
+
+
+class CustomSectionItemForm(FlaskForm):
+    title = StringField("Título", validators=[DataRequired(), Length(max=120)])
+    description = TextAreaField("Descrição", validators=[Optional(), Length(max=400)])
+    is_active = BooleanField("Ativo", default=True)
+    image = FileField("Imagem", validators=[Optional(), FileAllowed(["jpg", "jpeg", "png", "webp", "gif"])])
+    remove_image = BooleanField("Remover imagem atual")
+
+
 class TestimonialForm(FlaskForm):
     name = StringField("Nome", validators=[DataRequired(), Length(max=120)])
     company_name = StringField("Empresa", validators=[DataRequired(), Length(max=120)])

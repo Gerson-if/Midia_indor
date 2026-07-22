@@ -22,6 +22,13 @@ def test_submit_proposal_creates_record(client, db):
     assert proposal.status == ProposalStatus.NOVO
     assert proposal.public_ref is not None
 
+    # Mensagem de confirmação mais elaborada (título + explicação), e o
+    # formulário continua disponível logo abaixo pra quem quiser mandar
+    # outra solicitação sem precisar recarregar a página.
+    html = resp.get_data(as_text=True)
+    assert "Solicitação recebida com sucesso!" in html
+    assert 'id="proposal-form"' in html
+
 
 def test_submit_proposal_honeypot_blocks_bots(client, db):
     client.post(

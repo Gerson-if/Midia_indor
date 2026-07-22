@@ -1,0 +1,94 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ section.heading }} — {{ APP_NAME }}{% endblock %}
+{% block admin_content %}
+<a href="{{ url_for('admin.custom_sections_manage') }}" class="text-xs text-mid hover:text-hi inline-flex items-center gap-1 mb-3">&larr; Voltar para Seções Personalizadas</a>
+<h2 class="font-display text-2xl mb-1">{{ section.heading }}</h2>
+<p class="text-sm text-mid mb-6">Cartões da seção "{{ section.nav_label }}" — o que aparece no site é só o que estiver marcado como Ativo.</p>
+<div class="grid lg:grid-cols-3 gap-6">
+  <div class="card p-6" id="form-card">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-display text-lg">{{ "Editando cartão" if editing else "Novo cartão" }}</h3>
+      {% if editing %}
+      <a href="{{ url_for('admin.custom_section_items_manage', section_id=section.id) }}" class="text-xs text-mid hover:text-hi">Cancelar</a>
+      {% endif %}
+    </div>
+    <form method="POST" action="{{ url_for('admin.custom_section_item_edit', section_id=section.id, item_id=editing.id) if editing else url_for('admin.custom_section_items_manage', section_id=section.id) }}" enctype="multipart/form-data" class="space-y-4">
+      {{ form.hidden_tag() }}
+      <div>
+        {{ form.title.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ form.title(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", required=true) }}
+        {% for e in form.title.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+      </div>
+      <div>
+        {{ form.description.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ form.description(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", rows="3") }}
+        {% for e in form.description.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+      </div>
+      <div data-media-group>
+        {{ form.image.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        <div class="flex items-center gap-2 mb-2">
+          <img data-media-preview="image" class="w-20 h-20 rounded-lg object-cover {{ '' if (editing and editing.image_path) else 'hidden' }}" {% if editing and editing.image_path %}src="{{ url_for('static', filename=editing.image_path) }}"{% endif %}>
+          <div data-media-placeholder class="w-20 h-20 rounded-lg bg-panel2 flex items-center justify-center text-low text-[10px] text-center px-1 {{ 'hidden' if (editing and editing.image_path) else '' }}">sem imagem</div>
+          <div class="flex flex-col gap-1">
+            <span data-media-filename class="media-filename-badge hidden"></span>
+            <button type="button" data-media-clear class="media-preview-remove hidden">✕ Cancelar seleção</button>
+          </div>
+        </div>
+        {% if editing and editing.image_path %}
+        <label class="flex items-center gap-2 text-xs text-mid mb-2">{{ form.remove_image() }} Remover imagem atual</label>
+        {% endif %}
+        {{ form.image(class_="w-full text-xs text-mid") }}
+        <p class="text-[11px] text-low mt-1">{{ "Envie uma imagem apenas se quiser substituir a atual." if editing else "Opcional. A prévia aparece assim que você escolher o arquivo." }}</p>
+        {% for e in form.image.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+      </div>
+      <label class="flex items-center gap-2 text-xs text-mid">{{ form.is_active() }} Ativo</label>
+      <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">
+        {{ "Salvar alterações" if editing else "Adicionar" }}
+      </button>
+    </form>
+  </div>
+
+  <div class="lg:col-span-2">
+    {% if items %}
+    <p class="text-[11px] text-low mb-2 flex items-center gap-1.5">
+      <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12" class="shrink-0"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
+      Arraste os cards pela alça para reordenar
+    </p>
+    {% endif %}
+    <div class="space-y-3" data-reorder-list data-reorder-url="{{ url_for('admin.custom_section_items_reorder', section_id=section.id) }}">
+      {% for item in items %}
+      <div class="card card-draggable p-4 flex items-center gap-3 {{ 'card-editing' if editing and editing.id == item.id }}" data-reorder-item data-id="{{ item.id }}">
+        <span class="drag-handle" data-drag-handle title="Arrastar para reordenar">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
+        </span>
+        {% if item.image_path %}
+        <img src="{{ url_for('static', filename=item.image_path) }}" class="w-16 h-16 rounded-lg object-cover shrink-0">
+        {% else %}
+        <div class="w-16 h-16 rounded-lg bg-panel2 shrink-0 flex items-center justify-center text-low text-xs">sem foto</div>
+        {% endif %}
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-hi truncate">{{ item.title }}</p>
+          <p class="text-xs text-mid truncate">{{ item.description }}</p>
+          <p class="text-[11px] font-mono {{ 'text-green-400' if item.is_active else 'text-low' }}">{{ 'Ativo' if item.is_active else 'Inativo' }}</p>
+        </div>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <a href="{{ url_for('admin.custom_section_item_edit', section_id=section.id, item_id=item.id) }}#form-card" class="icon-btn icon-btn-edit" title="Editar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+            <span class="hidden sm:inline">Editar</span>
+          </a>
+          <form method="POST" action="{{ url_for('admin.custom_section_item_delete', section_id=section.id, item_id=item.id) }}" data-confirm-message="Excluir este cartão? Esta ação não pode ser desfeita.">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="icon-btn icon-btn-danger" title="Excluir">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+              <span class="hidden sm:inline">Excluir</span>
+            </button>
+          </form>
+        </div>
+      </div>
+      {% else %}
+      <p class="text-mid text-sm">Nenhum cartão cadastrado ainda. Essa seção não aparece no site até ter pelo menos um cartão ativo.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

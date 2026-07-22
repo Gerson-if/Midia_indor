@@ -3,9 +3,22 @@ from flask import current_app, jsonify, render_template, request
 from app.blueprints.main import main_bp
 from app.blueprints.main.forms import ProposalRequestForm
 from app.extensions import db, limiter
-from app.models import GalleryItem, Partner, Proposal, Service, SiteSettings, Testimonial
+from app.models import CustomSection, GalleryItem, Partner, Proposal, Service, SiteSettings, Testimonial
 from app.utils.decorators import log_action
 from app.utils.errors import APIError
+
+
+def _active_custom_sections():
+    """
+    Seções personalizadas visíveis no site: além de a própria seção estar
+    marcada como Ativa, ela precisa ter pelo menos um cartão ativo — senão
+    apareceria um item no menu levando pra um bloco vazio, o que é pior
+    do que simplesmente não mostrar a seção ainda.
+    """
+    sections = CustomSection.query.filter_by(is_active=True).order_by(CustomSection.display_order).all()
+    for section in sections:
+        section.active_items = [item for item in section.items if item.is_active]
+    return [s for s in sections if s.active_items]
 
 
 @main_bp.route("/")
@@ -15,6 +28,7 @@ def index():
     gallery = GalleryItem.query.filter_by(is_active=True).order_by(GalleryItem.display_order).all()
     testimonials = Testimonial.query.filter_by(is_active=True).order_by(Testimonial.display_order).all()
     partners = Partner.query.filter_by(is_active=True).order_by(Partner.display_order).all()
+    custom_sections = _active_custom_sections()
     form = ProposalRequestForm()
 
     return render_template(
@@ -24,6 +38,7 @@ def index():
         gallery=gallery,
         testimonials=testimonials,
         partners=partners,
+        custom_sections=custom_sections,
         form=form,
     )
 
@@ -101,6 +116,7 @@ def _render_index_with_errors(form, sent=False):
     gallery = GalleryItem.query.filter_by(is_active=True).order_by(GalleryItem.display_order).all()
     testimonials = Testimonial.query.filter_by(is_active=True).order_by(Testimonial.display_order).all()
     partners = Partner.query.filter_by(is_active=True).order_by(Partner.display_order).all()
+    custom_sections = _active_custom_sections()
     return render_template(
         "index.html",
         settings=settings,
@@ -108,6 +124,7 @@ def _render_index_with_errors(form, sent=False):
         gallery=gallery,
         testimonials=testimonials,
         partners=partners,
+        custom_sections=custom_sections,
         form=form,
         proposal_sent=sent,
     )

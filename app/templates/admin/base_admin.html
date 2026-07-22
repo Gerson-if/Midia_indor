@@ -132,6 +132,10 @@
         <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M12 12c1.5-2 3-3 5-3a3.5 3.5 0 0 1 2.5 6L14 20l-2-2"/><path d="M12 12c-1.5-2-3-3-5-3a3.5 3.5 0 0 0-2.5 6L10 20l1-1"/></svg></span>
         <span class="nav-label">Parceiros</span>
       </a>
+      <a href="{{ url_for('admin.custom_sections_manage') }}" title="Seções Personalizadas" class="nav-item {{ 'active' if request.endpoint in ('admin.custom_sections_manage', 'admin.custom_section_edit', 'admin.custom_section_items_manage', 'admin.custom_section_item_edit') }}">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M12 5v14"/><path d="M5 12h14"/></svg></span>
+        <span class="nav-label">Seções Personalizadas</span>
+      </a>
 
       {% if current_user.is_admin %}
       <p class="sidebar-section-label text-[11px] font-mono uppercase tracking-wider text-low px-3 pt-4 pb-1">Sistema</p>
