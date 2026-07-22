@@ -32,6 +32,42 @@
     70% { box-shadow: 0 0 0 15px color-mix(in srgb, var(--whatsapp-btn) 0%, transparent); }
     100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--whatsapp-btn) 0%, transparent); }
   }
+  /* ---- Menu mobile: ícone "sanduíche" vira "X" e o painel desliza/some
+     com uma transição suave, em vez do corte seco de antes (display
+     none <-> block via a classe "hidden"). Só transições de CSS
+     (transform/opacity/max-height, todas aceleradas por GPU) — nada de
+     JS calculando frame a frame, então não trava a página mesmo em
+     celulares mais fracos. Ativado/desativado só com classList.toggle
+     de uma classe (".is-open"/".nav-open"), sem inline styles. */
+  .hamburger-btn .ham-line {
+    transition: transform .28s cubic-bezier(.4,0,.2,1), opacity .18s ease;
+  }
+  .hamburger-btn .ham-line-top { transform-origin: 12px 6px; }
+  .hamburger-btn .ham-line-mid { transform-origin: 12px 12px; }
+  .hamburger-btn .ham-line-bottom { transform-origin: 12px 18px; }
+  .hamburger-btn.is-open .ham-line-top { transform: translateY(6px) rotate(45deg); }
+  .hamburger-btn.is-open .ham-line-mid { opacity: 0; transform: scaleX(0); }
+  .hamburger-btn.is-open .ham-line-bottom { transform: translateY(-6px) rotate(-45deg); }
+
+  .mobile-nav-menu {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    visibility: hidden;
+    transform: translateY(-6px);
+    transition: max-height .3s cubic-bezier(.4,0,.2,1), opacity .22s ease, transform .22s ease, visibility 0s linear .3s;
+  }
+  .mobile-nav-menu.nav-open {
+    max-height: 480px; /* generoso o bastante pro conteúdo (curto e fixo) nunca ser cortado */
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    transition: max-height .3s cubic-bezier(.4,0,.2,1), opacity .22s ease, transform .22s ease, visibility 0s linear 0s;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hamburger-btn .ham-line, .mobile-nav-menu { transition: none; }
+  }
+
   .card-img-wrapper { overflow: hidden; position: relative; border-radius: 8px; margin-bottom: 15px; }
   .card-img-wrapper img { width: 100%; height: 160px; object-fit: cover; transition: transform 0.5s ease; }
   .group:hover .card-img-wrapper img { transform: scale(1.1); }
@@ -65,13 +101,13 @@
       <a href="#contato" class="btn btn-primary !py-1.5 !px-4 text-xs" style="background-color: var(--amber)">Anunciar</a>
     </div>
     <button type="button" id="mobile-nav-toggle" aria-expanded="false" aria-controls="mobile-nav-menu" aria-label="Abrir menu"
-            class="md:hidden shrink-0 w-10 h-10 flex items-center justify-center rounded-lg text-hi hover:bg-[var(--overlay-med)] -mr-2">
+            class="hamburger-btn md:hidden shrink-0 w-10 h-10 flex items-center justify-center rounded-lg text-hi hover:bg-[var(--overlay-med)] active:scale-90 transition-transform -mr-2">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
-        <path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/>
+        <path class="ham-line ham-line-top" d="M4 6h16"/><path class="ham-line ham-line-mid" d="M4 12h16"/><path class="ham-line ham-line-bottom" d="M4 18h16"/>
       </svg>
     </button>
   </nav>
-  <div id="mobile-nav-menu" class="hidden md:hidden border-t border-line bg-ink backdrop-blur-md">
+  <div id="mobile-nav-menu" class="mobile-nav-menu md:hidden border-t border-line bg-ink backdrop-blur-md">
     <div class="container-nx flex flex-col py-4 gap-1 font-mono text-sm uppercase tracking-wider text-mid">
       <a href="#servicos" class="py-3 border-b border-line hover:text-hi transition-colors">Vantagens</a>
       <a href="#galeria" class="py-3 border-b border-line hover:text-hi transition-colors">Telas</a>
@@ -483,18 +519,29 @@
     }
 
     // ---- Menu mobile (header) ----
+    // Ícone e painel animam via classe CSS (".is-open"/".nav-open" — ver
+    // <style> no topo da página), não com JS calculando posições/frames.
+    // Isso mantém a animação suave e fora do caminho crítico da thread
+    // principal, mesmo em aparelhos mais fracos.
     const mobileMenuBtn = document.getElementById('mobile-nav-toggle');
     const mobileMenu = document.getElementById('mobile-nav-menu');
     if (mobileMenuBtn && mobileMenu) {
+      const isMenuOpen = () => mobileMenu.classList.contains('nav-open');
       const closeMenu = () => {
-        mobileMenu.classList.add('hidden');
+        if (!isMenuOpen()) return;
+        mobileMenu.classList.remove('nav-open');
+        mobileMenuBtn.classList.remove('is-open');
         mobileMenuBtn.setAttribute('aria-expanded', 'false');
+        mobileMenuBtn.setAttribute('aria-label', 'Abrir menu');
       };
-      const toggleMenu = () => {
-        const isOpen = !mobileMenu.classList.contains('hidden');
-        mobileMenu.classList.toggle('hidden');
-        mobileMenuBtn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+      const openMenu = () => {
+        mobileMenu.classList.add('nav-open');
+        mobileMenuBtn.classList.add('is-open');
+        mobileMenuBtn.setAttribute('aria-expanded', 'true');
+        mobileMenuBtn.setAttribute('aria-label', 'Fechar menu');
       };
+      const toggleMenu = () => (isMenuOpen() ? closeMenu() : openMenu());
+
       mobileMenuBtn.addEventListener('click', toggleMenu);
       mobileMenu.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeMenu));
       document.addEventListener('keydown', (evt) => { if (evt.key === 'Escape') closeMenu(); });
@@ -505,13 +552,7 @@
       // mesmo que pouco), o menu se recolhe sozinho, do jeito que a
       // maioria dos sites/apps já se comporta. Usamos passive:true (não
       // chamamos preventDefault) pra não travar o scroll no mobile.
-      window.addEventListener(
-        'scroll',
-        () => {
-          if (!mobileMenu.classList.contains('hidden')) closeMenu();
-        },
-        { passive: true }
-      );
+      window.addEventListener('scroll', closeMenu, { passive: true });
     }
   });
 </script>

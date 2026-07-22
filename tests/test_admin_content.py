@@ -631,3 +631,17 @@ def test_changing_theme_to_light_reflects_on_public_site_and_admin(client, admin
 
     resp = client.get("/admin/")
     assert 'data-theme="light"' in resp.get_data(as_text=True)
+
+
+def test_public_site_mobile_menu_has_animated_markup(client, db):
+    """
+    O menu mobile (ícone sanduíche + painel de links) precisa ter as
+    classes que disparam a animação via CSS (ver <style> em index.html) —
+    sem elas, o JS até alterna o estado, mas o menu volta a abrir/fechar
+    de forma seca (sem transição), regredindo a melhoria.
+    """
+    resp = client.get("/")
+    html = resp.get_data(as_text=True)
+    assert "hamburger-btn" in html
+    assert "ham-line-top" in html and "ham-line-mid" in html and "ham-line-bottom" in html
+    assert "mobile-nav-menu" in html
