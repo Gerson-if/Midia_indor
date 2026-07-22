@@ -136,6 +136,7 @@ def test_settings_update(client, admin_user, db):
             "company_whatsapp": "5567900001111",
             "color_primary": "#FFB020",
             "color_secondary": "#37D6C7",
+            "whatsapp_button_color": "#37D6C7",
             "hero_overlay_opacity": "0.5",
             "hero_media_type": "video",
             "services_accent_color": "#FFB020",
@@ -151,6 +152,76 @@ def test_settings_update(client, admin_user, db):
     assert resp.status_code == 200
     db.session.refresh(settings)
     assert settings.company_name == "Nova Empresa"
+
+
+def test_settings_update_whatsapp_button_color(client, admin_user, db):
+    """
+    O admin deve poder personalizar a cor do botão "Chamar no WhatsApp" do
+    site público (antes era sempre o verde padrão #25D366, fixo no HTML).
+    """
+    from app.models import SiteSettings
+
+    login(client, "admin@teste.com", "SenhaForte123!")
+    settings = SiteSettings.get_solo()
+    resp = client.post(
+        "/admin/configuracoes",
+        data={
+            "company_name": settings.company_name,
+            "company_whatsapp": settings.company_whatsapp,
+            "color_primary": settings.color_primary,
+            "color_secondary": settings.color_secondary,
+            "whatsapp_button_color": "#123ABC",
+            "hero_overlay_opacity": "0.5",
+            "hero_media_type": "video",
+            "services_accent_color": "#FFB020",
+            "gallery_accent_color": "#FFB020",
+            "testimonials_accent_color": "#37D6C7",
+            "card_background_color": "#131A24",
+            "card_border_radius": "12",
+            "theme": "dark",
+            "version_id": settings.version_id,
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    db.session.refresh(settings)
+    assert settings.whatsapp_button_color == "#123ABC"
+
+    resp = client.get("/")
+    html = resp.get_data(as_text=True)
+    assert "--whatsapp-btn: #123ABC;" in html
+
+
+def test_settings_update_rejects_invalid_hex_color(client, admin_user, db):
+    """Um valor fora do padrão hexadecimal não deve ser aceito nem salvo."""
+    from app.models import SiteSettings
+
+    login(client, "admin@teste.com", "SenhaForte123!")
+    settings = SiteSettings.get_solo()
+    original_color = settings.color_primary
+    resp = client.post(
+        "/admin/configuracoes",
+        data={
+            "company_name": settings.company_name,
+            "company_whatsapp": settings.company_whatsapp,
+            "color_primary": "red; background:url(javascript:alert(1))",
+            "color_secondary": settings.color_secondary,
+            "whatsapp_button_color": settings.whatsapp_button_color,
+            "hero_overlay_opacity": "0.5",
+            "hero_media_type": "video",
+            "services_accent_color": "#FFB020",
+            "gallery_accent_color": "#FFB020",
+            "testimonials_accent_color": "#37D6C7",
+            "card_background_color": "#131A24",
+            "card_border_radius": "12",
+            "theme": "dark",
+            "version_id": settings.version_id,
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    db.session.refresh(settings)
+    assert settings.color_primary == original_color
 
 
 def test_settings_update_whatsapp_default_message(client, admin_user, db):
@@ -172,6 +243,7 @@ def test_settings_update_whatsapp_default_message(client, admin_user, db):
             "whatsapp_default_message": "Olá! Quero anunciar em telas.",
             "color_primary": settings.color_primary,
             "color_secondary": settings.color_secondary,
+            "whatsapp_button_color": settings.whatsapp_button_color,
             "hero_overlay_opacity": "0.5",
             "hero_media_type": "video",
             "services_accent_color": "#FFB020",
@@ -214,6 +286,7 @@ def test_settings_hero_media_toggle_and_removal(client, admin_user, db):
         "company_whatsapp": settings.company_whatsapp,
         "color_primary": settings.color_primary,
         "color_secondary": settings.color_secondary,
+        "whatsapp_button_color": settings.whatsapp_button_color,
         "hero_overlay_opacity": "0.5",
         "hero_media_type": "image",
         "services_accent_color": "#FFB020",
@@ -246,6 +319,7 @@ def test_privacy_and_terms_content_editable_and_rendered(client, admin_user, db)
             "company_whatsapp": settings.company_whatsapp,
             "color_primary": settings.color_primary,
             "color_secondary": settings.color_secondary,
+            "whatsapp_button_color": settings.whatsapp_button_color,
             "hero_overlay_opacity": "0.5",
             "hero_media_type": "video",
             "services_accent_color": "#FFB020",
@@ -535,6 +609,7 @@ def test_changing_theme_to_light_reflects_on_public_site_and_admin(client, admin
             "company_whatsapp": settings.company_whatsapp,
             "color_primary": settings.color_primary,
             "color_secondary": settings.color_secondary,
+            "whatsapp_button_color": settings.whatsapp_button_color,
             "hero_overlay_opacity": "0.5",
             "hero_media_type": "video",
             "services_accent_color": "#FFB020",

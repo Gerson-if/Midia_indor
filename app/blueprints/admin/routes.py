@@ -49,19 +49,35 @@ def dashboard():
     }
 
     # ---- Dados para o gráfico de solicitações nos últimos 14 dias ----
-    # Filtragem feita em Python (não via SQL) para evitar incompatibilidade
+    # Bucketamento feito em Python (não via SQL) para evitar incompatibilidade
     # entre datetime "aware" e "naive" que o SQLite pode introduzir ao
     # persistir/ler colunas DateTime (o PostgreSQL não tem esse problema,
     # mas mantemos a mesma lógica para funcionar de forma idêntica em ambos).
+    #
+    # Antes esse bucketamento buscava TODAS as propostas já criadas
+    # (Proposal.query.all() dos created_at, sem nenhum LIMIT/filtro) só
+    # para montar um gráfico dos últimos 14 dias — e essa é a página mais
+    # visitada do painel (dashboard, carregada a cada login e a cada F5).
+    # Conforme a base de solicitações cresce com o uso normal do sistema,
+    # essa consulta ficava progressivamente mais lenta, deixando o painel
+    # inteiro mais pesado com o tempo. Como created_at já é indexado,
+    # buscamos da mais recente para a mais antiga e paramos assim que
+    # saímos da janela de 14 dias — nunca lê mais linhas do que precisa,
+    # não importa quantos milhares de propostas existam no total.
     today = datetime.now(timezone.utc).date()
     days = [today - timedelta(days=i) for i in range(13, -1, -1)]
+    oldest_day = days[0]
     counts_by_day = {d: 0 for d in days}
 
-    all_created_ats = db.session.query(Proposal.created_at).all()
-    for (created_at,) in all_created_ats:
+    recent_created_ats = (
+        db.session.query(Proposal.created_at).order_by(Proposal.created_at.desc()).yield_per(500)
+    )
+    for (created_at,) in recent_created_ats:
         if created_at is None:
             continue
         day = created_at.date()
+        if day < oldest_day:
+            break
         if day in counts_by_day:
             counts_by_day[day] += 1
 
@@ -507,6 +523,7 @@ def settings_manage():
             settings.company_address = form.company_address.data
             settings.color_primary = form.color_primary.data
             settings.color_secondary = form.color_secondary.data
+            settings.whatsapp_button_color = form.whatsapp_button_color.data
             settings.hero_title = form.hero_title.data
             settings.hero_subtitle = form.hero_subtitle.data
             settings.hero_media_type = form.hero_media_type.data

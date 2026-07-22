@@ -113,6 +113,11 @@ def _register_context_processors(app: Flask) -> None:
             "global_settings": settings,
         }
 
+    # Cache por instância de app (não módulo): evita vazar valores entre
+    # apps diferentes criados no mesmo processo (ex.: testes que chamam
+    # create_app() várias vezes com static_folder/config diferentes).
+    _static_asset_version_cache: dict[str, str] = {}
+
     @app.template_global("static_asset")
     def static_asset(filename: str) -> str:
         """
@@ -134,15 +139,29 @@ def _register_context_processors(app: Flask) -> None:
         Não usar para arquivos enviados pelo admin (logo, favicon, mídia
         do Hero, imagens de galeria etc.) — esses já têm nome de arquivo
         próprio por upload e não precisam disso.
+
+        A data de modificação é lida do disco (os.path.getmtime) só na
+        PRIMEIRA vez que cada arquivo é pedido, e fica guardada em memória
+        pelo resto da vida do processo — sem esse cache, toda página
+        (inclusive as do painel admin, que chamam isso 8-9 vezes cada)
+        faria uma chamada ao sistema de arquivos por asset, em toda
+        requisição, para sempre, o que ia pesando o site conforme o
+        tráfego crescesse. Como o processo é reiniciado a cada deploy
+        (update.sh faz systemctl reload/start), o valor em cache nunca
+        fica desatualizado: um deploy novo = processo novo = cache novo.
         """
         from flask import url_for
 
-        version = ""
-        try:
-            file_path = os.path.join(app.static_folder, filename)
-            version = str(int(os.path.getmtime(file_path)))
-        except OSError:
-            pass
+        if filename not in _static_asset_version_cache:
+            version = ""
+            try:
+                file_path = os.path.join(app.static_folder, filename)
+                version = str(int(os.path.getmtime(file_path)))
+            except OSError:
+                pass
+            _static_asset_version_cache[filename] = version
+
+        version = _static_asset_version_cache[filename]
         url = url_for("static", filename=filename)
         return f"{url}?v={version}" if version else url
 

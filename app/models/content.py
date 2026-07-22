@@ -135,6 +135,10 @@ class SiteSettings(TimestampMixin, db.Model):
     )
     color_primary = db.Column(db.String(9), nullable=False, default="#FFB020")
     color_secondary = db.Column(db.String(9), nullable=False, default="#37D6C7")
+    # Cor do botão "Chamar no WhatsApp" no site público — antes era fixa
+    # (#25D366, verde padrão do WhatsApp) direto no template; agora
+    # configurável pelo admin junto com as outras cores da marca.
+    whatsapp_button_color = db.Column(db.String(9), nullable=False, default="#25D366")
 
     # ---- Identidade visual (favicon / logo) ----
     favicon_path = db.Column(db.String(255), nullable=True)
@@ -254,7 +258,11 @@ class SiteSettings(TimestampMixin, db.Model):
                 "email": self.company_email,
                 "phone": self.company_phone,
                 "address": self.company_address,
-                "colors": {"primary": self.color_primary, "secondary": self.color_secondary},
+                "colors": {
+                    "primary": self.color_primary,
+                    "secondary": self.color_secondary,
+                    "whatsapp_button": self.whatsapp_button_color,
+                },
                 "favicon_url": _static_url(self.favicon_path),
                 "logo_url": _static_url(self.logo_path),
             },

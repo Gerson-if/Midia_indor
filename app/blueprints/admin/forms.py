@@ -10,7 +10,15 @@ from wtforms import (
     StringField,
     TextAreaField,
 )
-from wtforms.validators import DataRequired, Email, Length, NumberRange, Optional
+from wtforms.validators import DataRequired, Email, Length, NumberRange, Optional, Regexp
+
+# Aceita hexadecimal de 6 dígitos com # (ex.: #FFB020) — é o formato que o
+# próprio <input type="color"> do navegador sempre envia, e também o que
+# esperamos quando o admin digita/cola um hex manualmente no campo de
+# texto pareado. Validar no servidor (além do JS) evita que um valor fora
+# do padrão (ou malicioso, tipo "red;background:url(...)") seja salvo e
+# injetado depois dentro de atributos style="" nos templates públicos.
+HEX_COLOR_RE = Regexp(r"^#[0-9a-fA-F]{6}$", message="Use um hexadecimal válido, ex.: #FFB020.")
 
 from app.models.proposal import ProposalStatus
 
@@ -71,8 +79,11 @@ class SiteSettingsForm(FlaskForm):
     company_email = StringField("E-mail", validators=[Optional(), Email(), Length(max=190)])
     company_phone = StringField("Telefone", validators=[Optional(), Length(max=30)])
     company_address = StringField("Endereço", validators=[Optional(), Length(max=255)])
-    color_primary = StringField("Cor primária", validators=[DataRequired(), Length(max=9)])
-    color_secondary = StringField("Cor secundária", validators=[DataRequired(), Length(max=9)])
+    color_primary = StringField("Cor primária", validators=[DataRequired(), Length(max=9), HEX_COLOR_RE])
+    color_secondary = StringField("Cor secundária", validators=[DataRequired(), Length(max=9), HEX_COLOR_RE])
+    whatsapp_button_color = StringField(
+        "Cor do botão do WhatsApp", validators=[DataRequired(), Length(max=9), HEX_COLOR_RE]
+    )
 
     # ---- Identidade visual ----
     favicon = FileField(
@@ -105,10 +116,12 @@ class SiteSettingsForm(FlaskForm):
     remove_hero_image = BooleanField("Remover imagem atual")
 
     # ---- Aparência das demais seções ----
-    services_accent_color = StringField("Destaque — Vantagens", validators=[DataRequired(), Length(max=9)])
-    gallery_accent_color = StringField("Destaque — Galeria", validators=[DataRequired(), Length(max=9)])
-    testimonials_accent_color = StringField("Destaque — Depoimentos", validators=[DataRequired(), Length(max=9)])
-    card_background_color = StringField("Fundo dos cards", validators=[DataRequired(), Length(max=9)])
+    services_accent_color = StringField("Destaque — Vantagens", validators=[DataRequired(), Length(max=9), HEX_COLOR_RE])
+    gallery_accent_color = StringField("Destaque — Galeria", validators=[DataRequired(), Length(max=9), HEX_COLOR_RE])
+    testimonials_accent_color = StringField(
+        "Destaque — Depoimentos", validators=[DataRequired(), Length(max=9), HEX_COLOR_RE]
+    )
+    card_background_color = StringField("Fundo dos cards", validators=[DataRequired(), Length(max=9), HEX_COLOR_RE])
     card_border_radius = IntegerField("Arredondamento dos cards (px)", validators=[Optional(), NumberRange(min=0, max=40)])
     theme = RadioField(
         "Tema do sistema",

@@ -1,6 +1,23 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}Configurações — {{ APP_NAME }}{% endblock %}
 
+{# Campo de cor com dois jeitos de preencher: o seletor visual nativo
+   (type="color") e um campo de texto pareado onde dá pra digitar/colar um
+   hexadecimal direto (ex.: #FFB020). Os dois ficam sincronizados via JS
+   (ver bloco de script no fim da página) — o campo de texto não tem
+   "name", só o input color é enviado no submit, então não há risco de
+   valores divergentes chegando ao servidor. #}
+{% macro color_field(field, field_id) %}
+<div>
+  {{ field.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+  <div class="flex items-center gap-2">
+    {{ field(class_="w-12 h-10 shrink-0 bg-panel2 border border-line rounded-lg focus:outline-none p-1", type="color", id=field_id) }}
+    <input type="text" class="hex-pair w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm font-mono focus:outline-none" data-pair-for="{{ field_id }}" placeholder="#RRGGBB" maxlength="7" autocomplete="off" spellcheck="false">
+  </div>
+  {% for e in field.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+</div>
+{% endmacro %}
+
 {% block extra_head %}
 <style>
   .tab-btn{ display:flex; align-items:center; gap:.5rem; padding:.55rem 1rem; border-radius:9px; font-size:.8rem; font-weight:600; color:var(--text-mid); white-space:nowrap; transition:background .15s,color .15s; }
@@ -264,15 +281,11 @@
 
       <div class="card p-6 space-y-4">
         <h3 class="font-display text-lg text-hi mb-2">Cores da Marca</h3>
-        <div class="grid grid-cols-2 gap-3 max-w-sm">
-          <div>
-            {{ form.color_primary.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-            {{ form.color_primary(class_="w-full bg-panel2 border border-line rounded-lg h-10 focus:outline-none", type="color", id="f_color_primary") }}
-          </div>
-          <div>
-            {{ form.color_secondary.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-            {{ form.color_secondary(class_="w-full bg-panel2 border border-line rounded-lg h-10 focus:outline-none", type="color", id="f_color_secondary") }}
-          </div>
+        <p class="text-xs text-low -mt-2">Escolha visualmente ou digite/cole o hexadecimal direto no campo ao lado (ex.: #FFB020).</p>
+        <div class="grid grid-cols-2 gap-3 max-w-md">
+          {{ color_field(form.color_primary, "f_color_primary") }}
+          {{ color_field(form.color_secondary, "f_color_secondary") }}
+          {{ color_field(form.whatsapp_button_color, "f_whatsapp_button_color") }}
         </div>
       </div>
 
@@ -280,22 +293,10 @@
         <h3 class="font-display text-lg text-hi mb-2">Aparência das Seções</h3>
         <p class="text-xs text-low -mt-2">Personalize as cores de destaque e o estilo dos cards nas seções de Vantagens, Galeria e Depoimentos, sem precisar editar código.</p>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div>
-            {{ form.services_accent_color.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-            {{ form.services_accent_color(class_="w-full bg-panel2 border border-line rounded-lg h-10 focus:outline-none", type="color") }}
-          </div>
-          <div>
-            {{ form.gallery_accent_color.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-            {{ form.gallery_accent_color(class_="w-full bg-panel2 border border-line rounded-lg h-10 focus:outline-none", type="color") }}
-          </div>
-          <div>
-            {{ form.testimonials_accent_color.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-            {{ form.testimonials_accent_color(class_="w-full bg-panel2 border border-line rounded-lg h-10 focus:outline-none", type="color") }}
-          </div>
-          <div>
-            {{ form.card_background_color.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-            {{ form.card_background_color(class_="w-full bg-panel2 border border-line rounded-lg h-10 focus:outline-none", type="color") }}
-          </div>
+          {{ color_field(form.services_accent_color, "f_services_accent_color") }}
+          {{ color_field(form.gallery_accent_color, "f_gallery_accent_color") }}
+          {{ color_field(form.testimonials_accent_color, "f_testimonials_accent_color") }}
+          {{ color_field(form.card_background_color, "f_card_background_color") }}
         </div>
         <div class="max-w-xs">
           {{ form.card_border_radius.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
@@ -436,6 +437,40 @@
     bind('f_cta_secondary', 'preview-cta-secondary', 'text');
     bind('f_company_name', 'preview-company', 'text');
     bind('f_company_name', 'preview-company-header', 'text');
+
+    // ---- Campos de hexadecimal pareados com os seletores de cor ----
+    // Cada input[type=color] (id="f_..._color" ou similar) ganha um campo
+    // de texto ao lado (.hex-pair) para digitar/colar o hex diretamente,
+    // já que alguns navegadores tornam trabalhoso digitar um hex exato só
+    // pelo seletor visual nativo. Os dois ficam sempre sincronizados; o
+    // campo de texto nunca é enviado no submit (sem atributo "name").
+    document.querySelectorAll('.hex-pair').forEach((hexInput) => {
+      const colorInput = document.getElementById(hexInput.dataset.pairFor);
+      if (!colorInput) return;
+
+      const syncFromColor = () => { hexInput.value = colorInput.value; };
+      syncFromColor();
+      colorInput.addEventListener('input', syncFromColor);
+
+      hexInput.addEventListener('input', () => {
+        let v = hexInput.value.trim();
+        if (v && v[0] !== '#') v = '#' + v;
+        if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+          colorInput.value = v.toLowerCase();
+          // Dispara os listeners de pré-visualização já ligados ao input
+          // de cor (updateColors etc.), sem precisar duplicá-los aqui.
+          colorInput.dispatchEvent(new Event('input', { bubbles: true }));
+          hexInput.classList.remove('border-red-400');
+        } else if (v.replace('#', '').length >= 3) {
+          hexInput.classList.add('border-red-400');
+        }
+      });
+
+      hexInput.addEventListener('blur', () => {
+        hexInput.value = colorInput.value;
+        hexInput.classList.remove('border-red-400');
+      });
+    });
 
     // ---- Cores (primária/secundária) ----
     const primaryInput = document.getElementById('f_color_primary');
