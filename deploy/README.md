@@ -310,6 +310,18 @@ curl -i http://127.0.0.1:8000/healthz   # testar a aplicação diretamente (sem 
 - **Erro de `SECRET_KEY insegura` ou `DATABASE_URL é obrigatória`** — rode
   `configure-env.sh` novamente, algum valor ficou com o padrão de
   desenvolvimento.
+- **`update.sh` falha com `fatal: detected dubious ownership in
+  repository at '/opt/midia-indoor'`** — proteção do próprio Git quando
+  o dono do diretório (dono dos arquivos no disco) é diferente do
+  usuário que está rodando o comando (comum quando o `git pull` roda via
+  `sudo`, como root, mas os arquivos pertencem ao usuário de serviço
+  `midia-indoor`). Resolva liberando essa pasta como exceção e rode o
+  update de novo:
+  ```bash
+  sudo git config --global --add safe.directory /opt/midia-indoor
+  cd /opt/midia-indoor
+  sudo bash deploy/scripts/update.sh
+  ```
 - **502 Bad Gateway no navegador** — o Nginx está de pé mas o Gunicorn
   não; veja `systemctl status midia-indoor` e os logs.
 - **Certbot falhou ao emitir certificado** — confirme que o domínio já
