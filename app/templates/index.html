@@ -287,7 +287,7 @@
           </button>
         </form>
       </div>
-      <div class="flex flex-col justify-center items-center text-center space-y-8 border-t md:border-t-0 md:border-l border-line pt-8 md:pt-0">
+      <div class="flex flex-col justify-center items-center text-center border-t md:border-t-0 md:border-l border-line pt-8 md:pt-0">
         <div>
           <p class="text-sm text-mid mb-4">Ou se preferir, chame direto no WhatsApp:</p>
           <a href="https://wa.me/{{ settings.company_whatsapp }}{% if settings.whatsapp_default_message %}?text={{ settings.whatsapp_default_message | urlencode }}{% endif %}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 text-white px-8 py-4 rounded-full font-bold text-lg whatsapp-pulse hover:scale-105 transition-transform" style="background-color: {{ settings.whatsapp_button_color }}">
@@ -295,20 +295,20 @@
             Chamar no WhatsApp
           </a>
         </div>
-        {% if settings.company_email or settings.company_address %}
-        <div class="space-y-2">
-          <p class="text-sm font-mono uppercase text-low">Mais contatos</p>
-          {% if settings.company_email %}<p class="text-hi font-medium">{{ settings.company_email }}</p>{% endif %}
-          {% if settings.company_address %}<p class="text-mid">{{ settings.company_address }}</p>{% endif %}
-        </div>
-        {% endif %}
       </div>
     </div>
   </div>
 </section>
 
 <footer class="border-t border-line py-10 bg-inksoft">
-  <div class="container-nx grid md:grid-cols-3 gap-8 text-center md:text-left">
+  {# "Mais contatos" (e-mail/endereço) morava logo abaixo do botão do
+     WhatsApp, meio solto no meio da seção de proposta — mudei pra cá, no
+     rodapé, que é onde esse tipo de informação institucional costuma
+     ficar em qualquer site, com uma coluna própria e ícones pra ficar
+     mais fácil de escanear. Só aparece a coluna (e cada linha dela) se
+     houver pelo menos um dado de contato preenchido. #}
+  {% set has_footer_contact = settings.company_email or settings.company_phone or settings.company_address %}
+  <div class="container-nx grid {{ 'md:grid-cols-4' if has_footer_contact else 'md:grid-cols-3' }} gap-8 text-center md:text-left">
     <div>
       <a href="#top" class="flex items-center justify-center md:justify-start gap-2 font-display font-semibold text-lg text-hi mb-2">
         <span class="w-6 h-6 rounded flex items-center justify-center text-onbrand font-bold text-xs" style="background-color: var(--amber)">{{ settings.company_name[0] if settings.company_name else 'N' }}</span>
@@ -324,6 +324,31 @@
         <li><a href="#contato" class="hover:text-hi">Contato</a></li>
       </ul>
     </div>
+    {% if has_footer_contact %}
+    <div>
+      <p class="font-mono text-xs uppercase tracking-wide text-low mb-3">Contato</p>
+      <ul class="space-y-2 text-sm text-mid">
+        {% if settings.company_email %}
+        <li class="flex items-center justify-center md:justify-start gap-2">
+          <svg class="w-4 h-4 text-low shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>
+          <a href="mailto:{{ settings.company_email }}" class="hover:text-hi break-all">{{ settings.company_email }}</a>
+        </li>
+        {% endif %}
+        {% if settings.company_phone %}
+        <li class="flex items-center justify-center md:justify-start gap-2">
+          <svg class="w-4 h-4 text-low shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          <span>{{ settings.company_phone }}</span>
+        </li>
+        {% endif %}
+        {% if settings.company_address %}
+        <li class="flex items-center justify-center md:justify-start gap-2">
+          <svg class="w-4 h-4 text-low shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+          <span>{{ settings.company_address }}</span>
+        </li>
+        {% endif %}
+      </ul>
+    </div>
+    {% endif %}
     <div>
       <p class="font-mono text-xs uppercase tracking-wide text-low mb-3">Legal</p>
       <ul class="space-y-1 text-sm text-mid">

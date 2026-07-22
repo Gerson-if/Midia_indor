@@ -221,29 +221,36 @@ def test_public_site_hides_active_section_without_active_items(client, db):
     assert 'href="#planos"' not in html
 
 
-def test_public_site_hides_contact_extras_when_empty(client, db):
-    """Sem e-mail nem endereço cadastrados, o bloco "Mais contatos" não deve aparecer abaixo do botão do WhatsApp."""
+def test_public_site_hides_footer_contact_column_when_empty(client, db):
+    """
+    Sem e-mail, telefone nem endereço cadastrados, a coluna "Contato" do
+    rodapé não deve aparecer (antes esse bloco ficava abaixo do botão do
+    WhatsApp; agora mora no rodapé, junto com as outras informações
+    institucionais do site).
+    """
     from app.models import SiteSettings
 
     settings = SiteSettings.get_solo()
     settings.company_email = None
+    settings.company_phone = None
     settings.company_address = None
     db.session.commit()
 
     resp = client.get("/")
     html = resp.get_data(as_text=True)
-    assert "Mais contatos" not in html
+    assert "mailto:" not in html
 
 
-def test_public_site_shows_contact_extras_when_present(client, db):
+def test_public_site_shows_footer_contact_column_when_present(client, db):
     from app.models import SiteSettings
 
     settings = SiteSettings.get_solo()
     settings.company_email = "contato@exemplo.com"
+    settings.company_phone = "6733224455"
     settings.company_address = None
     db.session.commit()
 
     resp = client.get("/")
     html = resp.get_data(as_text=True)
-    assert "Mais contatos" in html
-    assert "contato@exemplo.com" in html
+    assert "mailto:contato@exemplo.com" in html
+    assert "6733224455" in html
