@@ -2,6 +2,7 @@
   "name": "midia-indoor-frontend",
   "version": "1.0.0",
   "private": true,
+  "license": "UNLICENSED",
   "description": "Build estático de assets front-end (Tailwind CSS + fontes self-hosted) do painel Nexo Mídia.",
   "scripts": {
     "build:css": "tailwindcss -i ./assets/input.css -o ./app/static/css/tailwind.min.css --minify",
