@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ settings.company_name }} — Mídia Indoor Digital{% endblock %}
 {% block extra_head %}
-<link href="{{ url_for('static', filename='vendor/aos/aos.css') }}" rel="stylesheet">
+<link href="{{ static_asset('vendor/aos/aos.css') }}" rel="stylesheet">
 {# "Fundo dos cards" tem um valor padrão de fábrica (#131A24 — o --panel
    escuro original), salvo antes de existir a opção de tema claro/escuro.
    Se o admin nunca customizou esse campo, o fundo do card precisa
@@ -237,7 +237,7 @@
       <div class="flex flex-col justify-center items-center text-center space-y-8 border-t md:border-t-0 md:border-l border-line pt-8 md:pt-0">
         <div>
           <p class="text-sm text-mid mb-4">Ou se preferir, chame direto no WhatsApp:</p>
-          <a href="https://wa.me/{{ settings.company_whatsapp }}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 bg-[#25D366] text-white px-8 py-4 rounded-full font-bold text-lg whatsapp-pulse hover:scale-105 transition-transform">
+          <a href="https://wa.me/{{ settings.company_whatsapp }}{% if settings.whatsapp_default_message %}?text={{ settings.whatsapp_default_message | urlencode }}{% endif %}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 bg-[#25D366] text-white px-8 py-4 rounded-full font-bold text-lg whatsapp-pulse hover:scale-105 transition-transform">
             <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 21.171l-2.072.54 1.1-1.996a9.949 9.949 0 0 1-1.488-5.32c0-5.514 4.486-10 10-10s10 4.486 10 10-4.486 10-10 10a9.932 9.932 0 0 1-5.46-1.62l-2.08.396zm8.125-14.496C18.066 4.542 15.228 3.33 12 3.33c-4.664 0-8.455 3.79-8.455 8.455 0 1.558.423 3.064 1.22 4.385l-1.34 3.96 4.095-1.074a8.414 8.414 0 0 0 4.48 1.28h.003c4.665 0 8.456-3.79 8.456-8.456 0-2.26-.88-4.386-2.298-6.205z"/></svg>
             Chamar no WhatsApp
           </a>
@@ -284,10 +284,31 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='vendor/aos/aos.js') }}" defer></script>
+<script src="{{ static_asset('vendor/aos/aos.js') }}" defer></script>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     AOS.init({ once: true, duration: 800 });
+
+    // No celular, a AOS calcula em que altura de rolagem cada seção
+    // deve aparecer logo no carregamento — mas nesse momento a barra de
+    // endereço do navegador ainda não recolheu, as fontes web e/ou
+    // imagens podem não ter terminado de carregar, e tudo isso muda a
+    // altura real da página momentos depois. Resultado: a AOS acerta a
+    // conta errada e algumas seções ficam "grudadas" invisíveis
+    // (opacity:0) até o usuário rolar a tela, dando a impressão de que
+    // o layout "demora para se ajustar" ou fica quebrado. Recalculando
+    // (AOS.refresh()) depois que a página termina de carregar de verdade
+    // (fontes, imagens) e sempre que a viewport muda de altura, a conta
+    // fica certa sem depender de um scroll manual do usuário.
+    window.addEventListener('load', () => AOS.refresh());
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => AOS.refresh());
+    }
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => AOS.refresh(), 200);
+    });
 
     // Alguns navegadores (principalmente Chrome/Android) suspendem a
     // decodificação de vídeos autoplay quando eles ficam fora da tela por

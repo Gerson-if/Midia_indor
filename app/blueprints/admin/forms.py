@@ -64,6 +64,10 @@ class SiteSettingsForm(FlaskForm):
     company_name = StringField("Nome da empresa", validators=[DataRequired(), Length(max=120)])
     company_description = TextAreaField("Descrição", validators=[Optional(), Length(max=400)])
     company_whatsapp = StringField("WhatsApp (somente números, com DDI)", validators=[DataRequired(), Length(max=20)])
+    whatsapp_default_message = TextAreaField(
+        "Mensagem automática do botão \"Chamar no WhatsApp\"",
+        validators=[Optional(), Length(max=300)],
+    )
     company_email = StringField("E-mail", validators=[Optional(), Email(), Length(max=190)])
     company_phone = StringField("Telefone", validators=[Optional(), Length(max=30)])
     company_address = StringField("Endereço", validators=[Optional(), Length(max=255)])

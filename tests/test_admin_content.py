@@ -153,6 +153,53 @@ def test_settings_update(client, admin_user, db):
     assert settings.company_name == "Nova Empresa"
 
 
+def test_settings_update_whatsapp_default_message(client, admin_user, db):
+    """
+    O admin deve poder configurar a mensagem automática do botão "Chamar no
+    WhatsApp" do site público, e o link deve incluir essa mensagem
+    (url-encoded) no parâmetro ?text= do wa.me. Quando o campo fica em
+    branco, o link não deve ter ?text= (comportamento anterior).
+    """
+    from app.models import SiteSettings
+
+    login(client, "admin@teste.com", "SenhaForte123!")
+    settings = SiteSettings.get_solo()
+    resp = client.post(
+        "/admin/configuracoes",
+        data={
+            "company_name": settings.company_name,
+            "company_whatsapp": "5567900001111",
+            "whatsapp_default_message": "Olá! Quero anunciar em telas.",
+            "color_primary": settings.color_primary,
+            "color_secondary": settings.color_secondary,
+            "hero_overlay_opacity": "0.5",
+            "hero_media_type": "video",
+            "services_accent_color": "#FFB020",
+            "gallery_accent_color": "#FFB020",
+            "testimonials_accent_color": "#37D6C7",
+            "card_background_color": "#131A24",
+            "card_border_radius": "12",
+            "theme": "dark",
+            "version_id": settings.version_id,
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    db.session.refresh(settings)
+    assert settings.whatsapp_default_message == "Olá! Quero anunciar em telas."
+
+    resp = client.get("/")
+    html = resp.get_data(as_text=True)
+    assert "wa.me/5567900001111?text=Ol%C3%A1" in html
+
+    # Em branco -> sem ?text= no link (comportamento anterior preservado).
+    settings.whatsapp_default_message = None
+    db.session.commit()
+    resp = client.get("/")
+    html = resp.get_data(as_text=True)
+    assert "wa.me/5567900001111?text=" not in html
+
+
 def test_settings_hero_media_toggle_and_removal(client, admin_user, db):
     """Cobre a alternância vídeo/imagem e a remoção de mídia do Hero."""
     from app.models import SiteSettings

@@ -125,6 +125,14 @@ class SiteSettings(TimestampMixin, db.Model):
     company_email = db.Column(db.String(190), nullable=True)
     company_phone = db.Column(db.String(30), nullable=True)
     company_address = db.Column(db.String(255), nullable=True)
+    # Mensagem pré-preenchida quando um visitante clica em "Chamar no
+    # WhatsApp" no site público (contato direto, fora do formulário de
+    # proposta) — configurável pelo admin em vez de fixa no código.
+    whatsapp_default_message = db.Column(
+        db.String(300),
+        nullable=True,
+        default="Olá! Vi o site e gostaria de saber mais sobre anunciar em telas de mídia indoor.",
+    )
     color_primary = db.Column(db.String(9), nullable=False, default="#FFB020")
     color_secondary = db.Column(db.String(9), nullable=False, default="#37D6C7")
 
@@ -242,6 +250,7 @@ class SiteSettings(TimestampMixin, db.Model):
                 "name": self.company_name,
                 "description": self.company_description,
                 "whatsapp": self.company_whatsapp,
+                "whatsapp_default_message": self.whatsapp_default_message,
                 "email": self.company_email,
                 "phone": self.company_phone,
                 "address": self.company_address,

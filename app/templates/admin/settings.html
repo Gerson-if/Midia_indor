@@ -74,6 +74,12 @@
           <p class="text-[11px] text-low mt-1">Somente números, com DDI 55 e DDD.</p>
           {% for e in form.company_whatsapp.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
         </div>
+        <div>
+          {{ form.whatsapp_default_message.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+          {{ form.whatsapp_default_message(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", rows="2", placeholder="Ex.: Olá! Vi o site e gostaria de saber mais sobre anunciar em telas de mídia indoor.") }}
+          <p class="text-[11px] text-low mt-1">Texto que já vem preenchido quando o visitante clica em "Chamar no WhatsApp" no site. Deixe em branco para abrir a conversa sem mensagem.</p>
+          {% for e in form.whatsapp_default_message.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+        </div>
         <div class="grid sm:grid-cols-2 gap-3">
           <div>
             {{ form.company_email.label(class_="block text-xs font-mono uppercase text-low mb-1") }}

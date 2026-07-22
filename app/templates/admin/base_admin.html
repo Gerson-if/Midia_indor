@@ -8,11 +8,11 @@
 {% if site_settings and site_settings.favicon_path %}
 <link rel="icon" href="{{ url_for('static', filename=site_settings.favicon_path) }}">
 {% else %}
-<link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
+<link rel="icon" href="{{ static_asset('img/favicon.svg') }}" type="image/svg+xml">
 {% endif %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.min.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ static_asset('css/fonts.css') }}">
+<link rel="stylesheet" href="{{ static_asset('css/tailwind.min.css') }}">
+<link rel="stylesheet" href="{{ static_asset('css/style.css') }}">
 <style>
   /* ---- Sidebar: largura controlada por variável + classe no <html> ---- */
   :root{ --sidebar-w: 264px; --sidebar-w-collapsed: 76px; --topbar-h: 64px; }
@@ -179,11 +179,11 @@
     </main>
   </div>
 </div>
-<script src="{{ url_for('static', filename='js/toast.js') }}"></script>
-<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
-<script src="{{ url_for('static', filename='js/admin-media-preview.js') }}"></script>
-<script src="{{ url_for('static', filename='js/admin-reorder.js') }}"></script>
-<script src="{{ url_for('static', filename='js/admin-confirm-modal.js') }}"></script>
+<script src="{{ static_asset('js/toast.js') }}"></script>
+<script src="{{ static_asset('js/admin.js') }}"></script>
+<script src="{{ static_asset('js/admin-media-preview.js') }}"></script>
+<script src="{{ static_asset('js/admin-reorder.js') }}"></script>
+<script src="{{ static_asset('js/admin-confirm-modal.js') }}"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

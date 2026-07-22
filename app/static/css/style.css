@@ -43,6 +43,16 @@
   --shadow-ambient: rgba(0,0,0,.5);
   --chart-grid:     rgba(255,255,255,.06);
 
+  /* Fundo do cabeçalho fixo (.glass): precisa ser opaco o bastante para
+     o texto (var(--text-hi)/var(--text-mid)) continuar legível em cima
+     de QUALQUER coisa que esteja por trás — a página normal ao rolar,
+     mas também o vídeo/imagem de capa do Hero no topo, que pode ter
+     qualquer brilho. Um "vidro" quase transparente (como antes) deixa
+     de funcionar no tema claro: o texto escuro fica ilegível sobre um
+     vídeo claro ou escuro por igual. */
+  --header-glass-1: rgba(19,26,36,.86);
+  --header-glass-2: rgba(19,26,36,.74);
+
   --font-display: 'Space Grotesk', system-ui, sans-serif;
   --font-body:    'IBM Plex Sans', system-ui, sans-serif;
   --font-mono:    'JetBrains Mono', ui-monospace, monospace;
@@ -86,6 +96,9 @@
   --modal-shadow:   rgba(20,16,8,.18);
   --shadow-ambient: rgba(20,16,8,.16);
   --chart-grid:     rgba(10,14,22,.09);
+
+  --header-glass-1: rgba(255,255,255,.86);
+  --header-glass-2: rgba(255,255,255,.74);
 }
 
 *{ box-sizing:border-box; }
@@ -157,7 +170,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 
 .glass{
-  background:linear-gradient(180deg, var(--overlay-strong), var(--overlay-faint));
+  background:linear-gradient(180deg, var(--header-glass-1), var(--header-glass-2));
   border:1px solid var(--overlay-border);
   backdrop-filter:blur(16px);
   -webkit-backdrop-filter:blur(16px);

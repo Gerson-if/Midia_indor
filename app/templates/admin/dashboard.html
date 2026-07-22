@@ -94,7 +94,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.min.js') }}"></script>
+<script src="{{ static_asset('vendor/chartjs/chart.umd.min.js') }}"></script>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     // Lê as cores do tema atual (claro/escuro) em vez de valores fixos,

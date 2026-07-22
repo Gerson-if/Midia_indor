@@ -501,6 +501,7 @@ def settings_manage():
             settings.company_name = form.company_name.data
             settings.company_description = form.company_description.data
             settings.company_whatsapp = form.company_whatsapp.data
+            settings.whatsapp_default_message = (form.whatsapp_default_message.data or "").strip() or None
             settings.company_email = form.company_email.data
             settings.company_phone = form.company_phone.data
             settings.company_address = form.company_address.data

@@ -113,6 +113,39 @@ def _register_context_processors(app: Flask) -> None:
             "global_settings": settings,
         }
 
+    @app.template_global("static_asset")
+    def static_asset(filename: str) -> str:
+        """
+        URL de um arquivo estático "de build" (CSS/JS/vendor/ícone padrão)
+        com cache-busting automático.
+
+        O Nginx serve tudo em /static com "Cache-Control: public,
+        immutable" por 30 dias (deploy/nginx*.conf.template) — ótimo para
+        performance, mas sem isso o navegador de quem já visitou o site
+        continua usando o CSS/JS antigo em cache por até 30 dias após
+        cada atualização (ex.: alguém troca o tema em Configurações e o
+        visitante não vê nada de diferente, mesmo dando F5, porque o
+        style.css antigo — sem as regras do tema — ainda está em cache).
+        Anexar "?v=<hora da última modificação do arquivo>" muda a URL
+        sempre que o conteúdo muda, forçando o navegador a buscar a
+        versão nova, sem precisar abrir mão do cache de 30 dias para
+        quem não teve nada alterado.
+
+        Não usar para arquivos enviados pelo admin (logo, favicon, mídia
+        do Hero, imagens de galeria etc.) — esses já têm nome de arquivo
+        próprio por upload e não precisam disso.
+        """
+        from flask import url_for
+
+        version = ""
+        try:
+            file_path = os.path.join(app.static_folder, filename)
+            version = str(int(os.path.getmtime(file_path)))
+        except OSError:
+            pass
+        url = url_for("static", filename=filename)
+        return f"{url}?v={version}" if version else url
+
 
 def _register_request_hooks(app: Flask) -> None:
     @app.before_request

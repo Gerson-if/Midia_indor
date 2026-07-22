@@ -9,11 +9,11 @@
 <link rel="icon" href="{{ url_for('static', filename=fav.favicon_path) }}">
 <link rel="shortcut icon" href="{{ url_for('static', filename=fav.favicon_path) }}">
 {% else %}
-<link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
+<link rel="icon" href="{{ static_asset('img/favicon.svg') }}" type="image/svg+xml">
 {% endif %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.min.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ static_asset('css/fonts.css') }}">
+<link rel="stylesheet" href="{{ static_asset('css/tailwind.min.css') }}">
+<link rel="stylesheet" href="{{ static_asset('css/style.css') }}">
 {% block extra_head %}{% endblock %}
 </head>
 <body class="font-body antialiased bg-ink text-hi">
@@ -27,7 +27,7 @@
   {% endif %}
 {% endwith %}
 {% block content %}{% endblock %}
-<script src="{{ url_for('static', filename='js/toast.js') }}"></script>
+<script src="{{ static_asset('js/toast.js') }}"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>
