@@ -1,4 +1,4 @@
-from flask import current_app, jsonify, render_template, request
+from flask import current_app, jsonify, redirect, render_template, request, url_for
 
 from app.blueprints.main import main_bp
 from app.blueprints.main.forms import ProposalRequestForm
@@ -30,6 +30,12 @@ def index():
     partners = Partner.query.filter_by(is_active=True).order_by(Partner.display_order).all()
     custom_sections = _active_custom_sections()
     form = ProposalRequestForm()
+    # "sent=1" só chega aqui via redirect pós-envio (ver submit_proposal) —
+    # nunca é o resultado direto de um POST, então dar F5/reabrir essa URL
+    # simplesmente refaz este GET (idempotente), sem reenviar formulário
+    # nenhum. Isso substitui o padrão antigo, onde o próprio POST renderizava
+    # a página de sucesso e um F5 do visitante reenviava a solicitação.
+    proposal_sent = request.args.get("sent") == "1"
 
     return render_template(
         "index.html",
@@ -40,6 +46,7 @@ def index():
         partners=partners,
         custom_sections=custom_sections,
         form=form,
+        proposal_sent=proposal_sent,
     )
 
 
@@ -68,11 +75,13 @@ def submit_proposal():
 
     if form.confirm_hp.data:
         # Honeypot preenchido -> provável bot. Responde "sucesso" falso,
-        # sem persistir nada, para não revelar a defesa ao spammer.
+        # sem persistir nada, para não revelar a defesa ao spammer. Segue
+        # o mesmo redirect do caminho real (ver comentário abaixo), pra
+        # continuar indistinguível de uma submissão legítima.
         current_app.logger.info("Submissão de proposta bloqueada por honeypot (IP=%s)", request.remote_addr)
         if wants_json:
             return jsonify(success=True), 201
-        return _render_index_with_errors(form, sent=True)
+        return redirect(url_for("main.index", sent="1") + "#contato")
 
     proposal = Proposal(
         name=form.name.data.strip(),
@@ -107,10 +116,23 @@ def submit_proposal():
     if wants_json:
         return jsonify(success=True, public_ref=proposal.public_ref), 201
 
-    return _render_index_with_errors(ProposalRequestForm(formdata=None), sent=True)
+    # Redireciona (Post/Redirect/Get) em vez de renderizar a página de
+    # sucesso direto na resposta do POST. Antes, dar F5 (ou reabrir a
+    # página pelo botão "Voltar" do navegador) reenviava o mesmo POST e
+    # criava uma solicitação duplicada no banco a cada recarregamento —
+    # o próprio navegador chega a avisar "Reenviar formulário?", mas
+    # muita gente confirma sem entender o que isso significa. Com o
+    # redirect, a última página no histórico do navegador é um GET
+    # comum (/?sent=1#contato), que pode ser recarregado à vontade sem
+    # nunca reenviar nada.
+    return redirect(url_for("main.index", sent="1") + "#contato")
 
 
-def _render_index_with_errors(form, sent=False):
+def _render_index_with_errors(form):
+    # Usado só quando a validação falha: renderiza a página de volta com os
+    # erros nos campos. O caminho de sucesso não passa mais por aqui (ver
+    # comentário no redirect de submit_proposal) — evita repetir o mesmo
+    # POST se o visitante der F5 depois de enviar com sucesso.
     settings = SiteSettings.get_solo()
     services = Service.query.filter_by(is_active=True).order_by(Service.display_order).all()
     gallery = GalleryItem.query.filter_by(is_active=True).order_by(GalleryItem.display_order).all()
@@ -126,7 +148,7 @@ def _render_index_with_errors(form, sent=False):
         partners=partners,
         custom_sections=custom_sections,
         form=form,
-        proposal_sent=sent,
+        proposal_sent=False,
     )
 
 

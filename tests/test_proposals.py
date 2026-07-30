@@ -30,6 +30,51 @@ def test_submit_proposal_creates_record(client, db):
     assert 'id="proposal-form"' in html
 
 
+def test_submit_proposal_redirects_instead_of_rendering_directly(client, db):
+    """
+    Post/Redirect/Get: o POST de sucesso não pode renderizar a página
+    diretamente (senão um F5 do visitante reenvia o mesmo POST e duplica
+    a solicitação no banco). Precisa responder com um redirect (3xx) para
+    uma URL de GET.
+    """
+    resp = client.post(
+        "/solicitar-proposta",
+        data={
+            "name": "Maria Souza",
+            "email": "maria@example.com",
+            "phone": "67988887777",
+            "confirm_hp": "",
+        },
+        follow_redirects=False,
+    )
+    assert resp.status_code in (301, 302, 303, 307, 308)
+    assert resp.headers["Location"].startswith("/?sent=1")
+
+
+def test_reloading_the_confirmation_page_does_not_duplicate_the_proposal(client, db):
+    """
+    Reproduz o bug relatado: enviar a proposta e depois "recarregar" a
+    página de confirmação não pode criar uma segunda solicitação. Como
+    agora a confirmação mora numa URL de GET (pós-redirect), simplesmente
+    buscá-la de novo (o equivalente a apertar F5) é inofensivo.
+    """
+    data = {
+        "name": "Carlos Lima",
+        "email": "carlos@example.com",
+        "phone": "67977776666",
+        "confirm_hp": "",
+    }
+    resp = client.post("/solicitar-proposta", data=data, follow_redirects=False)
+    assert Proposal.query.filter_by(email="carlos@example.com").count() == 1
+
+    confirmation_url = resp.headers["Location"]
+    for _ in range(3):
+        reload_resp = client.get(confirmation_url)
+        assert reload_resp.status_code == 200
+
+    assert Proposal.query.filter_by(email="carlos@example.com").count() == 1
+
+
 def test_submit_proposal_honeypot_blocks_bots(client, db):
     client.post(
         "/solicitar-proposta",
