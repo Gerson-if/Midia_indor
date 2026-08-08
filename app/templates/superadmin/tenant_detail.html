@@ -1,0 +1,94 @@
+{% extends "superadmin/base_superadmin.html" %}
+{% block title %}{{ tenant.name }} — Super Admin{% endblock %}
+{% block content %}
+<a href="{{ url_for('superadmin.dashboard') }}" class="text-xs text-mid hover:text-hi">&larr; Páginas</a>
+
+<div class="flex items-start justify-between gap-3 mt-2 mb-6">
+  <div>
+    <h1 class="font-display text-2xl">{{ tenant.name }}</h1>
+    <p class="text-xs text-low font-mono">{{ tenant.slug }} · criada em {{ tenant.created_at.strftime('%d/%m/%Y') }}</p>
+  </div>
+  {% if tenant.is_blocked %}
+  <span class="inline-flex items-center gap-1 text-red-400 text-xs font-mono shrink-0 mt-1"><span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> bloqueada</span>
+  {% else %}
+  <span class="inline-flex items-center gap-1 text-mid text-xs font-mono shrink-0 mt-1"><span class="w-1.5 h-1.5 rounded-full" style="background: var(--cyan)"></span> ativa</span>
+  {% endif %}
+</div>
+
+<div class="grid lg:grid-cols-2 gap-6">
+  <div class="space-y-6">
+    <div class="card p-6">
+      <h2 class="font-display text-lg mb-4">Administrador</h2>
+      {% if tenant.owner_user %}
+      <p class="text-sm text-hi">{{ tenant.owner_user.name }}</p>
+      <p class="text-xs text-mid font-mono">{{ tenant.owner_user.email }}</p>
+      <p class="text-xs text-low mt-2">Último acesso: {{ tenant.owner_user.last_login_at.strftime('%d/%m/%Y %H:%M') if tenant.owner_user.last_login_at else "nunca" }}</p>
+      {% else %}
+      <p class="text-sm text-low">Nenhum administrador vinculado.</p>
+      {% endif %}
+    </div>
+
+    <div class="card p-6">
+      <h2 class="font-display text-lg mb-4">Domínios</h2>
+
+      {% if tenant.domains %}
+      <ul class="space-y-2 mb-5">
+        {% for d in tenant.domains %}
+        <li class="flex items-center justify-between gap-3 text-sm border border-line rounded-lg px-3 py-2">
+          <div class="min-w-0">
+            <p class="text-hi truncate">{{ d.domain }}</p>
+            {% if d.is_primary %}<p class="text-xs text-low font-mono">principal</p>{% endif %}
+          </div>
+          <form method="POST" action="{{ url_for('superadmin.tenant_remove_domain', tenant_id=tenant.id, domain_id=d.id) }}" data-confirm-message="Remover este domínio? O site deixa de responder por ele.">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="text-red-400 hover:text-red-300 text-xs shrink-0">Remover</button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-sm text-low mb-5">Nenhum domínio cadastrado ainda — o site desta página ainda não é acessível publicamente.</p>
+      {% endif %}
+
+      <form method="POST" action="{{ url_for('superadmin.tenant_add_domain', tenant_id=tenant.id) }}" class="space-y-3">
+        {{ domain_form.hidden_tag() }}
+        <div>
+          {{ domain_form.domain(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", placeholder="cliente.com.br ou painel.cliente.com") }}
+          {% for e in domain_form.domain.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+        </div>
+        <label class="flex items-center gap-2 text-xs text-mid">{{ domain_form.is_primary() }} Definir como principal</label>
+        <button type="submit" class="btn btn-ghost w-full justify-center py-2 text-sm">Adicionar domínio</button>
+      </form>
+      <p class="text-xs text-low mt-3">Aponte o DNS (registro A) do domínio para o IP desta VPS. O HTTPS é emitido automaticamente no primeiro acesso — nenhum passo manual adicional aqui.</p>
+    </div>
+  </div>
+
+  <div class="card p-6 h-fit">
+    <h2 class="font-display text-lg mb-2">Acesso da página</h2>
+    <p class="text-xs text-low mb-5">Bloquear tira o site público do ar imediatamente (página genérica, sem detalhes). O painel administrativo desta página continua acessível só para o próprio admin, que verá o motivo abaixo.</p>
+
+    {% if tenant.is_blocked %}
+    <div class="rounded-lg border p-4 mb-5" style="border-color: rgba(239,68,68,.4); background: rgba(239,68,68,.08)">
+      <p class="text-red-400 text-sm font-semibold mb-1">Bloqueada</p>
+      <p class="text-mid text-xs">{{ tenant.blocked_reason }}</p>
+      {% if tenant.blocked_at %}<p class="text-low text-xs mt-1">desde {{ tenant.blocked_at.strftime('%d/%m/%Y %H:%M') }}{% if tenant.blocked_by %} por {{ tenant.blocked_by.name }}{% endif %}</p>{% endif %}
+    </div>
+    <form method="POST" action="{{ url_for('superadmin.tenant_unblock', tenant_id=tenant.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">Desbloquear página</button>
+    </form>
+    {% else %}
+    <form method="POST" action="{{ url_for('superadmin.tenant_block', tenant_id=tenant.id) }}" class="space-y-3">
+      {{ block_form.hidden_tag() }}
+      <div>
+        {{ block_form.reason.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ block_form.reason(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", rows=3, placeholder="ex.: fatura de julho em aberto há 15 dias") }}
+        {% for e in block_form.reason.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+        <p class="text-xs text-low mt-1">Visível só para você e para o admin desta página — nunca para o visitante do site.</p>
+      </div>
+      <button type="submit" class="btn w-full justify-center py-2.5 text-sm text-red-400 border border-red-400/40 hover:bg-red-500/10">Bloquear página</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

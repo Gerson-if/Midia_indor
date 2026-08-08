@@ -7,6 +7,7 @@ from app.extensions import bcrypt, db
 
 
 class UserRole(str, enum.Enum):
+    SUPER_ADMIN = "super_admin"  # dono do sistema: cria/gerencia/bloqueia páginas de clientes
     ADMIN = "admin"       # acesso total, inclusive gerenciamento de usuários
     EDITOR = "editor"     # gerencia conteúdo e solicitações, sem gerenciar usuários
     VIEWER = "viewer"     # apenas visualização (somente leitura)
@@ -23,6 +24,13 @@ class User(UserMixin, db.Model):
         db.Enum(UserRole, name="user_role"), nullable=False, default=UserRole.EDITOR
     )
     is_active_flag = db.Column("is_active", db.Boolean, nullable=False, default=True)
+
+    # Nula apenas para o super admin (não pertence a nenhuma página). Todo
+    # usuário de uma página de cliente (admin/editor/viewer) pertence a
+    # exatamente um tenant.
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True
+    )
 
     failed_login_attempts = db.Column(db.Integer, nullable=False, default=0)
     locked_until = db.Column(db.DateTime(timezone=True), nullable=True)
@@ -67,6 +75,10 @@ class User(UserMixin, db.Model):
     @property
     def is_admin(self) -> bool:
         return self.role == UserRole.ADMIN
+
+    @property
+    def is_super_admin(self) -> bool:
+        return self.role == UserRole.SUPER_ADMIN
 
     @property
     def is_locked(self) -> bool:

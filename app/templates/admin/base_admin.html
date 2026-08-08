@@ -169,6 +169,19 @@
     </header>
 
     <main class="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto overflow-x-hidden min-w-0">
+      {% if current_tenant and current_tenant.is_blocked %}
+      <div class="mb-6 rounded-xl border p-4 sm:p-5 flex items-start gap-3" style="border-color: rgba(239,68,68,.4); background: rgba(239,68,68,.08)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="22" height="22" class="text-red-400 shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg>
+        <div class="min-w-0">
+          <p class="font-semibold text-red-400 text-sm">Sua página está bloqueada</p>
+          <p class="text-mid text-xs mt-1">
+            {{ current_tenant.blocked_reason or "Entre em contato com o suporte para regularizar o acesso." }}
+          </p>
+          <p class="text-low text-xs mt-1">O site público está fora do ar para os visitantes, mas você continua com acesso a este painel.</p>
+        </div>
+      </div>
+      {% endif %}
+
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           <div hidden>

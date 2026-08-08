@@ -14,6 +14,11 @@ class AuditLog(db.Model):
     __tablename__ = "audit_logs"
 
     id = db.Column(db.Integer, primary_key=True)
+    # Nula para ações do super admin (não pertencem a nenhuma página) ou
+    # para eventos registrados antes de o tenant ser resolvido.
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True
+    )
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, index=True)
     user_email_snapshot = db.Column(db.String(190), nullable=True)
 

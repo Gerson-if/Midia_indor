@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Site indisponível{% endblock %}
+{% block content %}
+<div class="min-h-screen flex items-center justify-center px-4">
+  <div class="card p-10 max-w-md w-full text-center border border-line">
+    <div class="w-14 h-14 rounded-full mx-auto mb-5 flex items-center justify-center" style="background: var(--overlay-soft)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="28" height="28" class="text-mid"><circle cx="12" cy="12" r="10"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg>
+    </div>
+    <h1 class="font-display text-2xl font-semibold text-hi mb-3">Site indisponível no momento</h1>
+    <p class="text-mid text-sm">Este endereço não está disponível agora. Tente novamente mais tarde.</p>
+  </div>
+</div>
+{% endblock %}

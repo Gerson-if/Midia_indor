@@ -1,7 +1,7 @@
 import json
 from functools import wraps
 
-from flask import abort, jsonify, request
+from flask import abort, g, jsonify, request
 from flask_login import current_user
 
 from app.extensions import db
@@ -38,13 +38,43 @@ def admin_required(view_func):
     return roles_required(UserRole.ADMIN)(view_func)
 
 
-def log_action(action: str, entity_type: str = None, entity_id=None, description: str = None, **metadata):
+def super_admin_required(view_func):
+    """Restringe o acesso ao super admin (dono do sistema)."""
+
+    @wraps(view_func)
+    def wrapped(*args, **kwargs):
+        if not current_user.is_authenticated:
+            abort(401)
+        if not getattr(current_user, "is_super_admin", False):
+            abort(403)
+        return view_func(*args, **kwargs)
+
+    return wrapped
+
+
+def log_action(
+    action: str,
+    entity_type: str = None,
+    entity_id=None,
+    description: str = None,
+    tenant_id=None,
+    **metadata,
+):
     """
     Registra uma ação no log de auditoria. Não realiza commit por conta
     própria: a operação de negócio principal deve commitar tudo junto,
     garantindo atomicidade (tudo ou nada).
+
+    tenant_id: por padrão usa o tenant resolvido pelo domínio da
+    requisição atual (g.tenant_id) -- passe explicitamente só para ações
+    do super admin sobre um tenant específico fora do contexto do
+    domínio dele (ex.: bloquear uma página pelo painel do super admin).
     """
+    if tenant_id is None:
+        tenant_id = getattr(g, "tenant_id", None)
+
     entry = AuditLog(
+        tenant_id=tenant_id,
         user_id=current_user.id if getattr(current_user, "is_authenticated", False) else None,
         user_email_snapshot=getattr(current_user, "email", None),
         action=action,

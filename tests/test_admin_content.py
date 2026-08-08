@@ -11,8 +11,8 @@ def test_admin_dashboard_loads(client, admin_user):
     assert "Visão Geral" in resp.get_data(as_text=True)
 
 
-def test_admin_dashboard_charts_render_with_data(client, admin_user, db):
-    proposal = Proposal(name="Grafico Teste", email="grafico@example.com", phone="67911112222")
+def test_admin_dashboard_charts_render_with_data(client, admin_user, db, tenant):
+    proposal = Proposal(tenant_id=tenant.id, name="Grafico Teste", email="grafico@example.com", phone="67911112222")
     db.session.add(proposal)
     db.session.commit()
 
@@ -35,8 +35,8 @@ def test_create_service(client, admin_user, db):
     assert Service.query.filter_by(title="Mídia em Elevadores").first() is not None
 
 
-def test_delete_service(client, admin_user, db):
-    service = Service(title="Temporário", description="desc")
+def test_delete_service(client, admin_user, db, tenant):
+    service = Service(tenant_id=tenant.id, title="Temporário", description="desc")
     db.session.add(service)
     db.session.commit()
 
@@ -46,8 +46,8 @@ def test_delete_service(client, admin_user, db):
     assert Service.query.get(service.id) is None
 
 
-def test_edit_service_updates_fields(client, admin_user, db):
-    service = Service(title="Título Antigo", description="desc antiga", display_order=1)
+def test_edit_service_updates_fields(client, admin_user, db, tenant):
+    service = Service(tenant_id=tenant.id, title="Título Antigo", description="desc antiga", display_order=1)
     db.session.add(service)
     db.session.commit()
     service_id = service.id
@@ -68,10 +68,10 @@ def test_edit_service_updates_fields(client, admin_user, db):
     assert updated.description == "descrição nova"
 
 
-def test_edit_gallery_item(client, admin_user, db):
+def test_edit_gallery_item(client, admin_user, db, tenant):
     from app.models import GalleryItem
 
-    item = GalleryItem(title="Ponto A", category="Academias")
+    item = GalleryItem(tenant_id=tenant.id, title="Ponto A", category="Academias")
     db.session.add(item)
     db.session.commit()
 
@@ -87,10 +87,10 @@ def test_edit_gallery_item(client, admin_user, db):
     assert updated.category == "Elevadores"
 
 
-def test_edit_testimonial(client, admin_user, db):
+def test_edit_testimonial(client, admin_user, db, tenant):
     from app.models import Testimonial
 
-    item = Testimonial(name="Cliente A", company_name="Empresa A", text="depoimento original")
+    item = Testimonial(tenant_id=tenant.id, name="Cliente A", company_name="Empresa A", text="depoimento original")
     db.session.add(item)
     db.session.commit()
 
@@ -106,10 +106,10 @@ def test_edit_testimonial(client, admin_user, db):
     assert updated.text == "depoimento editado"
 
 
-def test_edit_partner(client, admin_user, db):
+def test_edit_partner(client, admin_user, db, tenant):
     from app.models import Partner
 
-    item = Partner(name="Marca A")
+    item = Partner(tenant_id=tenant.id, name="Marca A")
     db.session.add(item)
     db.session.commit()
 
@@ -412,26 +412,26 @@ def test_service_image_upload_then_remove(client, admin_user, db):
     assert service.image_path is None
 
 
-def test_site_settings_get_solo_survives_concurrent_creation(app, db):
+def test_site_settings_get_solo_survives_concurrent_creation(app, db, tenant):
     """
-    SiteSettings.get_solo() cria a linha singleton (id=1) na primeira
+    SiteSettings.get_solo() cria a linha (uma por tenant) na primeira
     chamada. Sob acesso concorrente (vários usuários batendo no site ao
-    mesmo tempo logo após a instalação, antes de a linha existir), duas
-    requisições podiam ver "não existe" ao mesmo tempo e as duas tentar
-    criar a linha id=1 -> a segunda a commitar recebia IntegrityError e
-    quebrava a requisição com erro 500. Simulamos a corrida diretamente
-    inserindo a linha "por baixo" entre a leitura e o commit de
-    get_solo(), e garantimos que ele se recupera em vez de propagar o
-    erro.
+    mesmo tempo logo após a página ser criada, antes de a linha existir),
+    duas requisições podiam ver "não existe" ao mesmo tempo e as duas
+    tentar criar a linha do mesmo tenant -> a segunda a commitar recebia
+    IntegrityError e quebrava a requisição com erro 500. Simulamos a
+    corrida diretamente inserindo a linha "por baixo" entre a leitura e o
+    commit de get_solo(), e garantimos que ele se recupera em vez de
+    propagar o erro.
     """
     from app.models import SiteSettings
 
     with app.app_context():
-        assert SiteSettings.query.get(1) is None
+        assert SiteSettings.query.filter_by(tenant_id=tenant.id).first() is None
 
         # Simula outra requisição/processo que já criou a linha entre a
         # checagem "instance is None" e o commit desta chamada.
-        concorrente = SiteSettings(id=1)
+        concorrente = SiteSettings(tenant_id=tenant.id)
         db.session.add(concorrente)
         db.session.commit()
         db.session.expunge(concorrente)
@@ -439,9 +439,9 @@ def test_site_settings_get_solo_survives_concurrent_creation(app, db):
         # Força get_solo() a passar pelo caminho de criação mesmo com a
         # linha já existindo, para exercitar o tratamento do IntegrityError.
         db.session.expire_all()
-        settings = SiteSettings.get_solo()
+        settings = SiteSettings.get_solo(tenant_id=tenant.id)
         assert settings is not None
-        assert settings.id == 1
+        assert settings.tenant_id == tenant.id
 
 
 def test_new_service_appends_to_end_of_order(client, admin_user, db):
@@ -469,12 +469,12 @@ def test_new_service_appends_to_end_of_order(client, admin_user, db):
     assert primeiro.display_order < segundo.display_order
 
 
-def test_services_reorder_endpoint_persists_new_order(client, admin_user, db):
+def test_services_reorder_endpoint_persists_new_order(client, admin_user, db, tenant):
     login(client, "admin@teste.com", "SenhaForte123!")
 
-    a = Service(title="A", description="d", display_order=0)
-    b = Service(title="B", description="d", display_order=1)
-    c = Service(title="C", description="d", display_order=2)
+    a = Service(tenant_id=tenant.id, title="A", description="d", display_order=0)
+    b = Service(tenant_id=tenant.id, title="B", description="d", display_order=1)
+    c = Service(tenant_id=tenant.id, title="C", description="d", display_order=2)
     db.session.add_all([a, b, c])
     db.session.commit()
 
@@ -493,14 +493,14 @@ def test_services_reorder_endpoint_persists_new_order(client, admin_user, db):
     assert b.display_order == 2
 
 
-def test_services_reorder_rejects_incomplete_list(client, admin_user, db):
+def test_services_reorder_rejects_incomplete_list(client, admin_user, db, tenant):
     """Se a lista enviada não bater com os itens existentes (ex.: um item
     foi excluído por outro usuário entretanto), a reordenação é rejeitada
     em vez de aplicar uma ordem parcial/inconsistente."""
     login(client, "admin@teste.com", "SenhaForte123!")
 
-    a = Service(title="A", description="d", display_order=0)
-    b = Service(title="B", description="d", display_order=1)
+    a = Service(tenant_id=tenant.id, title="A", description="d", display_order=0)
+    b = Service(tenant_id=tenant.id, title="B", description="d", display_order=1)
     db.session.add_all([a, b])
     db.session.commit()
 
@@ -512,15 +512,15 @@ def test_services_reorder_rejects_incomplete_list(client, admin_user, db):
     assert resp.get_json()["success"] is False
 
 
-def test_services_reorder_requires_editor_role(client, admin_user, db):
+def test_services_reorder_requires_editor_role(client, admin_user, db, tenant):
     from app.models import User, UserRole
 
-    viewer = User(name="Visualizador", email="viewer@teste.com", role=UserRole.VIEWER)
+    viewer = User(name="Visualizador", email="viewer@teste.com", role=UserRole.VIEWER, tenant_id=tenant.id)
     viewer.set_password("SenhaForte123!")
     db.session.add(viewer)
     db.session.commit()
 
-    a = Service(title="A", description="d", display_order=0)
+    a = Service(tenant_id=tenant.id, title="A", description="d", display_order=0)
     db.session.add(a)
     db.session.commit()
 
@@ -547,20 +547,20 @@ def test_settings_marca_tab_has_media_preview_markup(client, admin_user, db):
     assert "data-media-filename" in html
 
 
-def test_admin_delete_forms_use_custom_confirm_modal_not_native_confirm(client, admin_user, db):
+def test_admin_delete_forms_use_custom_confirm_modal_not_native_confirm(client, admin_user, db, tenant):
     """O diálogo nativo confirm() do navegador foi substituído por um modal
     próprio (admin-confirm-modal.js). Nenhum template do admin deve mais
     depender de onsubmit="return confirm(...)" para excluir registros."""
     login(client, "admin@teste.com", "SenhaForte123!")
 
-    service = Service(title="A", description="d", display_order=0)
-    item = GalleryItem(title="B", category="Cat", display_order=0)
-    partner = Partner(name="C", display_order=0)
-    testimonial = Testimonial(name="D", company_name="E", text="Ótimo!", display_order=0)
-    proposal = Proposal(name="F", email="f@example.com", phone="67900000000")
+    service = Service(tenant_id=tenant.id, title="A", description="d", display_order=0)
+    item = GalleryItem(tenant_id=tenant.id, title="B", category="Cat", display_order=0)
+    partner = Partner(tenant_id=tenant.id, name="C", display_order=0)
+    testimonial = Testimonial(tenant_id=tenant.id, name="D", company_name="E", text="Ótimo!", display_order=0)
+    proposal = Proposal(tenant_id=tenant.id, name="F", email="f@example.com", phone="67900000000")
     # /admin/usuarios só mostra o botão de excluir para usuários que não
     # sejam o próprio usuário logado — precisa de um segundo usuário.
-    other_user = User(name="Outro", email="outro@teste.com", role=UserRole.EDITOR)
+    other_user = User(name="Outro", email="outro@teste.com", role=UserRole.EDITOR, tenant_id=tenant.id)
     other_user.set_password("SenhaForte123!")
     db.session.add_all([service, item, partner, testimonial, proposal, other_user])
     db.session.commit()

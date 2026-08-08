@@ -1,0 +1,68 @@
+{% extends "superadmin/base_superadmin.html" %}
+{% block title %}Páginas — Super Admin{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-6 gap-3">
+  <h1 class="font-display text-2xl">Páginas</h1>
+  <a href="{{ url_for('superadmin.tenant_new') }}" class="btn btn-primary !py-2 !px-4 text-sm" style="background-color: var(--amber)">+ Nova página</a>
+</div>
+
+<div class="grid grid-cols-3 gap-4 mb-8">
+  <div class="card p-4">
+    <p class="text-xs font-mono uppercase text-low mb-1">Total</p>
+    <p class="text-2xl font-display">{{ stats.total }}</p>
+  </div>
+  <div class="card p-4">
+    <p class="text-xs font-mono uppercase text-low mb-1">Ativas</p>
+    <p class="text-2xl font-display text-hi">{{ stats.active }}</p>
+  </div>
+  <div class="card p-4">
+    <p class="text-xs font-mono uppercase text-low mb-1">Bloqueadas</p>
+    <p class="text-2xl font-display text-red-400">{{ stats.blocked }}</p>
+  </div>
+</div>
+
+{% if not tenants %}
+<div class="card p-10 text-center">
+  <p class="text-mid text-sm mb-4">Nenhuma página cadastrada ainda.</p>
+  <a href="{{ url_for('superadmin.tenant_new') }}" class="btn btn-primary !py-2 !px-4 text-sm" style="background-color: var(--amber)">Criar a primeira página</a>
+</div>
+{% else %}
+<div class="card overflow-hidden">
+  <table class="w-full text-sm text-left">
+    <thead>
+      <tr class="text-xs font-mono uppercase text-low border-b border-line bg-ink">
+        <th class="px-4 py-3">Página</th>
+        <th class="px-4 py-3">Domínio principal</th>
+        <th class="px-4 py-3">Admin</th>
+        <th class="px-4 py-3">Status</th>
+        <th class="px-4 py-3 text-right">Ação</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in tenants %}
+      <tr class="border-b border-line hover:bg-panel2">
+        <td class="px-4 py-3">
+          <p class="font-semibold text-hi">{{ t.name }}</p>
+          <p class="text-xs text-low font-mono">{{ t.slug }}</p>
+        </td>
+        <td class="px-4 py-3 text-mid">
+          {% if t.primary_domain %}{{ t.primary_domain.domain }}{% else %}<span class="text-low">nenhum ainda</span>{% endif %}
+        </td>
+        <td class="px-4 py-3 text-mid">{{ t.owner_user.email if t.owner_user else "—" }}</td>
+        <td class="px-4 py-3">
+          {% if t.is_blocked %}
+          <span class="inline-flex items-center gap-1 text-red-400 text-xs font-mono"><span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> bloqueada</span>
+          {% else %}
+          <span class="inline-flex items-center gap-1 text-mid text-xs font-mono"><span class="w-1.5 h-1.5 rounded-full" style="background: var(--cyan)"></span> ativa</span>
+          {% endif %}
+        </td>
+        <td class="px-4 py-3 text-right">
+          <a href="{{ url_for('superadmin.tenant_detail', tenant_id=t.id) }}" class="text-xs text-mid hover:text-hi">Gerenciar &rarr;</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

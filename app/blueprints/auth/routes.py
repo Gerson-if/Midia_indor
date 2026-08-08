@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from flask import current_app, flash, redirect, render_template, request, url_for
+from flask import current_app, flash, g, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 from sqlalchemy.orm.exc import StaleDataError
 
@@ -64,7 +64,13 @@ def login():
     form = LoginForm()
     if form.validate_on_submit():
         email = form.email.data.strip().lower()
-        user = User.query.filter_by(email=email).first()
+        # tenant_id=g.tenant_id: um usuário só consegue entrar pelo domínio
+        # da própria página. Sem isso, alguém com credenciais válidas de
+        # uma página conseguiria logar acessando o domínio de OUTRA
+        # página (ambas compartilham a mesma tabela "users") -- o
+        # cookie de sessão já isola isso na prática (é por domínio), mas
+        # aqui é a barreira que impede a autenticação de sequer acontecer.
+        user = User.query.filter_by(email=email, tenant_id=g.tenant_id).first()
 
         if user and user.is_locked:
             flash("Conta temporariamente bloqueada por excesso de tentativas. Tente novamente mais tarde.", "danger")

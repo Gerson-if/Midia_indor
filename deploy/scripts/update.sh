@@ -141,6 +141,17 @@ if ! (cd "$APP_DIR" && "$APP_DIR/venv/bin/flask" db upgrade); then
     exit 1
 fi
 ok "Migrações aplicadas."
+
+# Idempotente: garante que a página "default" (criada automaticamente
+# pela migração multi-tenant, ao migrar uma instalação single-tenant já
+# existente) fique com o domínio de SERVER_NAME associado -- sem isso,
+# o site ficaria fora do ar após o upgrade (domínio não cadastrado) até
+# alguém entrar manualmente no painel do super admin. Em instalações já
+# multi-tenant (que já têm domínio cadastrado), isso não faz nada além
+# de atualizar a senha/dados do admin, se tiverem mudado no .env.
+if [ -n "${ADMIN_EMAIL:-}" ] && [ -n "${ADMIN_PASSWORD:-}" ]; then
+    (cd "$APP_DIR" && "$APP_DIR/venv/bin/flask" create-admin) || warn "Não foi possível verificar/atualizar o usuário administrador (ADMIN_EMAIL/ADMIN_PASSWORD no .env) -- confira manualmente."
+fi
 chown -R midia-indoor:midia-indoor "$APP_DIR"
 
 # ---------------------------------------------------------------
