@@ -1,5 +1,6 @@
 import os
 
+import click
 from flask import Flask, g, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -8,6 +9,7 @@ from app.extensions import bcrypt, compress, csrf, db, limiter, login_manager, m
 from app.utils.errors import register_error_handlers
 from app.utils.legal_content import render_legal_content
 from app.utils.logging import configure_logging
+from app.utils.tenancy import current_tenant, enforce_tenant_gate, register_tenant_filter, resolve_tenant
 
 
 def create_app(env_name: str | None = None) -> Flask:
@@ -28,6 +30,7 @@ def create_app(env_name: str | None = None) -> Flask:
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
     _init_extensions(app)
+    register_tenant_filter(app)
     _register_blueprints(app)
     _register_context_processors(app)
     _register_request_hooks(app)
@@ -78,7 +81,21 @@ def _init_extensions(app: Flask) -> None:
 
     @login_manager.user_loader
     def load_user(user_id):
-        return db.session.get(User, int(user_id))
+        from flask import g
+
+        user = db.session.get(User, int(user_id))
+        if user is None:
+            return None
+        # Rede de segurança: um usuário de uma página de cliente nunca é
+        # considerado autenticado fora do domínio da própria página (o
+        # cookie de sessão já é isolado por domínio pelo navegador, mas
+        # isso cobre cenários de domínios compartilhados/alias mal
+        # configurados). O super admin (tenant_id nulo) só "existe" fora
+        # de qualquer tenant (painel /superadmin).
+        tenant_id = getattr(g, "tenant_id", None)
+        if user.tenant_id is not None and tenant_id is not None and user.tenant_id != tenant_id:
+            return None
+        return user
 
     app.jinja_env.filters["legal_content"] = render_legal_content
 
@@ -88,11 +105,13 @@ def _register_blueprints(app: Flask) -> None:
     from app.blueprints.api import api_bp
     from app.blueprints.auth import auth_bp
     from app.blueprints.main import main_bp
+    from app.blueprints.superadmin import superadmin_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(api_bp)
+    app.register_blueprint(superadmin_bp)
 
 
 def _register_context_processors(app: Flask) -> None:
@@ -111,6 +130,7 @@ def _register_context_processors(app: Flask) -> None:
             "APP_NAME": app.config.get("COMPANY_NAME"),
             "now_year": datetime.now(timezone.utc).year,
             "global_settings": settings,
+            "current_tenant": current_tenant(),
         }
 
     # Cache por instância de app (não módulo): evita vazar valores entre
@@ -171,6 +191,14 @@ def _register_request_hooks(app: Flask) -> None:
     def add_request_context():
         g.request_id = request.headers.get("X-Request-ID", os.urandom(8).hex())
 
+    # Ordem importa: primeiro identifica o tenant pelo domínio, depois
+    # decide se a requisição pode seguir (domínio desconhecido ou tenant
+    # bloqueado interrompem aqui, antes de qualquer rota rodar). Como
+    # before_request de nível de app sempre roda antes dos de blueprint
+    # (ex.: admin_bp.require_login), isso vale também para o painel admin.
+    app.before_request(resolve_tenant)
+    app.before_request(enforce_tenant_gate)
+
     @app.after_request
     def set_security_headers(response):
         response.headers["X-Request-ID"] = getattr(g, "request_id", "")
@@ -188,10 +216,45 @@ def _register_request_hooks(app: Flask) -> None:
 def _register_cli(app: Flask) -> None:
     """Comandos de linha de comando: flask create-admin, flask seed-demo."""
 
-    @app.cli.command("create-admin")
-    def create_admin():
-        """Cria (ou atualiza) o usuário administrador a partir das variáveis de ambiente."""
+    @app.cli.command("create-superadmin")
+    def create_superadmin():
+        """Cria (ou atualiza) o super admin -- dono do sistema, gerencia as páginas de clientes."""
         from app.models import User, UserRole
+
+        name = os.environ.get("SUPERADMIN_NAME", "Super Admin")
+        email = os.environ.get("SUPERADMIN_EMAIL", "").strip().lower()
+        password = os.environ.get("SUPERADMIN_PASSWORD")
+
+        if not email or not password:
+            print("Defina SUPERADMIN_EMAIL e SUPERADMIN_PASSWORD no ambiente antes de rodar este comando.")
+            return
+
+        user = User.query.filter_by(email=email).first()
+        if user:
+            user.set_password(password)
+            user.role = UserRole.SUPER_ADMIN
+            user.tenant_id = None
+            user.is_active_flag = True
+            print(f"Super admin '{email}' atualizado.")
+        else:
+            user = User(name=name, email=email, role=UserRole.SUPER_ADMIN)
+            user.set_password(password)
+            db.session.add(user)
+            print(f"Super admin '{email}' criado. Acesse em /superadmin/login.")
+        db.session.commit()
+
+    @app.cli.command("create-admin")
+    @click.option("--tenant-slug", default=None, help="Página (tenant) a que este admin pertence.")
+    def create_admin(tenant_slug):
+        """
+        Cria (ou atualiza) o usuário administrador de uma página, a partir
+        das variáveis de ambiente. Mantém o instalador de página única
+        funcionando: se a página informada (TENANT_SLUG, padrão "default")
+        ainda não existir, ela é criada agora, com o domínio de DOMAIN (se
+        definido) já associado. Para criar páginas adicionais depois, use
+        o painel do super admin em /superadmin.
+        """
+        from app.models import Tenant, TenantDomain, User, UserRole, normalize_domain
 
         name = os.environ.get("ADMIN_NAME", "Administrador")
         email = os.environ.get("ADMIN_EMAIL", "admin@nexomidia.com.br").lower()
@@ -201,23 +264,77 @@ def _register_cli(app: Flask) -> None:
             print("Defina ADMIN_PASSWORD no ambiente antes de rodar este comando.")
             return
 
+        tenant_slug = tenant_slug or os.environ.get("TENANT_SLUG", "default")
+        tenant = Tenant.query.filter_by(slug=tenant_slug).first()
+        if tenant is None:
+            tenant = Tenant(name=os.environ.get("COMPANY_NAME", "Minha Página"), slug=tenant_slug)
+            db.session.add(tenant)
+            db.session.flush()
+            print(f"Página '{tenant.slug}' criada.")
+
+        # Anexa o domínio do ambiente sempre que a página ainda não tiver
+        # nenhum -- tanto para uma página recém-criada quanto para uma já
+        # existente sem domínio (ex.: logo após a migração multi-tenant
+        # rodar sobre um banco de uma instalação single-tenant antiga,
+        # que cria a página "default" mas não sabe qual domínio ela usa,
+        # já que isso vive no .env, não no banco).
+        if not TenantDomain.query.filter_by(tenant_id=tenant.id).first():
+            # SERVER_NAME é o nome histórico usado pelo instalador (deploy/scripts/
+            # configure-env.sh); DOMAIN/PRIMARY_DOMAIN são aceitos como alternativa
+            # para quem estiver configurando manualmente.
+            domain_env = (
+                os.environ.get("DOMAIN")
+                or os.environ.get("PRIMARY_DOMAIN")
+                or os.environ.get("SERVER_NAME")
+            )
+            import re as _re
+
+            is_ip = domain_env and _re.match(r"^\d{1,3}(\.\d{1,3}){3}$", domain_env)
+            if domain_env and not is_ip:
+                db.session.add(
+                    TenantDomain(tenant_id=tenant.id, domain=normalize_domain(domain_env), is_primary=True)
+                )
+                print(f"Domínio '{normalize_domain(domain_env)}' associado à página '{tenant.slug}'.")
+            elif is_ip:
+                print(
+                    f"Aviso: '{domain_env}' parece ser um IP, não um domínio -- HTTPS automático (Caddy) "
+                    "exige um domínio real. Cadastre o domínio pelo painel /superadmin assim que tiver um; "
+                    "por enquanto o acesso via IP fica só em HTTP."
+                )
+            else:
+                print(
+                    f"Aviso: a página '{tenant.slug}' ainda não tem nenhum domínio cadastrado. "
+                    "O site fica inacessível até você cadastrar um em /superadmin ou definir "
+                    "DOMAIN/SERVER_NAME no ambiente e rodar este comando de novo."
+                )
+
         user = User.query.filter_by(email=email).first()
         if user:
             user.set_password(password)
             user.role = UserRole.ADMIN
+            user.tenant_id = tenant.id
             user.is_active_flag = True
-            print(f"Usuário admin '{email}' atualizado.")
+            print(f"Usuário admin '{email}' atualizado (página: {tenant.slug}).")
         else:
-            user = User(name=name, email=email, role=UserRole.ADMIN)
+            user = User(name=name, email=email, role=UserRole.ADMIN, tenant_id=tenant.id)
             user.set_password(password)
             db.session.add(user)
-            print(f"Usuário admin '{email}' criado.")
+            print(f"Usuário admin '{email}' criado (página: {tenant.slug}).")
+        db.session.flush()
+        tenant.owner_user_id = user.id
         db.session.commit()
 
     @app.cli.command("seed-demo")
-    def seed_demo():
-        """Popula o banco com conteúdo de demonstração (idempotente)."""
+    @click.option("--tenant-slug", default="default", help="Página (tenant) a popular com conteúdo de demonstração.")
+    def seed_demo(tenant_slug):
+        """Popula o banco com conteúdo de demonstração (idempotente) para a página informada."""
+        from app.models import Tenant
         from scripts.seed import run_seed
 
-        run_seed()
-        print("Seed de demonstração aplicado.")
+        tenant = Tenant.query.filter_by(slug=tenant_slug).first()
+        if tenant is None:
+            print(f"Página '{tenant_slug}' não encontrada. Rode 'flask create-admin' primeiro.")
+            return
+
+        run_seed(tenant.id)
+        print(f"Seed de demonstração aplicado à página '{tenant.slug}'.")

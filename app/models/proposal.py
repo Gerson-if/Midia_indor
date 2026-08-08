@@ -3,6 +3,7 @@ import secrets
 from datetime import datetime, timezone
 
 from app.extensions import db
+from app.models.tenant import TenantScopedMixin
 
 
 class ProposalStatus(str, enum.Enum):
@@ -27,7 +28,7 @@ def _gen_public_ref() -> str:
     return secrets.token_hex(5).upper()
 
 
-class Proposal(db.Model):
+class Proposal(TenantScopedMixin, db.Model):
     """Solicitação de proposta enviada pelo formulário público do site."""
 
     __tablename__ = "proposals"

@@ -71,11 +71,11 @@ def test_edit_custom_section_updates_fields_without_bugs(client, admin_user, db)
     assert section.subtitle == "Escolha o ideal para você"
 
 
-def test_delete_custom_section_removes_its_items(client, admin_user, db):
+def test_delete_custom_section_removes_its_items(client, admin_user, db, tenant):
     login(client, "admin@teste.com", "SenhaForte123!")
     _create_section(client, nav_label="Planos", heading="Nossos Planos")
     section = CustomSection.query.filter_by(nav_label="Planos").first()
-    item = CustomSectionItem(section_id=section.id, title="Plano A", display_order=0, is_active=True)
+    item = CustomSectionItem(tenant_id=tenant.id, section_id=section.id, title="Plano A", display_order=0, is_active=True)
     db.session.add(item)
     db.session.commit()
 
@@ -109,7 +109,7 @@ def test_create_and_edit_custom_section_item(client, admin_user, db):
     assert item.title == "Plano Básico Renovado"
 
 
-def test_custom_section_item_delete_scoped_to_its_section(client, admin_user, db):
+def test_custom_section_item_delete_scoped_to_its_section(client, admin_user, db, tenant):
     """Excluir um cartão de uma seção não pode afetar cartões de outra."""
     login(client, "admin@teste.com", "SenhaForte123!")
     _create_section(client, nav_label="Planos", heading="Nossos Planos")
@@ -117,8 +117,8 @@ def test_custom_section_item_delete_scoped_to_its_section(client, admin_user, db
     section_a = CustomSection.query.filter_by(nav_label="Planos").first()
     section_b = CustomSection.query.filter_by(nav_label="Equipe").first()
 
-    item_a = CustomSectionItem(section_id=section_a.id, title="Item A", display_order=0, is_active=True)
-    item_b = CustomSectionItem(section_id=section_b.id, title="Item B", display_order=0, is_active=True)
+    item_a = CustomSectionItem(tenant_id=tenant.id, section_id=section_a.id, title="Item A", display_order=0, is_active=True)
+    item_b = CustomSectionItem(tenant_id=tenant.id, section_id=section_b.id, title="Item B", display_order=0, is_active=True)
     db.session.add_all([item_a, item_b])
     db.session.commit()
 
@@ -130,7 +130,7 @@ def test_custom_section_item_delete_scoped_to_its_section(client, admin_user, db
     assert CustomSectionItem.query.get(item_b.id) is not None
 
 
-def test_custom_section_items_reorder_is_scoped_per_section(client, admin_user, db):
+def test_custom_section_items_reorder_is_scoped_per_section(client, admin_user, db, tenant):
     """
     Reordenar os cartões de UMA seção não pode misturar ou corromper a
     ordem dos cartões de outra seção.
@@ -141,9 +141,9 @@ def test_custom_section_items_reorder_is_scoped_per_section(client, admin_user, 
     section_a = CustomSection.query.filter_by(nav_label="Planos").first()
     section_b = CustomSection.query.filter_by(nav_label="Equipe").first()
 
-    a1 = CustomSectionItem(section_id=section_a.id, title="A1", display_order=0, is_active=True)
-    a2 = CustomSectionItem(section_id=section_a.id, title="A2", display_order=1, is_active=True)
-    b1 = CustomSectionItem(section_id=section_b.id, title="B1", display_order=0, is_active=True)
+    a1 = CustomSectionItem(tenant_id=tenant.id, section_id=section_a.id, title="A1", display_order=0, is_active=True)
+    a2 = CustomSectionItem(tenant_id=tenant.id, section_id=section_a.id, title="A2", display_order=1, is_active=True)
+    b1 = CustomSectionItem(tenant_id=tenant.id, section_id=section_b.id, title="B1", display_order=0, is_active=True)
     db.session.add_all([a1, a2, b1])
     db.session.commit()
 
@@ -177,11 +177,11 @@ def test_custom_sections_reorder(client, admin_user, db):
     assert section_a.display_order == 1
 
 
-def test_public_site_shows_active_custom_section_with_active_item(client, db):
-    section = CustomSection(nav_label="Planos", heading="Nossos Planos", slug="planos", display_order=0, is_active=True)
+def test_public_site_shows_active_custom_section_with_active_item(client, db, tenant):
+    section = CustomSection(tenant_id=tenant.id, nav_label="Planos", heading="Nossos Planos", slug="planos", display_order=0, is_active=True)
     db.session.add(section)
     db.session.commit()
-    item = CustomSectionItem(section_id=section.id, title="Plano Ouro", description="O melhor plano", display_order=0, is_active=True)
+    item = CustomSectionItem(tenant_id=tenant.id, section_id=section.id, title="Plano Ouro", description="O melhor plano", display_order=0, is_active=True)
     db.session.add(item)
     db.session.commit()
 
@@ -193,11 +193,11 @@ def test_public_site_shows_active_custom_section_with_active_item(client, db):
     assert 'href="#planos"' in html
 
 
-def test_public_site_hides_inactive_custom_section(client, db):
-    section = CustomSection(nav_label="Planos", heading="Nossos Planos", slug="planos", display_order=0, is_active=False)
+def test_public_site_hides_inactive_custom_section(client, db, tenant):
+    section = CustomSection(tenant_id=tenant.id, nav_label="Planos", heading="Nossos Planos", slug="planos", display_order=0, is_active=False)
     db.session.add(section)
     db.session.commit()
-    item = CustomSectionItem(section_id=section.id, title="Plano Ouro", display_order=0, is_active=True)
+    item = CustomSectionItem(tenant_id=tenant.id, section_id=section.id, title="Plano Ouro", display_order=0, is_active=True)
     db.session.add(item)
     db.session.commit()
 
@@ -206,12 +206,12 @@ def test_public_site_hides_inactive_custom_section(client, db):
     assert 'id="planos"' not in html
 
 
-def test_public_site_hides_active_section_without_active_items(client, db):
+def test_public_site_hides_active_section_without_active_items(client, db, tenant):
     """Uma seção ativa mas sem nenhum cartão ativo não deve aparecer no menu nem na página (evita um bloco vazio)."""
-    section = CustomSection(nav_label="Planos", heading="Nossos Planos", slug="planos", display_order=0, is_active=True)
+    section = CustomSection(tenant_id=tenant.id, nav_label="Planos", heading="Nossos Planos", slug="planos", display_order=0, is_active=True)
     db.session.add(section)
     db.session.commit()
-    item = CustomSectionItem(section_id=section.id, title="Plano Ouro", display_order=0, is_active=False)
+    item = CustomSectionItem(tenant_id=tenant.id, section_id=section.id, title="Plano Ouro", display_order=0, is_active=False)
     db.session.add(item)
     db.session.commit()
 
@@ -221,7 +221,7 @@ def test_public_site_hides_active_section_without_active_items(client, db):
     assert 'href="#planos"' not in html
 
 
-def test_public_site_hides_footer_contact_column_when_empty(client, db):
+def test_public_site_hides_footer_contact_column_when_empty(client, db, tenant):
     """
     Sem e-mail, telefone nem endereço cadastrados, a coluna "Contato" do
     rodapé não deve aparecer (antes esse bloco ficava abaixo do botão do
@@ -230,7 +230,7 @@ def test_public_site_hides_footer_contact_column_when_empty(client, db):
     """
     from app.models import SiteSettings
 
-    settings = SiteSettings.get_solo()
+    settings = SiteSettings.get_solo(tenant_id=tenant.id)
     settings.company_email = None
     settings.company_phone = None
     settings.company_address = None
@@ -241,10 +241,10 @@ def test_public_site_hides_footer_contact_column_when_empty(client, db):
     assert "mailto:" not in html
 
 
-def test_public_site_shows_footer_contact_column_when_present(client, db):
+def test_public_site_shows_footer_contact_column_when_present(client, db, tenant):
     from app.models import SiteSettings
 
-    settings = SiteSettings.get_solo()
+    settings = SiteSettings.get_solo(tenant_id=tenant.id)
     settings.company_email = "contato@exemplo.com"
     settings.company_phone = "6733224455"
     settings.company_address = None

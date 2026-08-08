@@ -1,0 +1,54 @@
+{% extends "superadmin/base_superadmin.html" %}
+{% block title %}Nova página — Super Admin{% endblock %}
+{% block content %}
+<a href="{{ url_for('superadmin.dashboard') }}" class="text-xs text-mid hover:text-hi">&larr; Páginas</a>
+<h1 class="font-display text-2xl mt-2 mb-6">Nova página</h1>
+
+<div class="card p-6 max-w-xl">
+  <form method="POST" class="space-y-5">
+    {{ form.hidden_tag() }}
+
+    <div>
+      {{ form.name.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ form.name(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+      {% for e in form.name.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+    </div>
+
+    <div>
+      {{ form.slug.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ form.slug(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", placeholder="gerado automaticamente se vazio") }}
+      {% for e in form.slug.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+    </div>
+
+    <div>
+      {{ form.domain.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ form.domain(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", placeholder="cliente.com.br (opcional, dá pra adicionar depois)") }}
+      {% for e in form.domain.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+      <p class="text-xs text-low mt-1">Depois de criar, aponte o DNS (registro A) desse domínio para o IP desta VPS — o HTTPS é emitido automaticamente no primeiro acesso.</p>
+    </div>
+
+    <hr class="border-line">
+    <p class="text-xs font-mono uppercase text-low">Administrador desta página</p>
+
+    <div>
+      {{ form.owner_name.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ form.owner_name(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+      {% for e in form.owner_name.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+    </div>
+
+    <div>
+      {{ form.owner_email.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ form.owner_email(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+      {% for e in form.owner_email.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+    </div>
+
+    <div>
+      {{ form.owner_password.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ form.owner_password(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+      {% for e in form.owner_password.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+    </div>
+
+    <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">Criar página</button>
+  </form>
+</div>
+{% endblock %}

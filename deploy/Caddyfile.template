@@ -1,0 +1,85 @@
+# =============================================================
+# Caddy — reverse proxy para o Nexo Mídia (Flask + Gunicorn)
+# Gerado automaticamente por deploy/scripts/setup-caddy.sh
+# NÃO edite manualmente: rode o script novamente para reconfigurar
+# (ele é idempotente).
+#
+# Por que Caddy em vez de Nginx + Certbot aqui: o sistema agora é
+# multi-página (multi-tenant) — o super admin pode cadastrar um
+# domínio ou subdomínio novo a qualquer momento, pelo painel, sem
+# reinstalar nada. Com Nginx, cada domínio novo exigiria editar o
+# "server_name" e rodar o Certbot manualmente para esse domínio.
+# Com Caddy + "on-demand TLS", o servidor aceita QUALQUER domínio
+# que chegue nele e, no primeiro acesso HTTPS a um domínio ainda
+# sem certificado, o Caddy pergunta para a própria aplicação (ver
+# bloco "on_demand_tls -> ask" abaixo, que chama
+# GET /internal/domain-check) se aquele domínio pertence de fato a
+# alguma página cadastrada. Se sim, emite e guarda o certificado
+# Let's Encrypt automaticamente (e renova sozinho depois); se não,
+# recusa — isso evita que alguém aponte um domínio qualquer (que
+# não é nosso cliente) para esta VPS e force emissão de certificados
+# à toa (abuso de rate limit do Let's Encrypt).
+#
+# Fluxo para o super admin adicionar uma página nova, na prática:
+#   1. Cadastra o domínio no painel (/superadmin)
+#   2. Aponta o DNS (registro A) daquele domínio para o IP desta VPS
+#   3. Pronto — no primeiro acesso, o Caddy já emite o HTTPS sozinho.
+# Nenhum passo manual nesta VPS é necessário.
+# =============================================================
+{
+	email __ACME_EMAIL__
+	on_demand_tls {
+		ask http://127.0.0.1:__ASK_PORT__/internal/domain-check
+		interval 2m
+		burst 5
+	}
+}
+
+# ---- Porta 80: redireciona para HTTPS (exceto o desafio ACME, que o
+#      próprio Caddy intercepta automaticamente antes de qualquer rota) ----
+:80 {
+	redir https://{host}{uri} permanent
+}
+
+# ---- Porta 443: HTTPS emitido sob demanda para qualquer domínio
+#      validado pelo endpoint /internal/domain-check acima ----
+:443 {
+	tls {
+		on_demand
+	}
+
+	encode gzip
+
+	log {
+		output file /var/log/caddy/midia-indoor.access.log
+	}
+
+	@static path /static/*
+	handle @static {
+		root * __STATIC_PATH__
+		uri strip_prefix /static
+		file_server
+		header Cache-Control "public, immutable, max-age=2592000"
+	}
+
+	handle {
+		reverse_proxy __GUNICORN_BIND__ {
+			header_up X-Forwarded-Proto https
+			header_up X-Forwarded-Host {host}
+			header_up X-Forwarded-Port {port}
+		}
+	}
+
+	header {
+		# Camada extra de segurança a nível de servidor (a aplicação já
+		# define os mesmos cabeçalhos via Flask-Talisman, mas manter
+		# aqui também cobre respostas de erro do próprio Caddy).
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+
+	handle_errors {
+		respond "Erro {err.status_code}" {err.status_code}
+	}
+}

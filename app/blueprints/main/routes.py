@@ -1,4 +1,4 @@
-from flask import current_app, jsonify, redirect, render_template, request, url_for
+from flask import current_app, g, jsonify, redirect, render_template, request, url_for
 
 from app.blueprints.main import main_bp
 from app.blueprints.main.forms import ProposalRequestForm
@@ -84,6 +84,7 @@ def submit_proposal():
         return redirect(url_for("main.index", sent="1") + "#contato")
 
     proposal = Proposal(
+        tenant_id=g.tenant_id,
         name=form.name.data.strip(),
         email=form.email.data.strip().lower(),
         phone=form.phone.data.strip(),
@@ -175,3 +176,35 @@ def healthz():
         db_status = "error"
     status_code = 200 if db_status == "ok" else 503
     return jsonify(status="ok" if db_status == "ok" else "degraded", database=db_status), status_code
+
+
+@main_bp.route("/internal/domain-check")
+def internal_domain_check():
+    """
+    Endpoint chamado pelo Caddy (config "on_demand_tls -> ask") antes de
+    emitir um certificado HTTPS para um domínio. Só devolve 200 se o
+    domínio pedido estiver de fato cadastrado em algum tenant -- isso
+    impede que alguém aponte um domínio qualquer (que não é cliente
+    nosso) para esta VPS e force o Caddy a emitir certificados à toa
+    (abuso de rate limit do Let's Encrypt / uso indevido do servidor).
+
+    Restrito à rede local: só o próprio Caddy, rodando na mesma máquina,
+    deve conseguir chamar isso -- nunca é exposto publicamente.
+    """
+    from app.models import TenantDomain
+
+    if request.remote_addr not in ("127.0.0.1", "::1"):
+        return "forbidden", 403
+
+    domain = normalize_domain_query(request.args.get("domain", ""))
+    if not domain:
+        return "missing domain", 400
+
+    exists = TenantDomain.query.filter_by(domain=domain).first() is not None
+    return ("ok", 200) if exists else ("not found", 404)
+
+
+def normalize_domain_query(raw: str) -> str:
+    from app.models import normalize_domain
+
+    return normalize_domain(raw)

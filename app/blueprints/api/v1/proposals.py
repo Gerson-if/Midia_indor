@@ -1,4 +1,4 @@
-from flask import current_app, jsonify, request
+from flask import current_app, g, jsonify, request
 from flask_login import current_user, login_required
 
 from app.blueprints.api.v1 import api_v1_bp
@@ -34,6 +34,7 @@ def create_proposal():
         )
 
     proposal = Proposal(
+        tenant_id=g.tenant_id,
         name=str(payload["name"]).strip()[:150],
         email=str(payload["email"]).strip().lower()[:190],
         phone=str(payload["phone"]).strip()[:30],
@@ -85,7 +86,7 @@ def list_proposals():
 @login_required
 @roles_required(*STAFF_ROLES)
 def get_proposal(proposal_id):
-    proposal = db.session.get(Proposal, proposal_id)
+    proposal = Proposal.query.filter_by(id=proposal_id).first()
     if not proposal:
         raise APIError("Solicitação não encontrada.", status_code=404, error="not_found")
     data = proposal.to_dict()
@@ -97,7 +98,7 @@ def get_proposal(proposal_id):
 @login_required
 @roles_required("admin", "editor")
 def update_proposal_status(proposal_id):
-    proposal = db.session.get(Proposal, proposal_id)
+    proposal = Proposal.query.filter_by(id=proposal_id).first()
     if not proposal:
         raise APIError("Solicitação não encontrada.", status_code=404, error="not_found")
 

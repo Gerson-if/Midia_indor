@@ -95,8 +95,8 @@ def test_submit_proposal_validates_required_fields(client, db):
     assert Proposal.query.count() == 0
 
 
-def test_admin_can_view_proposal_list(client, admin_user, db):
-    proposal = Proposal(name="Maria", email="maria@example.com", phone="67988887777")
+def test_admin_can_view_proposal_list(client, admin_user, db, tenant):
+    proposal = Proposal(tenant_id=tenant.id, name="Maria", email="maria@example.com", phone="67988887777")
     db.session.add(proposal)
     db.session.commit()
 
@@ -106,8 +106,8 @@ def test_admin_can_view_proposal_list(client, admin_user, db):
     assert "Maria" in resp.get_data(as_text=True)
 
 
-def test_admin_can_view_proposal_detail(client, admin_user, db):
-    proposal = Proposal(name="Carlos", email="carlos@example.com", phone="67977776666")
+def test_admin_can_view_proposal_detail(client, admin_user, db, tenant):
+    proposal = Proposal(tenant_id=tenant.id, name="Carlos", email="carlos@example.com", phone="67977776666")
     db.session.add(proposal)
     db.session.commit()
 
@@ -117,8 +117,8 @@ def test_admin_can_view_proposal_detail(client, admin_user, db):
     assert "Carlos" in resp.get_data(as_text=True)
 
 
-def test_whatsapp_redirect_generates_valid_link(client, admin_user, db):
-    proposal = Proposal(name="Ana", email="ana@example.com", phone="67966665555")
+def test_whatsapp_redirect_generates_valid_link(client, admin_user, db, tenant):
+    proposal = Proposal(tenant_id=tenant.id, name="Ana", email="ana@example.com", phone="67966665555")
     db.session.add(proposal)
     db.session.commit()
 
@@ -130,8 +130,8 @@ def test_whatsapp_redirect_generates_valid_link(client, admin_user, db):
     assert "Ana" in location or "%20Ana" in location or "Ana%21" in location
 
 
-def test_status_update_with_stale_version_is_rejected(client, admin_user, db):
-    proposal = Proposal(name="Pedro", email="pedro@example.com", phone="67955554444")
+def test_status_update_with_stale_version_is_rejected(client, admin_user, db, tenant):
+    proposal = Proposal(tenant_id=tenant.id, name="Pedro", email="pedro@example.com", phone="67955554444")
     db.session.add(proposal)
     db.session.commit()
 
@@ -153,13 +153,13 @@ def test_status_update_with_stale_version_is_rejected(client, admin_user, db):
     assert proposal.status != ProposalStatus.CONTATADO
 
 
-def test_viewer_role_cannot_change_status(client, db):
+def test_viewer_role_cannot_change_status(client, db, tenant):
     from app.models import User, UserRole
 
-    viewer = User(name="Visualizador", email="viewer@teste.com", role=UserRole.VIEWER)
+    viewer = User(name="Visualizador", email="viewer@teste.com", role=UserRole.VIEWER, tenant_id=tenant.id)
     viewer.set_password("SenhaForte123!")
     db.session.add(viewer)
-    proposal = Proposal(name="Lucas", email="lucas@example.com", phone="67944443333")
+    proposal = Proposal(tenant_id=tenant.id, name="Lucas", email="lucas@example.com", phone="67944443333")
     db.session.add(proposal)
     db.session.commit()
 

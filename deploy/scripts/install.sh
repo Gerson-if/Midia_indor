@@ -58,7 +58,7 @@ apt-get update -y
 apt-get install -y --no-install-recommends \
     python3 python3-venv python3-pip python3-dev \
     build-essential libpq-dev libmagic1 libjpeg-dev zlib1g-dev \
-    nginx git curl rsync ca-certificates gnupg
+    git curl rsync ca-certificates gnupg debian-keyring debian-archive-keyring apt-transport-https
 
 if confirm "Este projeto usará PostgreSQL (recomendado em produção)?" "s"; then
     apt-get install -y --no-install-recommends postgresql postgresql-contrib
@@ -70,10 +70,7 @@ if confirm "Instalar Redis (recomendado para rate limiting em produção)?" "s";
     systemctl enable --now redis-server
 fi
 
-if confirm "Ativar HTTPS automático (Let's Encrypt) mais adiante, se você tiver domínio?" "s"; then
-    apt-get install -y --no-install-recommends certbot python3-certbot-nginx
-fi
-info "Se preferir uma CA grátis alternativa (ZeroSSL/Buypass, via acme.sh) em vez do Let's Encrypt, não precisa instalar nada agora — o setup-nginx.sh instala o acme.sh sozinho quando você escolher essa opção em configure-env.sh."
+info "HTTPS é automático: o Caddy (instalado a seguir) emite e renova certificados Let's Encrypt sozinho, sob demanda, para qualquer domínio que você apontar para esta VPS — inclusive páginas novas cadastradas depois pelo painel do super admin, sem precisar rodar nada aqui de novo."
 
 BUILD_FRONTEND=0
 if confirm "Construir os assets de front-end (Tailwind CSS) agora? (requer Node.js/npm)" "s"; then
@@ -175,7 +172,7 @@ chmod 600 "$APP_DIR/.env"
 ok "Permissões ajustadas para o usuário '$APP_USER'."
 
 # ---------------------------------------------------------------
-# 8) systemd + Nginx
+# 8) systemd + Caddy (HTTPS automático, qualquer domínio)
 # ---------------------------------------------------------------
 title "8/8 — Ativando os serviços"
 sed -e "s#__APP_DIR__#${APP_DIR}#g" "$APP_DIR/deploy/midia-indoor.service" >/etc/systemd/system/midia-indoor.service
@@ -188,23 +185,22 @@ else
     err "O serviço midia-indoor não iniciou. Verifique: sudo journalctl -u midia-indoor -n 50"
 fi
 
-bash "$SCRIPT_DIR/setup-nginx.sh" "$APP_DIR"
+bash "$SCRIPT_DIR/setup-caddy.sh" "$APP_DIR"
 
 if confirm "Configurar firewall básico (UFW: liberar SSH, HTTP e HTTPS)?" "s"; then
     command -v ufw >/dev/null 2>&1 || apt-get install -y ufw >/dev/null
     ufw allow OpenSSH >/dev/null || true
-    ufw allow "Nginx Full" >/dev/null || true
+    ufw allow 80/tcp >/dev/null || true
+    ufw allow 443/tcp >/dev/null || true
     yes | ufw enable >/dev/null || true
-    ok "UFW ativado (SSH + Nginx liberados)."
+    ok "UFW ativado (SSH + 80/443 liberados)."
 fi
 
-SERVER_NAME_FINAL="$(grep -E '^SERVER_NAME=' "$APP_DIR/.env" | cut -d= -f2- | tr -d '"')"
-USE_HTTPS_FINAL="$(grep -E '^USE_HTTPS=' "$APP_DIR/.env" | cut -d= -f2-)"
-SSL_MODE_FINAL="$(grep -E '^SSL_MODE=' "$APP_DIR/.env" | cut -d= -f2- | tr -d '"')"
-if [ "$USE_HTTPS_FINAL" = "1" ]; then
-    URL="https://$SERVER_NAME_FINAL"
+DOMAIN_FINAL="$(grep -E '^SERVER_NAME=' "$APP_DIR/.env" | cut -d= -f2- | tr -d '"')"
+if [ -n "$DOMAIN_FINAL" ]; then
+    URL="https://$DOMAIN_FINAL"
 else
-    URL="http://$SERVER_NAME_FINAL"
+    URL="http://$(curl -fsS -4 ifconfig.me 2>/dev/null || echo "<IP-desta-VPS>")"
 fi
 
 echo
@@ -213,18 +209,21 @@ echo -e "  Site:        ${C_BOLD}$URL${C_RESET}"
 echo -e "  Painel:      ${C_BOLD}$URL/login${C_RESET}"
 echo -e "  Admin:       ${C_BOLD}$ADMIN_EMAIL${C_RESET}"
 echo -e "  Diretório:   ${C_BOLD}$APP_DIR${C_RESET}"
-if [ "$SSL_MODE_FINAL" = "selfsigned" ]; then
+if [ -n "$DOMAIN_FINAL" ]; then
     echo
-    warn "HTTPS ativo com certificado autoassinado (sem domínio ainda)."
-    warn "O navegador vai avisar 'conexão não é privada' na primeira visita — clique em avançado/continuar. A conexão continua criptografada normalmente."
-elif [ "$SSL_MODE_FINAL" = "custom" ]; then
+    info "HTTPS é emitido automaticamente pelo Caddy no primeiro acesso a este domínio (Let's Encrypt) — não precisa fazer mais nada."
+else
     echo
-    ok "HTTPS ativo com certificado comprado (CSR)."
-    info "Sem renovação automática neste modo — rode 'sudo deploy/scripts/check-https.sh $APP_DIR' de vez em quando para acompanhar o vencimento."
+    warn "Nenhum domínio configurado ainda: o site está acessível só por HTTP/IP. Para ativar HTTPS, cadastre um domínio pelo painel do super admin (/superadmin) e aponte o DNS dele para o IP desta VPS."
 fi
+echo
+echo "Painel do super admin (cria/gerencia/bloqueia páginas de clientes):"
+echo "  $URL/superadmin/login"
+echo "  (crie o primeiro acesso com: sudo -u midia-indoor bash -c 'cd $APP_DIR && SUPERADMIN_EMAIL=... SUPERADMIN_PASSWORD=... venv/bin/flask create-superadmin')"
 echo
 echo "Comandos úteis:"
 echo "  sudo systemctl status midia-indoor        # status da aplicação"
+echo "  sudo systemctl status caddy                # status do proxy/HTTPS"
 echo "  sudo journalctl -u midia-indoor -f         # logs em tempo real"
 echo "  sudo bash deploy/scripts/update.sh          # publicar uma atualização"
 echo "  sudo bash deploy/scripts/rollback.sh        # voltar para a versão anterior"

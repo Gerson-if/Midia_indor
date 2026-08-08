@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
 
-from flask import url_for
+from flask import g, url_for
 from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
+from app.models.tenant import TenantScopedMixin
 
 
 def _static_url(relative_path):
@@ -30,7 +31,7 @@ class TimestampMixin:
     )
 
 
-class Service(TimestampMixin, db.Model):
+class Service(TenantScopedMixin, TimestampMixin, db.Model):
     """Cartões da seção 'Vantagens' da landing page."""
 
     __tablename__ = "services"
@@ -53,7 +54,7 @@ class Service(TimestampMixin, db.Model):
         }
 
 
-class GalleryItem(TimestampMixin, db.Model):
+class GalleryItem(TenantScopedMixin, TimestampMixin, db.Model):
     """Itens da seção 'Nossos Pontos'."""
 
     __tablename__ = "gallery_items"
@@ -76,7 +77,7 @@ class GalleryItem(TimestampMixin, db.Model):
         }
 
 
-class Testimonial(TimestampMixin, db.Model):
+class Testimonial(TenantScopedMixin, TimestampMixin, db.Model):
     __tablename__ = "testimonials"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -96,7 +97,7 @@ class Testimonial(TimestampMixin, db.Model):
         }
 
 
-class Partner(TimestampMixin, db.Model):
+class Partner(TenantScopedMixin, TimestampMixin, db.Model):
     __tablename__ = "partners"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -109,7 +110,7 @@ class Partner(TimestampMixin, db.Model):
         return {"id": self.id, "name": self.name, "logo_url": _static_url(self.logo_path)}
 
 
-class CustomSection(TimestampMixin, db.Model):
+class CustomSection(TenantScopedMixin, TimestampMixin, db.Model):
     """
     Seção extra do site, criada livremente pelo admin (além das seções
     fixas Vantagens/Galeria/Depoimentos, que têm layout próprio). Cada
@@ -120,13 +121,18 @@ class CustomSection(TimestampMixin, db.Model):
     """
 
     __tablename__ = "custom_sections"
+    __table_args__ = (
+        # Único por página (não mais global): duas páginas de clientes
+        # diferentes podem ter uma seção "#secao-planos" cada uma.
+        db.UniqueConstraint("tenant_id", "slug", name="uq_custom_sections_tenant_slug"),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     # Usado como #âncora do menu (ex.: #secao-planos) — precisa ser único
-    # e não pode colidir com as âncoras fixas do site (ver RESERVED_SLUGS
-    # em app/blueprints/admin/routes.py), senão dois elementos com o
-    # mesmo id quebrariam a navegação por link.
-    slug = db.Column(db.String(60), unique=True, nullable=False, index=True)
+    # dentro da mesma página e não pode colidir com as âncoras fixas do
+    # site (ver RESERVED_SLUGS em app/blueprints/admin/routes.py), senão
+    # dois elementos com o mesmo id quebrariam a navegação por link.
+    slug = db.Column(db.String(60), nullable=False, index=True)
     nav_label = db.Column(db.String(60), nullable=False)
     heading = db.Column(db.String(150), nullable=False)
     subtitle = db.Column(db.String(300), nullable=True)
@@ -151,7 +157,7 @@ class CustomSection(TimestampMixin, db.Model):
         }
 
 
-class CustomSectionItem(TimestampMixin, db.Model):
+class CustomSectionItem(TenantScopedMixin, TimestampMixin, db.Model):
     """Cartão dentro de uma CustomSection (título, descrição, imagem)."""
 
     __tablename__ = "custom_section_items"
@@ -176,13 +182,18 @@ class CustomSectionItem(TimestampMixin, db.Model):
         }
 
 
-class SiteSettings(TimestampMixin, db.Model):
+class SiteSettings(TenantScopedMixin, TimestampMixin, db.Model):
     """
     Configuração singleton (uma única linha, id=1) com os dados editáveis
     do site: hero, dados da empresa, cores do tema.
     """
 
     __tablename__ = "site_settings"
+    __table_args__ = (
+        # Uma linha de configuração por tenant (era uma única linha global,
+        # id=1, para o sistema inteiro; agora cada página tem a sua).
+        db.UniqueConstraint("tenant_id", name="uq_site_settings_tenant"),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
 
@@ -243,25 +254,32 @@ class SiteSettings(TimestampMixin, db.Model):
     __mapper_args__ = {"version_id_col": version_id}
 
     @classmethod
-    def get_solo(cls):
-        """Retorna (criando se necessário) a única linha de configuração."""
-        instance = db.session.get(cls, 1)
+    def get_solo(cls, tenant_id: int | None = None):
+        """Retorna (criando se necessário) a única linha de configuração
+        do tenant atual (ou do tenant_id informado explicitamente -- usado
+        pelo super admin ao criar uma página nova)."""
+        if tenant_id is None:
+            tenant_id = getattr(g, "tenant_id", None)
+        if tenant_id is None:
+            return None
+
+        instance = cls.query.filter_by(tenant_id=tenant_id).first()
         if instance is not None:
             return instance
 
         # Corrida de concorrência: com múltiplos usuários acessando o site
-        # ao mesmo tempo (ex.: logo após a instalação, antes de existir a
-        # linha de configuração), duas ou mais requisições podem chegar
+        # ao mesmo tempo (ex.: logo após criar a página, antes de existir
+        # a linha de configuração), duas ou mais requisições podem chegar
         # aqui simultaneamente, ambas verem "instance is None" e tentarem
-        # criar a linha id=1 ao mesmo tempo. Sem tratamento, a segunda a
-        # commitar recebe um IntegrityError (chave primária duplicada) e
-        # a requisição falha com erro 500 — exatamente o tipo de falha
-        # "só acontece com vários acessos ao mesmo tempo" relatado. Como
-        # o SGBD garante que só uma dessas escritas concorrentes vai
-        # vencer, tratamos a perdedora simplesmente re-buscando a linha
-        # que a vencedora acabou de criar, em vez de propagar o erro.
+        # criar a linha ao mesmo tempo. Sem tratamento, a segunda a
+        # commitar recebe um IntegrityError (uq_site_settings_tenant) e a
+        # requisição falha com erro 500 — exatamente o tipo de falha "só
+        # acontece com vários acessos ao mesmo tempo" relatado. Como o
+        # SGBD garante que só uma dessas escritas concorrentes vai vencer,
+        # tratamos a perdedora simplesmente re-buscando a linha que a
+        # vencedora acabou de criar, em vez de propagar o erro.
         instance = cls(
-            id=1,
+            tenant_id=tenant_id,
             privacy_content=cls._default_privacy_content(),
             terms_content=cls._default_terms_content(),
         )
@@ -270,7 +288,7 @@ class SiteSettings(TimestampMixin, db.Model):
             db.session.commit()
         except IntegrityError:
             db.session.rollback()
-            instance = db.session.get(cls, 1)
+            instance = cls.query.filter_by(tenant_id=tenant_id).first()
             if instance is None:
                 # Situação extremamente improvável (a linha sumiu entre o
                 # rollback e esta busca); melhor levantar um erro claro do

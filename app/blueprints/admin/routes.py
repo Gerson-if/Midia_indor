@@ -1,6 +1,6 @@
 import re
 
-from flask import abort, current_app, flash, jsonify, redirect, render_template, request, url_for
+from flask import abort, current_app, flash, g, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app.blueprints.admin import admin_bp
@@ -163,11 +163,15 @@ def proposals_list():
 @admin_bp.route("/solicitacoes/<int:proposal_id>")
 @roles_required(*STAFF_ROLES)
 def proposal_detail(proposal_id):
-    proposal = Proposal.query.get_or_404(proposal_id)
+    proposal = Proposal.query.filter_by(id=proposal_id).first_or_404()
     form = ProposalStatusForm(status=proposal.status.value, internal_notes=proposal.internal_notes, version_id=proposal.version_id)
     whatsapp_link = build_client_whatsapp_link(proposal, current_app.config["COMPANY_NAME"])
     history = (
-        AuditLog.query.filter_by(entity_type="Proposal", entity_id=str(proposal.id))
+        # AuditLog não herda TenantScopedMixin (algumas entradas são do
+        # super admin, sem tenant) — aqui o filtro precisa ser explícito,
+        # senão um "proposal.id" que colide com o de outra página vazaria
+        # entradas de auditoria de um tenant para outro.
+        AuditLog.query.filter_by(entity_type="Proposal", entity_id=str(proposal.id), tenant_id=proposal.tenant_id)
         .order_by(AuditLog.created_at.desc())
         .limit(20)
         .all()
@@ -185,7 +189,7 @@ def proposal_detail(proposal_id):
 @admin_bp.route("/solicitacoes/<int:proposal_id>/status", methods=["POST"])
 @roles_required(*EDIT_ROLES)
 def proposal_update_status(proposal_id):
-    proposal = Proposal.query.get_or_404(proposal_id)
+    proposal = Proposal.query.filter_by(id=proposal_id).first_or_404()
     form = ProposalStatusForm()
 
     if not form.validate_on_submit():
@@ -238,7 +242,7 @@ def proposal_update_status(proposal_id):
 @roles_required(*STAFF_ROLES)
 def proposal_whatsapp_redirect(proposal_id):
     """Registra em auditoria o contato e redireciona para o WhatsApp do cliente."""
-    proposal = Proposal.query.get_or_404(proposal_id)
+    proposal = Proposal.query.filter_by(id=proposal_id).first_or_404()
     link = build_client_whatsapp_link(proposal, current_app.config["COMPANY_NAME"])
     log_action(
         "proposal.whatsapp_contact",
@@ -253,7 +257,7 @@ def proposal_whatsapp_redirect(proposal_id):
 @admin_bp.route("/solicitacoes/<int:proposal_id>/excluir", methods=["POST"])
 @roles_required(UserRole.ADMIN)
 def proposal_delete(proposal_id):
-    proposal = Proposal.query.get_or_404(proposal_id)
+    proposal = Proposal.query.filter_by(id=proposal_id).first_or_404()
     log_action(
         "proposal.deleted",
         entity_type="Proposal",
@@ -275,6 +279,7 @@ def services_manage():
     form = ServiceForm()
     if form.validate_on_submit():
         service = Service(
+            tenant_id=g.tenant_id,
             title=form.title.data,
             description=form.description.data,
             display_order=_next_display_order(Service),
@@ -294,7 +299,7 @@ def services_manage():
 @admin_bp.route("/conteudo/servicos/<int:item_id>/editar", methods=["GET", "POST"])
 @roles_required(*EDIT_ROLES)
 def service_edit(item_id):
-    item = Service.query.get_or_404(item_id)
+    item = Service.query.filter_by(id=item_id).first_or_404()
     form = ServiceForm(obj=item) if request.method == "GET" else ServiceForm()
 
     if form.validate_on_submit():
@@ -314,7 +319,7 @@ def service_edit(item_id):
 @admin_bp.route("/conteudo/servicos/<int:item_id>/excluir", methods=["POST"])
 @roles_required(*EDIT_ROLES)
 def service_delete(item_id):
-    item = Service.query.get_or_404(item_id)
+    item = Service.query.filter_by(id=item_id).first_or_404()
     delete_upload(item.image_path)
     log_action("service.deleted", entity_type="Service", entity_id=item.id, description=item.title)
     db.session.delete(item)
@@ -332,6 +337,7 @@ def gallery_manage():
     form = GalleryItemForm()
     if form.validate_on_submit():
         item = GalleryItem(
+            tenant_id=g.tenant_id,
             title=form.title.data,
             category=form.category.data,
             display_order=_next_display_order(GalleryItem),
@@ -351,7 +357,7 @@ def gallery_manage():
 @admin_bp.route("/conteudo/galeria/<int:item_id>/editar", methods=["GET", "POST"])
 @roles_required(*EDIT_ROLES)
 def gallery_edit(item_id):
-    item = GalleryItem.query.get_or_404(item_id)
+    item = GalleryItem.query.filter_by(id=item_id).first_or_404()
     form = GalleryItemForm(obj=item) if request.method == "GET" else GalleryItemForm()
 
     if form.validate_on_submit():
@@ -371,7 +377,7 @@ def gallery_edit(item_id):
 @admin_bp.route("/conteudo/galeria/<int:item_id>/excluir", methods=["POST"])
 @roles_required(*EDIT_ROLES)
 def gallery_delete(item_id):
-    item = GalleryItem.query.get_or_404(item_id)
+    item = GalleryItem.query.filter_by(id=item_id).first_or_404()
     delete_upload(item.image_path)
     log_action("gallery.deleted", entity_type="GalleryItem", entity_id=item.id, description=item.title)
     db.session.delete(item)
@@ -389,6 +395,7 @@ def testimonials_manage():
     form = TestimonialForm()
     if form.validate_on_submit():
         item = Testimonial(
+            tenant_id=g.tenant_id,
             name=form.name.data,
             company_name=form.company_name.data,
             text=form.text.data,
@@ -408,7 +415,7 @@ def testimonials_manage():
 @admin_bp.route("/conteudo/depoimentos/<int:item_id>/editar", methods=["GET", "POST"])
 @roles_required(*EDIT_ROLES)
 def testimonial_edit(item_id):
-    item = Testimonial.query.get_or_404(item_id)
+    item = Testimonial.query.filter_by(id=item_id).first_or_404()
     form = TestimonialForm(obj=item) if request.method == "GET" else TestimonialForm()
 
     if form.validate_on_submit():
@@ -428,7 +435,7 @@ def testimonial_edit(item_id):
 @admin_bp.route("/conteudo/depoimentos/<int:item_id>/excluir", methods=["POST"])
 @roles_required(*EDIT_ROLES)
 def testimonial_delete(item_id):
-    item = Testimonial.query.get_or_404(item_id)
+    item = Testimonial.query.filter_by(id=item_id).first_or_404()
     log_action("testimonial.deleted", entity_type="Testimonial", entity_id=item.id, description=item.name)
     db.session.delete(item)
     db.session.commit()
@@ -442,6 +449,7 @@ def partners_manage():
     form = PartnerForm()
     if form.validate_on_submit():
         item = Partner(
+            tenant_id=g.tenant_id,
             name=form.name.data,
             display_order=_next_display_order(Partner),
             is_active=form.is_active.data,
@@ -460,7 +468,7 @@ def partners_manage():
 @admin_bp.route("/conteudo/parceiros/<int:item_id>/editar", methods=["GET", "POST"])
 @roles_required(*EDIT_ROLES)
 def partner_edit(item_id):
-    item = Partner.query.get_or_404(item_id)
+    item = Partner.query.filter_by(id=item_id).first_or_404()
     form = PartnerForm(obj=item) if request.method == "GET" else PartnerForm()
 
     if form.validate_on_submit():
@@ -479,7 +487,7 @@ def partner_edit(item_id):
 @admin_bp.route("/conteudo/parceiros/<int:item_id>/excluir", methods=["POST"])
 @roles_required(*EDIT_ROLES)
 def partner_delete(item_id):
-    item = Partner.query.get_or_404(item_id)
+    item = Partner.query.filter_by(id=item_id).first_or_404()
     delete_upload(item.logo_path)
     log_action("partner.deleted", entity_type="Partner", entity_id=item.id, description=item.name)
     db.session.delete(item)
@@ -497,6 +505,7 @@ def custom_sections_manage():
     form = CustomSectionForm()
     if form.validate_on_submit():
         section = CustomSection(
+            tenant_id=g.tenant_id,
             nav_label=form.nav_label.data,
             heading=form.heading.data,
             subtitle=form.subtitle.data,
@@ -517,7 +526,7 @@ def custom_sections_manage():
 @admin_bp.route("/conteudo/secoes/<int:section_id>/editar", methods=["GET", "POST"])
 @roles_required(*EDIT_ROLES)
 def custom_section_edit(section_id):
-    section = CustomSection.query.get_or_404(section_id)
+    section = CustomSection.query.filter_by(id=section_id).first_or_404()
     form = CustomSectionForm(obj=section) if request.method == "GET" else CustomSectionForm()
 
     if form.validate_on_submit():
@@ -542,7 +551,7 @@ def custom_section_edit(section_id):
 @admin_bp.route("/conteudo/secoes/<int:section_id>/excluir", methods=["POST"])
 @roles_required(*EDIT_ROLES)
 def custom_section_delete(section_id):
-    section = CustomSection.query.get_or_404(section_id)
+    section = CustomSection.query.filter_by(id=section_id).first_or_404()
     # Remove os arquivos de imagem dos cartões antes de excluir a seção —
     # o cascade do banco apaga as linhas, mas não os arquivos no disco.
     for item in section.items:
@@ -563,10 +572,11 @@ def custom_sections_reorder():
 @admin_bp.route("/conteudo/secoes/<int:section_id>/itens", methods=["GET", "POST"])
 @roles_required(*EDIT_ROLES)
 def custom_section_items_manage(section_id):
-    section = CustomSection.query.get_or_404(section_id)
+    section = CustomSection.query.filter_by(id=section_id).first_or_404()
     form = CustomSectionItemForm()
     if form.validate_on_submit():
         item = CustomSectionItem(
+            tenant_id=g.tenant_id,
             section_id=section.id,
             title=form.title.data,
             description=form.description.data,
@@ -589,7 +599,7 @@ def custom_section_items_manage(section_id):
 @admin_bp.route("/conteudo/secoes/<int:section_id>/itens/<int:item_id>/editar", methods=["GET", "POST"])
 @roles_required(*EDIT_ROLES)
 def custom_section_item_edit(section_id, item_id):
-    section = CustomSection.query.get_or_404(section_id)
+    section = CustomSection.query.filter_by(id=section_id).first_or_404()
     item = CustomSectionItem.query.filter_by(id=item_id, section_id=section.id).first_or_404()
     form = CustomSectionItemForm(obj=item) if request.method == "GET" else CustomSectionItemForm()
 
@@ -612,7 +622,7 @@ def custom_section_item_edit(section_id, item_id):
 @admin_bp.route("/conteudo/secoes/<int:section_id>/itens/<int:item_id>/excluir", methods=["POST"])
 @roles_required(*EDIT_ROLES)
 def custom_section_item_delete(section_id, item_id):
-    section = CustomSection.query.get_or_404(section_id)
+    section = CustomSection.query.filter_by(id=section_id).first_or_404()
     item = CustomSectionItem.query.filter_by(id=item_id, section_id=section.id).first_or_404()
     delete_upload(item.image_path)
     log_action("custom_section_item.deleted", entity_type="CustomSectionItem", entity_id=item.id, description=item.title)
@@ -629,7 +639,7 @@ def custom_section_items_reorder(section_id):
     # listas globais de Vantagens/Galeria/etc.), os cartões de seções
     # personalizadas são divididos entre várias seções — reordenar os de
     # uma não pode mexer nos de outra.
-    CustomSection.query.get_or_404(section_id)
+    CustomSection.query.filter_by(id=section_id).first_or_404()
     payload = request.get_json(silent=True) or {}
     order = payload.get("order")
     if not isinstance(order, list) or not order:
@@ -824,7 +834,13 @@ def users_manage():
         elif not form.password.data:
             flash("Senha é obrigatória para novos usuários.", "danger")
         else:
-            user = User(name=form.name.data, email=form.email.data.lower(), role=UserRole(form.role.data), is_active_flag=form.is_active.data)
+            user = User(
+                name=form.name.data,
+                email=form.email.data.lower(),
+                role=UserRole(form.role.data),
+                is_active_flag=form.is_active.data,
+                tenant_id=current_user.tenant_id,
+            )
             user.set_password(form.password.data)
             db.session.add(user)
             log_action("user.created", entity_type="User", description=user.email)
@@ -842,7 +858,7 @@ def user_delete(user_id):
     if user_id == current_user.id:
         flash("Você não pode excluir seu próprio usuário.", "danger")
         return redirect(url_for("admin.users_manage"))
-    user = User.query.get_or_404(user_id)
+    user = User.query.filter_by(id=user_id).first_or_404()
     log_action("user.deleted", entity_type="User", entity_id=user.id, description=user.email)
     db.session.delete(user)
     db.session.commit()

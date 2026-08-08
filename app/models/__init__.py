@@ -9,6 +9,7 @@ from app.models.content import (
     Testimonial,
 )
 from app.models.proposal import Proposal, ProposalStatus
+from app.models.tenant import Tenant, TenantDomain, TenantScopedMixin, TenantStatus, normalize_domain
 from app.models.user import User, UserRole
 
 __all__ = [
@@ -22,6 +23,11 @@ __all__ = [
     "Testimonial",
     "Proposal",
     "ProposalStatus",
+    "Tenant",
+    "TenantDomain",
+    "TenantScopedMixin",
+    "TenantStatus",
+    "normalize_domain",
     "User",
     "UserRole",
 ]
