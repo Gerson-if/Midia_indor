@@ -37,30 +37,30 @@ need_cmd() {
 
 # Pergunta simples com valor padrão. Uso: ask "Pergunta" "padrao" VAR_NAME
 ask() {
-    local prompt="$1" default="$2" __resultvar="$3" reply
+    local prompt="$1" default="$2" __resultvar="$3" __ask_input
     if [ -n "$default" ]; then
-        read -r -p "$(echo -e "${C_BOLD}?${C_RESET} ${prompt} [${default}]: ")" reply
-        reply="${reply:-$default}"
+        read -r -p "$(echo -e "${C_BOLD}?${C_RESET} ${prompt} [${default}]: ")" __ask_input
+        __ask_input="${__ask_input:-$default}"
     else
         while true; do
-            read -r -p "$(echo -e "${C_BOLD}?${C_RESET} ${prompt}: ")" reply
-            [ -n "$reply" ] && break
+            read -r -p "$(echo -e "${C_BOLD}?${C_RESET} ${prompt}: ")" __ask_input
+            [ -n "$__ask_input" ] && break
             warn "Este valor não pode ficar em branco."
         done
     fi
-    printf -v "$__resultvar" '%s' "$reply"
+    printf -v "$__resultvar" '%s' "$__ask_input"
 }
 
 # Pergunta com valor secreto (não ecoa na tela). Uso: ask_secret "Pergunta" VAR_NAME
 ask_secret() {
-    local prompt="$1" __resultvar="$2" reply
+    local prompt="$1" __resultvar="$2" __ask_input
     while true; do
-        read -r -s -p "$(echo -e "${C_BOLD}?${C_RESET} ${prompt}: ")" reply
+        read -r -s -p "$(echo -e "${C_BOLD}?${C_RESET} ${prompt}: ")" __ask_input
         echo
-        [ -n "$reply" ] && break
+        [ -n "$__ask_input" ] && break
         warn "Este valor não pode ficar em branco."
     done
-    printf -v "$__resultvar" '%s' "$reply"
+    printf -v "$__resultvar" '%s' "$__ask_input"
 }
 
 # Pergunta sim/não. Uso: if confirm "Continuar?" "s"; then ...
@@ -83,11 +83,11 @@ choose() {
         echo "   $i) $o"
         i=$((i + 1))
     done
-    local reply
+    local __choose_input
     while true; do
-        read -r -p "   Escolha [1-${#opts[@]}]: " reply
-        if [[ "$reply" =~ ^[0-9]+$ ]] && [ "$reply" -ge 1 ] && [ "$reply" -le "${#opts[@]}" ]; then
-            printf -v "$__resultvar" '%s' "${opts[$((reply - 1))]}"
+        read -r -p "   Escolha [1-${#opts[@]}]: " __choose_input
+        if [[ "$__choose_input" =~ ^[0-9]+$ ]] && [ "$__choose_input" -ge 1 ] && [ "$__choose_input" -le "${#opts[@]}" ]; then
+            printf -v "$__resultvar" '%s' "${opts[$((__choose_input - 1))]}"
             return 0
         fi
         warn "Opção inválida."
