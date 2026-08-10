@@ -2,7 +2,7 @@ from flask import current_app, g, jsonify, redirect, render_template, request, u
 
 from app.blueprints.main import main_bp
 from app.blueprints.main.forms import ProposalRequestForm
-from app.extensions import db, limiter
+from app.extensions import db, limiter, talisman
 from app.models import CustomSection, GalleryItem, Partner, Proposal, Service, SiteSettings, Testimonial
 from app.utils.decorators import log_action
 from app.utils.errors import APIError
@@ -166,8 +166,22 @@ def termos():
 
 
 @main_bp.route("/healthz")
+@talisman(force_https=False)
 def healthz():
-    """Endpoint de health check para load balancers / orquestradores."""
+    """
+    Endpoint de health check para load balancers / orquestradores.
+
+    force_https=False: chamado diretamente em HTTP puro no loopback
+    (127.0.0.1:8000), tanto pelo instalador (deploy/scripts/install.sh
+    e update.sh, antes mesmo do Caddy estar configurado) quanto por
+    ferramentas de monitoramento locais. Sem essa exceção, o Talisman
+    (force_https, ativado em produção) redirecionaria a chamada para
+    HTTPS -- que não existe nessa porta (o Caddy é quem termina TLS,
+    na frente) -- fazendo o healthcheck falhar/mentir. Tráfego real de
+    usuário chega aqui pelo Caddy já com X-Forwarded-Proto: https, que
+    o Talisman reconhece normalmente, então isso não abre uma exceção
+    para requisições de fora.
+    """
     try:
         db.session.execute(db.text("SELECT 1"))
         db_status = "ok"
@@ -179,10 +193,11 @@ def healthz():
 
 
 @main_bp.route("/internal/domain-check")
+@talisman(force_https=False)
 def internal_domain_check():
     """
-    Endpoint chamado pelo Caddy (config "on_demand_tls -> ask") antes de
-    emitir um certificado HTTPS para um domínio. Só devolve 200 se o
+    Endpoint chamado pelo Caddy (config "on_demand_tls -> permission http")
+    antes de emitir um certificado HTTPS para um domínio. Só devolve 200 se o
     domínio pedido estiver de fato cadastrado em algum tenant -- isso
     impede que alguém aponte um domínio qualquer (que não é cliente
     nosso) para esta VPS e force o Caddy a emitir certificados à toa
@@ -190,6 +205,15 @@ def internal_domain_check():
 
     Restrito à rede local: só o próprio Caddy, rodando na mesma máquina,
     deve conseguir chamar isso -- nunca é exposto publicamente.
+
+    force_https=False: essencial aqui, não só cosmético. O Caddy chama
+    isso em HTTP puro (http://127.0.0.1:8000/...) e seu cliente HTTP
+    interno RECUSA seguir redirecionamentos por segurança -- sem essa
+    exceção, o Talisman redireciona para HTTPS, o Caddy trata isso como
+    falha ("following http redirects is not allowed"), e NENHUM
+    certificado é emitido para NENHUM domínio (o próprio HTTPS nunca
+    liga). Mesmo raciocínio do /healthz acima quanto a não abrir
+    exceção para requisições externas de verdade.
     """
     from app.models import TenantDomain
 
