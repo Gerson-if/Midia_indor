@@ -39,8 +39,13 @@ from app.extensions import db
 from app.models.tenant import Tenant, TenantDomain, TenantScopedMixin, TenantStatus
 
 # Prefixos de rota que nunca são resolvidos/bloqueados por tenant: painel
-# do super admin (não pertence a nenhum tenant) e assets estáticos.
-_TENANT_EXEMPT_PREFIXES = ("/static", "/internal")
+# do super admin (não pertence a nenhum tenant), assets estáticos,
+# endpoints internos (Caddy) e o healthcheck (chamado por load
+# balancer/orquestrador/instalador direto no IP:porta do Gunicorn,
+# sem Host correspondendo a nenhum domínio cadastrado -- sem essa
+# exceção, ele sempre cai no "domínio desconhecido" e devolve 404,
+# mesmo com a aplicação saudável).
+_TENANT_EXEMPT_PREFIXES = ("/static", "/internal", "/healthz")
 
 
 def _current_host() -> str:
