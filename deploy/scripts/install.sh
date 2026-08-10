@@ -332,6 +332,7 @@ echo "  sudo bash deploy/scripts/restore.sh          # restaurar um backup"
 echo "  sudo bash deploy/scripts/migrate.sh          # assistente de migração p/ servidor novo"
 echo "  sudo bash deploy/scripts/rollback.sh         # voltar para a versão anterior de código"
 echo "  sudo systemctl status midia-indoor           # status da aplicação"
+echo "  sudo systemctl status caddy                  # status do proxy/HTTPS"
 echo "  sudo journalctl -u midia-indoor -f           # logs em tempo real"
 echo "  curl -s $HEALTH_URL                          # healthcheck local direto (sem passar pelo Caddy)"
 echo
