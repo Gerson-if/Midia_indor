@@ -42,7 +42,8 @@ ACCESS_MODE=""
 choose "Modo de acesso" ACCESS_MODE "Tenho um domínio (ex: meusite.com.br)" "Vou usar apenas o IP da VPS (sem domínio por enquanto)"
 
 if [[ "$ACCESS_MODE" == Tenho* ]]; then
-    ask "Informe o domínio (sem http:// e sem www.)" "$(cur SERVER_NAME 'meusite.com.br')" DOMAIN
+    ask_validated "Informe o domínio (sem http:// e sem www.)" "$(cur SERVER_NAME '')" DOMAIN \
+        is_valid_domain "Domínio com formato inválido — use algo como meusite.com.br"
     if confirm "Deseja incluir também 'www.$DOMAIN'?" "s"; then
         SERVER_NAMES="$DOMAIN www.$DOMAIN"
     else
@@ -50,68 +51,38 @@ if [[ "$ACCESS_MODE" == Tenho* ]]; then
     fi
     HTTPS_CHOICE=""
     choose "Como ativar o HTTPS neste domínio?" HTTPS_CHOICE \
-        "Let's Encrypt automático (gratuito, recomendado)" \
-        "Outra CA grátis automática — ZeroSSL/Buypass (se Let's Encrypt não funcionar no seu provedor)" \
-        "Já tenho/vou comprar um certificado de uma CA (DigiCert etc.) via CSR" \
+        "Let's Encrypt automático (gratuito, recomendado — é o que o instalador guiado usa)" \
         "Não ativar HTTPS agora"
     CUSTOM_SSL_CERT=""; CUSTOM_SSL_KEY=""; CUSTOM_SSL_CHAIN=""; LE_EMAIL=""; ACME_CA=""
     case "$HTTPS_CHOICE" in
         "Let's Encrypt"*)
             SSL_MODE="letsencrypt"
             USE_HTTPS="1"
-            ask "E-mail para avisos do certificado Let's Encrypt" "$(cur ADMIN_EMAIL 'admin@example.com')" LE_EMAIL
-            ;;
-        "Outra CA"*)
-            SSL_MODE="acme"
-            USE_HTTPS="1"
-            info "Essas CAs também são 100% gratuitas e automáticas (emitem e renovam sozinhas, como o Let's Encrypt)."
-            info "Use quando o Let's Encrypt especificamente não funcionar no seu provedor (raro, mas acontece)."
-            ACME_CA_CHOICE=""
-            choose "Qual CA gratuita usar?" ACME_CA_CHOICE \
-                "ZeroSSL (certificados de 90 dias, renovação automática)" \
-                "Buypass (certificados de 180 dias, renovação automática)"
-            case "$ACME_CA_CHOICE" in
-                "ZeroSSL"*) ACME_CA="zerossl" ;;
-                "Buypass"*) ACME_CA="buypass" ;;
-            esac
-            ask "E-mail para a conta na CA (usado só para avisos de expiração)" "$(cur ADMIN_EMAIL 'admin@example.com')" LE_EMAIL
-            ;;
-        "Já tenho"*)
-            SSL_MODE="custom"
-            USE_HTTPS="1"
-            echo
-            info "Se ainda não gerou a chave/CSR para comprar o certificado, rode antes:"
-            info "  sudo deploy/scripts/generate-csr.sh"
-            info "e volte aqui depois de receber o certificado da CA."
-            echo
-            ask "Caminho do certificado (fullchain: seu certificado + intermediários da CA)" "$(cur CUSTOM_SSL_CERT '/etc/nginx/ssl/midia-indoor-csr/certificado.crt')" CUSTOM_SSL_CERT
-            ask "Caminho da chave privada (a mesma usada para gerar o CSR)" "$(cur CUSTOM_SSL_KEY "/etc/nginx/ssl/midia-indoor-csr/${DOMAIN}.key")" CUSTOM_SSL_KEY
-            ask "Caminho do(s) certificado(s) intermediário(s)/CA bundle (deixe em branco se já estiver junto no fullchain acima)" "$(cur CUSTOM_SSL_CHAIN '')" CUSTOM_SSL_CHAIN
-            warn "Não encontrando os intermediários da CA agora? O setup-nginx.sh detecta isso e avisa — é a causa nº 1 do navegador não mostrar o cadeado mesmo com certificado instalado."
+            ask_validated "E-mail para avisos do certificado Let's Encrypt" "$(cur ADMIN_EMAIL '')" LE_EMAIL \
+                is_valid_email "E-mail com formato inválido"
             ;;
         *)
             SSL_MODE="none"
             USE_HTTPS="0"
+            warn "O site funcionará apenas em HTTP até você reconfigurar isso (rode este assistente de novo quando quiser ativar)."
             ;;
     esac
     SERVER_NAME_PRIMARY="$DOMAIN"
+    info "Este instalador ativa HTTPS com o Caddy (deploy/scripts/setup-caddy.sh), que emite/renova certificados sozinho, sob demanda, para qualquer domínio apontado para esta VPS — inclusive páginas novas cadastradas depois pelo painel do super admin."
+    info "Precisa de certificado comprado (DigiCert etc.), outra CA grátis (ZeroSSL/Buypass) ou certificado autoassinado? Isso é possível pelo caminho manual/avançado com Nginx — veja 'Configurações avançadas de HTTPS' em deploy/README.md (scripts generate-csr.sh / setup-nginx.sh)."
 else
     DETECTED_IP="$(detect_public_ip)"
+    if [ -z "$DETECTED_IP" ]; then
+        warn "Não consegui detectar automaticamente o IP público desta máquina (sem conexão com a internet?)."
+    fi
     ask "IP público (da VPS, ou o IP de onde estiver rodando)" "$(cur SERVER_NAME "$DETECTED_IP")" SERVER_NAME_PRIMARY
     SERVER_NAMES="$SERVER_NAME_PRIMARY"
     LE_EMAIL=""
     CUSTOM_SSL_CERT=""; CUSTOM_SSL_KEY=""; CUSTOM_SSL_CHAIN=""
-    warn "Sem domínio não é possível emitir certificado HTTPS confiável (Let's Encrypt exige um domínio)."
-    if confirm "Ativar HTTPS mesmo assim, com um certificado autoassinado (a conexão fica criptografada, mas o navegador mostra um aviso de segurança na primeira visita — normal sem domínio)?" "s"; then
-        SSL_MODE="selfsigned"
-        USE_HTTPS="1"
-        ok "HTTPS com certificado autoassinado será gerado por 'setup-nginx.sh' (openssl, local, sem depender de nenhum serviço externo)."
-        info "Quando tiver um domínio, rode este assistente de novo e escolha 'Tenho um domínio' + Let's Encrypt para trocar pelo certificado confiável."
-    else
-        SSL_MODE="none"
-        USE_HTTPS="0"
-        warn "O site funcionará apenas em HTTP."
-    fi
+    SSL_MODE="none"
+    USE_HTTPS="0"
+    warn "Sem domínio não é possível emitir certificado HTTPS confiável (Let's Encrypt/Caddy exigem um domínio) — o site ficará em HTTP apenas."
+    info "Quando tiver um domínio, rode este assistente de novo (sudo bash deploy/scripts/configure-env.sh $ENV_PATH) e escolha 'Tenho um domínio' para ativar HTTPS automaticamente."
 fi
 
 # ---------------------------------------------------------------
@@ -203,8 +174,14 @@ fi
 # ---------------------------------------------------------------
 title "5/6 — Dados exibidos no site"
 ask "Nome da empresa" "$(cur COMPANY_NAME 'Nexo Mídia')" COMPANY_NAME
-ask "WhatsApp (somente números, com DDI+DDD)" "$(cur COMPANY_WHATSAPP '5567999990000')" COMPANY_WHATSAPP
-ask "E-mail de contato" "$(cur COMPANY_EMAIL 'contato@example.com')" COMPANY_EMAIL
+while true; do
+    ask "WhatsApp (somente números, com DDI+DDD)" "$(cur COMPANY_WHATSAPP '5567999990000')" COMPANY_WHATSAPP
+    COMPANY_WHATSAPP="$(echo "$COMPANY_WHATSAPP" | tr -dc '0-9')"
+    [ "${#COMPANY_WHATSAPP}" -ge 10 ] && break
+    warn "Número muito curto — inclua DDI (55) e DDD, só dígitos (ex.: 5567999990000)."
+done
+ask_validated "E-mail de contato" "$(cur COMPANY_EMAIL '')" COMPANY_EMAIL \
+    is_valid_email "E-mail com formato inválido"
 ask "Telefone (exibição)" "$(cur COMPANY_PHONE '(00) 0000-0000')" COMPANY_PHONE
 ask "Endereço (exibição)" "$(cur COMPANY_ADDRESS 'Sua cidade, UF')" COMPANY_ADDRESS
 
@@ -213,12 +190,21 @@ ask "Endereço (exibição)" "$(cur COMPANY_ADDRESS 'Sua cidade, UF')" COMPANY_A
 # ---------------------------------------------------------------
 title "6/6 — Usuário administrador"
 ask "Nome do administrador" "$(cur ADMIN_NAME 'Administrador Principal')" ADMIN_NAME
-ask "E-mail do administrador (login)" "$(cur ADMIN_EMAIL 'admin@example.com')" ADMIN_EMAIL
-if confirm "Gerar uma senha forte automaticamente para o administrador?" "s"; then
+ask_validated "E-mail do administrador (login)" "$(cur ADMIN_EMAIL '')" ADMIN_EMAIL \
+    is_valid_email "E-mail com formato inválido"
+# Padrão é SEMPRE gerar uma senha forte e única para esta instalação —
+# evita o erro clássico de repetir a mesma senha "de exemplo" em vários
+# clientes/VPS. Só cai para digitação manual se o usuário pedir
+# explicitamente, e mesmo assim exige um mínimo de segurança.
+if confirm "Gerar uma senha forte automaticamente para o administrador? (recomendado — cada instalação recebe uma senha única)" "s"; then
     ADMIN_PASSWORD="$(gen_secret | cut -c1-16)"
-    ok "Senha gerada: ${C_BOLD}${ADMIN_PASSWORD}${C_RESET}  (anote agora — ela também fica salva no .env)"
+    ok "Senha gerada: ${C_BOLD}${ADMIN_PASSWORD}${C_RESET}  (anote agora — também fica salva no .env e no resumo final da instalação)"
 else
-    ask_secret "Senha do administrador" ADMIN_PASSWORD
+    while true; do
+        ask_secret "Senha do administrador (mínimo 12 caracteres)" ADMIN_PASSWORD
+        [ "${#ADMIN_PASSWORD}" -ge 12 ] && break
+        warn "Senha muito curta (${#ADMIN_PASSWORD} caracteres) — use pelo menos 12."
+    done
 fi
 
 # ---------------------------------------------------------------
@@ -244,7 +230,12 @@ USE_HTTPS=${USE_HTTPS}
 # SSL_MODE: letsencrypt (domínio) | acme (outra CA grátis via acme.sh) | selfsigned (acesso por IP) | custom (certificado comprado via CSR) | none (HTTP)
 SSL_MODE="${SSL_MODE}"
 LETSENCRYPT_EMAIL="${LE_EMAIL}"
-# ACME_CA: qual CA usar quando SSL_MODE=acme (zerossl | buypass)
+# ACME_EMAIL: mesmo valor de LETSENCRYPT_EMAIL — é esta a variável que
+# deploy/scripts/setup-caddy.sh lê para configurar o Caddy. Mantemos as
+# duas para não quebrar o fluxo legado (Nginx/acme.sh) que usa a outra.
+ACME_EMAIL="${LE_EMAIL}"
+# ACME_CA: qual CA usar quando SSL_MODE=acme (zerossl | buypass) — só
+# relevante no caminho manual/avançado com Nginx, ver deploy/README.md
 ACME_CA="${ACME_CA:-}"
 # ---- Certificado comprado via CSR (só usado quando SSL_MODE=custom) ----
 CUSTOM_SSL_CERT="${CUSTOM_SSL_CERT}"
