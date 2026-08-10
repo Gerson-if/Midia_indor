@@ -16,9 +16,14 @@
 # GET /internal/domain-check) se aquele domínio pertence de fato a
 # alguma página cadastrada. Se sim, emite e guarda o certificado
 # Let's Encrypt automaticamente (e renova sozinho depois); se não,
-# recusa — isso evita que alguém aponte um domínio qualquer (que
-# não é nosso cliente) para esta VPS e force emissão de certificados
-# à toa (abuso de rate limit do Let's Encrypt).
+# recusa — isso é o que evita que alguém aponte um domínio qualquer
+# (que não é nosso cliente) para esta VPS e force emissão de
+# certificados à toa (abuso de rate limit do Let's Encrypt). Versões
+# antigas do Caddy também aceitavam limitar isso com "interval"/
+# "burst" dentro de on_demand_tls, mas o próprio Caddy passou a
+# desaconselhar essas opções (e o Caddy 2.11+ rejeita "interval"
+# na validação) — a permissão http acima já é a proteção "oficial",
+# então não as usamos aqui.
 #
 # Fluxo para o super admin adicionar uma página nova, na prática:
 #   1. Cadastra o domínio no painel (/superadmin)
@@ -30,8 +35,6 @@
 	email __ACME_EMAIL__
 	on_demand_tls {
 		permission http http://127.0.0.1:__ASK_PORT__/internal/domain-check
-		interval 2m
-		burst 5
 	}
 }
 
