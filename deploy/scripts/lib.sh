@@ -116,3 +116,78 @@ detect_public_ip() {
         || hostname -I 2>/dev/null | awk '{print $1}' \
         || echo ""
 }
+
+# ---------------------------------------------------------------
+# Validadores de entrada (usados por configure-env.sh e install.sh
+# para pegar erros de digitação ANTES de gravar o .env, em vez de
+# só descobrir o problema minutos depois numa etapa mais adiante)
+# ---------------------------------------------------------------
+is_valid_domain() {
+    local d="$1"
+    [[ "$d" =~ ^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$ ]]
+}
+
+is_valid_email() {
+    local e="$1"
+    [[ "$e" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]
+}
+
+# Pergunta com valor padrão, mas repete até o validador (função cujo
+# nome é passado em $4) aceitar. Uso:
+#   ask_validated "Domínio" "" DOMAIN is_valid_domain "formato inválido"
+ask_validated() {
+    local prompt="$1" default="$2" __resultvar="$3" validator="$4" hint="${5:-valor inválido}"
+    local reply
+    while true; do
+        ask "$prompt" "$default" reply
+        if "$validator" "$reply"; then
+            printf -v "$__resultvar" '%s' "$reply"
+            return 0
+        fi
+        warn "$hint: '$reply'"
+    done
+}
+
+# Roda um comando com algumas tentativas, com pausa entre elas —
+# apt/curl em VPS novas falham às vezes por lentidão momentânea de
+# rede/DNS/mirror, e sem retry isso derruba a instalação inteira por
+# um problema transitório que teria passado na 2ª tentativa.
+retry() {
+    local max="$1" delay="$2"
+    shift 2
+    local attempt=1
+    until "$@"; do
+        if [ "$attempt" -ge "$max" ]; then
+            err "Comando falhou após $max tentativas: $*"
+            return 1
+        fi
+        warn "Falhou (tentativa $attempt/$max). Tentando de novo em ${delay}s..."
+        sleep "$delay"
+        attempt=$((attempt + 1))
+    done
+}
+
+# Espera um endpoint HTTP local responder 2xx/3xx, com timeout total.
+# Uso: wait_for_http "http://127.0.0.1:8000/healthz" 30
+wait_for_http() {
+    local url="$1" timeout="${2:-30}" waited=0
+    while [ "$waited" -lt "$timeout" ]; do
+        if curl -fsS --max-time 3 -o /dev/null "$url" 2>/dev/null; then
+            return 0
+        fi
+        sleep 2
+        waited=$((waited + 2))
+    done
+    return 1
+}
+
+# Confere se a porta TCP já está em uso por outro processo (comum:
+# Apache/Nginx padrão da distro ocupando 80/443 antes do Caddy).
+port_in_use() {
+    local port="$1"
+    if command -v ss >/dev/null 2>&1; then
+        ss -ltn "( sport = :$port )" 2>/dev/null | grep -q ":$port"
+    else
+        (exec 3<>"/dev/tcp/127.0.0.1/$port") 2>/dev/null && { exec 3>&-; return 0; } || return 1
+    fi
+}

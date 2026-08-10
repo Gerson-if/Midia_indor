@@ -1,27 +1,38 @@
 # Deploy no Ubuntu (sem Docker)
 
 Este diretório contém um instalador guiado para publicar o Nexo Mídia
-numa VPS Ubuntu (22.04 ou 24.04) usando **Nginx + Gunicorn + systemd**,
+numa VPS Ubuntu (22.04 ou 24.04) usando **Caddy + Gunicorn + systemd**,
 sem depender de Docker. Layout simples, de **pasta única** — nada de
 `releases/current/shared`: o código, o `.env`, o `venv` e os dados
 (uploads, banco SQLite, logs) vivem todos dentro do mesmo diretório
 (`/opt/midia-indoor` por padrão).
 
+> **Nota:** o instalador guiado (`install.sh`) usa **Caddy** como proxy
+> reverso — ele emite e renova HTTPS sozinho, sob demanda, para
+> qualquer domínio apontado para a VPS (essencial no modo multi-página,
+> onde o super admin cadastra domínios novos pelo painel sem reinstalar
+> nada). Os scripts `setup-nginx.sh` / `generate-csr.sh` / `check-https.sh`
+> continuam no projeto como um **caminho manual/avançado** (certificado
+> autoassinado por IP sem domínio, certificado comprado via CSR, CA
+> alternativa) — veja a seção 5.
+
 ```
 deploy/
 ├── scripts/
-│   ├── install.sh        # instalação inicial guiada (rodar 1x)
+│   ├── install.sh        # instalação inicial guiada (rodar 1x, usa Caddy)
 │   ├── configure-env.sh  # assistente para (re)gerar o .env
-│   ├── setup-nginx.sh    # gera/atualiza a config do Nginx (+ HTTPS)
-│   ├── generate-csr.sh   # gera chave privada + CSR p/ certificado comprado
-│   ├── check-https.sh    # diagnostica o estado do HTTPS/certificado
+│   ├── setup-caddy.sh    # gera/recarrega o Caddyfile (HTTPS automático)
+│   ├── setup-nginx.sh    # [avançado/manual] config Nginx + HTTPS alternativo
+│   ├── generate-csr.sh   # [avançado] chave privada + CSR p/ certificado comprado
+│   ├── check-https.sh    # [avançado] diagnostica HTTPS no caminho Nginx
 │   ├── update.sh         # publica uma atualização (git pull + migração)
 │   ├── rollback.sh       # volta para um commit anterior (git)
 │   └── lib.sh            # funções internas (não executar direto)
-├── nginx.conf.template            # HTTP simples (sem HTTPS)
-├── nginx-selfsigned.conf.template # HTTPS autoassinado (sem domínio)
-├── nginx-letsencrypt.conf.template# HTTPS com Let's Encrypt (com domínio)
-├── nginx-custom.conf.template     # HTTPS com certificado comprado via CSR
+├── Caddyfile.template              # template usado por setup-caddy.sh
+├── nginx.conf.template             # [avançado] HTTP simples (sem HTTPS)
+├── nginx-selfsigned.conf.template  # [avançado] HTTPS autoassinado (sem domínio)
+├── nginx-letsencrypt.conf.template # [avançado] HTTPS com Let's Encrypt (Nginx)
+├── nginx-custom.conf.template      # [avançado] HTTPS com certificado comprado via CSR
 ├── midia-indoor.service  # unit do systemd instalada pelo install.sh
 └── gunicorn.conf.py      # configuração do Gunicorn
 ```
@@ -39,14 +50,14 @@ deploy/
   atualizações passam a ser via `rsync` em vez de `git pull` —
   veja a seção 3.
 - (Opcional) Se for usar domínio com HTTPS, aponte o registro DNS
-  tipo **A** do domínio para o IP da VPS *antes* de instalar.
-- **Sem domínio ainda?** Sem problema: o instalador oferece HTTPS
-  mesmo assim, por IP, usando um **certificado autoassinado** (gerado
-  localmente com `openssl`, sem depender de nenhum serviço externo).
-  A conexão fica criptografada normalmente; a única diferença é que o
-  navegador mostra um aviso de segurança na primeira visita, porque
-  não existe domínio para validar com uma autoridade certificadora
-  pública (Let's Encrypt exige domínio). Veja a seção 5.
+  tipo **A** do domínio para o IP da VPS *antes* de instalar — o
+  instalador funciona sem isso, mas o Caddy só consegue emitir o
+  certificado quando o domínio já resolve para o IP da VPS.
+- **Sem domínio ainda?** Sem problema: o instalador roda normalmente e
+  o site fica acessível por HTTP/IP. Quando tiver um domínio, rode
+  `configure-env.sh` de novo para ativar o HTTPS automático. Se
+  precisar de HTTPS **por IP mesmo sem domínio** (autoassinado), isso
+  é possível pelo caminho manual/avançado com Nginx — veja a seção 5.
 
 ## 2. Instalação (rodar uma única vez)
 
@@ -56,25 +67,48 @@ Dentro da pasta do projeto, na VPS:
 sudo bash deploy/scripts/install.sh
 ```
 
-O script vai perguntar, em português, passo a passo: onde instalar
-(padrão `/opt/midia-indoor`), quais pacotes de sistema instalar
-(PostgreSQL, Redis, Certbot, Node.js — cada um opcional), domínio ou
-IP, banco de dados, dados da empresa e dados do administrador inicial.
+O script roda em 9 etapas (0 a 8), sempre com mensagens em português:
+
+0. **Checagens prévias** — confere se é Ubuntu 22.04/24.04, se há
+   espaço em disco suficiente, se a VPS tem internet, e se as portas
+   80/443 já estão ocupadas por outro serviço (Apache, por exemplo).
+   Qualquer problema aqui é sinalizado *antes* de mexer no sistema.
+1. Pacotes do sistema (Python, PostgreSQL, Redis, Node.js — cada um
+   opcional), com **3 tentativas automáticas** em cada instalação via
+   `apt`/`curl`/`npm` (uma falha momentânea de rede/mirror não derruba
+   a instalação inteira).
+2–3. Usuário de sistema dedicado (`midia-indoor`) e cópia do código
+   para o diretório escolhido.
+4. `.env` gerado pelo assistente `configure-env.sh` — domínio ou IP,
+   e-mail, WhatsApp e senhas são **validados na hora** (formato do
+   e-mail, do domínio, tamanho mínimo de senha) em vez de só falhar
+   silenciosamente mais tarde.
+5–7. Dependências Python, build do Tailwind, migrações do banco,
+   usuário administrador e permissões de arquivo.
+8. Serviço systemd `midia-indoor` (Gunicorn) e HTTPS via **Caddy**.
+   Diferente de só checar se o processo subiu, o instalador **testa de
+   verdade** o endpoint `/healthz` antes de seguir para o Caddy — um
+   erro de `.env`/banco/import é pego aqui, com uma mensagem clara, em
+   vez de aparecer como um 502 confuso no navegador depois.
 
 Ao final, a aplicação já está no ar, com:
 
 - Serviço systemd `midia-indoor` rodando o Gunicorn (reinício automático
-  em caso de falha).
-- Nginx configurado como proxy reverso, servindo `/static` diretamente.
-- HTTPS ativo, de duas formas possíveis:
-  - **Com domínio:** certificado público via Let's Encrypt, com
-    renovação automática.
-  - **Só com IP (sem domínio):** certificado autoassinado gerado
-    localmente, se você optar por ativar HTTPS mesmo assim (o
-    instalador pergunta). O navegador mostra um aviso de segurança na
-    primeira visita — é o esperado, a conexão continua criptografada.
+  em caso de falha) e validado via `/healthz` antes de prosseguir.
+- **Caddy** configurado como proxy reverso com HTTPS automático — com
+  domínio, o certificado Let's Encrypt é emitido e renovado sozinho, e
+  o mesmo vale para qualquer domínio novo cadastrado depois pelo
+  painel do super admin, sem precisar rodar nada de novo aqui. Sem
+  domínio, o site fica em HTTP/IP até você configurar um.
 - Firewall básico (UFW), se você optou por ativar — libera SSH, 80 e
   443.
+- **Credenciais únicas por instalação**: `SECRET_KEY`, senha do banco
+  e senha do administrador são geradas automaticamente (aleatórias,
+  diferentes a cada VPS/cliente) sempre que você não informa nada —
+  nunca reaproveitam um valor "de exemplo". Um resumo é salvo em
+  `/root/midia-indoor-instalacao-<data>.txt` (permissão 600, só root
+  lê) além de já estar no `.env`; vale apagar esse arquivo com
+  `sudo shred -u` depois de guardar as senhas num lugar seguro.
 
 Estrutura criada (pasta única, sem symlinks):
 
@@ -144,7 +178,18 @@ sudo bash deploy/scripts/configure-env.sh /opt/midia-indoor/.env
 sudo systemctl restart midia-indoor
 ```
 
-## 5. HTTPS por IP (sem domínio) e troca para Let's Encrypt depois
+## 5. HTTPS por IP (sem domínio) e troca para Let's Encrypt depois — caminho manual/avançado com Nginx
+
+> ⚠️ **Esta seção 5 inteira descreve o caminho manual/avançado com
+> Nginx (`setup-nginx.sh`), não o que `install.sh` usa por padrão.**
+> A instalação guiada usa Caddy (seção 2), que já emite HTTPS
+> automaticamente sozinho quando você tem domínio, sem precisar rodar
+> nada do que vem abaixo. Use esta seção só se precisar
+> especificamente de: certificado autoassinado **sem** domínio, uma CA
+> alternativa (ZeroSSL/Buypass) ou um certificado **comprado** via
+> CSR — nesses três casos, o Caddy do fluxo padrão não cobre o
+> cenário, e a alternativa é trocar para Nginx manualmente com os
+> scripts abaixo.
 
 ### 5.1 Ativar HTTPS agora, só com o IP (certificado autoassinado)
 
