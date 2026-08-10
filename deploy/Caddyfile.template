@@ -12,7 +12,7 @@
 # Com Caddy + "on-demand TLS", o servidor aceita QUALQUER domínio
 # que chegue nele e, no primeiro acesso HTTPS a um domínio ainda
 # sem certificado, o Caddy pergunta para a própria aplicação (ver
-# bloco "on_demand_tls -> ask" abaixo, que chama
+# bloco "on_demand_tls -> permission http" abaixo, que chama
 # GET /internal/domain-check) se aquele domínio pertence de fato a
 # alguma página cadastrada. Se sim, emite e guarda o certificado
 # Let's Encrypt automaticamente (e renova sozinho depois); se não,
@@ -29,7 +29,7 @@
 {
 	email __ACME_EMAIL__
 	on_demand_tls {
-		ask http://127.0.0.1:__ASK_PORT__/internal/domain-check
+		permission http http://127.0.0.1:__ASK_PORT__/internal/domain-check
 		interval 2m
 		burst 5
 	}
