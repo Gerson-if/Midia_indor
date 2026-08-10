@@ -57,7 +57,18 @@ if [ -n "$CADDY_VERSION" ]; then
 fi
 
 mkdir -p /var/log/caddy
-chown caddy:caddy /var/log/caddy 2>/dev/null || true
+# -R (recursivo) é essencial aqui: se essa pasta já existia com algum
+# arquivo de dono 'root' (de uma tentativa anterior manual, ou de uma
+# instalação anterior que rodou o Caddy de outro jeito), um chown só
+# no diretório NÃO alcança esse arquivo — e o Caddy (que roda como o
+# usuário de sistema 'caddy', não root) falha ao abrir esse arquivo
+# de log específico com 'permission denied', mesmo com a pasta em si
+# já pertencendo a 'caddy'. Também não silenciamos mais o erro (antes
+# tinha 2>/dev/null || true): se isso falhar, é melhor avisar agora
+# do que descobrir só quando o serviço não subir.
+if ! chown -R caddy:caddy /var/log/caddy; then
+    warn "Não consegui ajustar o dono de /var/log/caddy para o usuário 'caddy' (ele existe? confira com 'id caddy'). O Caddy pode falhar ao tentar escrever o log de acesso."
+fi
 
 # ---------------------------------------------------------------
 # 2) Lê variáveis do .env necessárias para o Caddyfile
