@@ -27,6 +27,20 @@ if [ -f "$ENV_PATH" ]; then
     while IFS='=' read -r k v; do
         [[ "$k" =~ ^[[:space:]]*# ]] && continue
         [ -z "$k" ] && continue
+        # Todo valor é gravado entre aspas mais abaixo (ex.:
+        # COMPANY_NAME="Digital Promo"). Sem remover essas aspas AQUI,
+        # o próximo cur() devolveria o valor JÁ incluindo as aspas como
+        # padrão do prompt — e ao aceitar o padrão, o valor seria
+        # regravado com aspas DUPLICADAS (COMPANY_NAME=""Digital
+        # Promo""), o que quebra o .env na próxima vez que for lido
+        # (bash interpreta o espaço do meio como separador de
+        # comando). O laço abaixo remove QUALQUER quantidade de
+        # camadas de aspas nas bordas — inclusive se o .env já estiver
+        # com esse bug de uma execução anterior, autocorrigindo em vez
+        # de precisar editar o arquivo manualmente.
+        while { [[ "$v" == \"*\" && "$v" == *\" ]] || [[ "$v" == \'*\' && "$v" == *\' ]]; } && [ "${#v}" -ge 2 ]; do
+            v="${v:1:${#v}-2}"
+        done
         CUR["$k"]="$v"
     done < <(grep -E '^[A-Za-z_][A-Za-z0-9_]*=' "$ENV_PATH" || true)
 fi
