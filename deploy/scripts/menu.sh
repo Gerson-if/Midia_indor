@@ -120,6 +120,109 @@ do_system_menu() {
     bash "$SCRIPT_DIR/system.sh" "$APP_DIR"
 }
 
+# ---------------------------------------------------------------
+# Definir/redefinir credenciais (admin de página ou super admin) —
+# sem precisar reconfigurar o .env inteiro nem lembrar os comandos
+# "flask create-admin"/"flask create-superadmin" de cor.
+# ---------------------------------------------------------------
+do_set_admin_credentials() {
+    title "Definir/redefinir administrador de uma página"
+
+    set -a
+    # shellcheck disable=SC1091
+    source "$APP_DIR/.env"
+    set +a
+
+    ask "Slug da página" "default" TENANT_SLUG_INPUT
+    if [ "$TENANT_SLUG_INPUT" != "default" ]; then
+        info "Páginas além da 'default' (multi-tenant) normalmente são geridas pelo painel do super admin em /super — use esta opção só se souber o slug exato da página."
+    fi
+
+    ask_validated "E-mail do administrador (login)" "${ADMIN_EMAIL:-}" NEW_ADMIN_EMAIL \
+        is_valid_email "E-mail com formato inválido"
+
+    if confirm "Gerar uma senha forte automaticamente?" "s"; then
+        NEW_ADMIN_PASSWORD="$(gen_secret | cut -c1-16)"
+        ok "Senha gerada: ${C_BOLD}${NEW_ADMIN_PASSWORD}${C_RESET} (anote agora — não será mostrada de novo)"
+    else
+        while true; do
+            ask_secret "Nova senha (mínimo 12 caracteres)" NEW_ADMIN_PASSWORD
+            [ "${#NEW_ADMIN_PASSWORD}" -ge 12 ] && break
+            warn "Senha muito curta (${#NEW_ADMIN_PASSWORD} caracteres) — use pelo menos 12."
+        done
+    fi
+
+    (
+        export FLASK_APP=wsgi.py
+        export ADMIN_NAME="${ADMIN_NAME:-Administrador}"
+        export ADMIN_EMAIL="$NEW_ADMIN_EMAIL"
+        export ADMIN_PASSWORD="$NEW_ADMIN_PASSWORD"
+        cd "$APP_DIR" && "$APP_DIR/venv/bin/flask" create-admin --tenant-slug "$TENANT_SLUG_INPUT"
+    ) || { err "Falha ao definir o administrador — veja o erro acima."; return 1; }
+
+    ok "Administrador da página '$TENANT_SLUG_INPUT' atualizado: $NEW_ADMIN_EMAIL"
+
+    if [ "$TENANT_SLUG_INPUT" = "default" ]; then
+        if confirm "Salvar esse e-mail/senha em $APP_DIR/.env? (recomendado — sem isso, a próxima atualização/update.sh volta a usar as credenciais antigas do .env)" "s"; then
+            set_env_var "$APP_DIR/.env" ADMIN_EMAIL "$NEW_ADMIN_EMAIL"
+            set_env_var "$APP_DIR/.env" ADMIN_PASSWORD "$NEW_ADMIN_PASSWORD"
+            ok ".env atualizado."
+        fi
+    else
+        info "Página '$TENANT_SLUG_INPUT' não é a 'default' — essas credenciais não vivem no .env (só o admin da página 'default' vive); nada a salvar aqui."
+    fi
+}
+
+do_set_superadmin_credentials() {
+    title "Definir/redefinir super admin"
+
+    set -a
+    # shellcheck disable=SC1091
+    source "$APP_DIR/.env"
+    set +a
+
+    ask_validated "E-mail do super admin (login em /super)" "${SUPERADMIN_EMAIL:-}" NEW_SUPERADMIN_EMAIL \
+        is_valid_email "E-mail com formato inválido"
+
+    if confirm "Gerar uma senha forte automaticamente?" "s"; then
+        NEW_SUPERADMIN_PASSWORD="$(gen_secret | cut -c1-16)"
+        ok "Senha gerada: ${C_BOLD}${NEW_SUPERADMIN_PASSWORD}${C_RESET} (anote agora — não será mostrada de novo)"
+    else
+        while true; do
+            ask_secret "Nova senha (mínimo 12 caracteres)" NEW_SUPERADMIN_PASSWORD
+            [ "${#NEW_SUPERADMIN_PASSWORD}" -ge 12 ] && break
+            warn "Senha muito curta (${#NEW_SUPERADMIN_PASSWORD} caracteres) — use pelo menos 12."
+        done
+    fi
+
+    (
+        export FLASK_APP=wsgi.py
+        export SUPERADMIN_NAME="${SUPERADMIN_NAME:-Super Admin}"
+        export SUPERADMIN_EMAIL="$NEW_SUPERADMIN_EMAIL"
+        export SUPERADMIN_PASSWORD="$NEW_SUPERADMIN_PASSWORD"
+        cd "$APP_DIR" && "$APP_DIR/venv/bin/flask" create-superadmin
+    ) || { err "Falha ao definir o super admin — veja o erro acima."; return 1; }
+
+    ok "Super admin atualizado: $NEW_SUPERADMIN_EMAIL (painel: /super/login)"
+
+    if confirm "Salvar esse e-mail/senha em $APP_DIR/.env? (recomendado)" "s"; then
+        set_env_var "$APP_DIR/.env" SUPERADMIN_NAME "${SUPERADMIN_NAME:-Super Admin}"
+        set_env_var "$APP_DIR/.env" SUPERADMIN_EMAIL "$NEW_SUPERADMIN_EMAIL"
+        set_env_var "$APP_DIR/.env" SUPERADMIN_PASSWORD "$NEW_SUPERADMIN_PASSWORD"
+        ok ".env atualizado."
+    fi
+}
+
+do_set_credentials() {
+    choose "Redefinir credenciais de quem?" WHO \
+        "Administrador de uma página" \
+        "Super admin (painel /super)"
+    case "$WHO" in
+        "Administrador de uma página") do_set_admin_credentials ;;
+        "Super admin (painel /super)") do_set_superadmin_credentials ;;
+    esac
+}
+
 do_uninstall() {
     title "Desinstalar — Nexo Mídia"
     warn "Isso para e desativa a aplicação. Os dados (banco, uploads, .env) NÃO são apagados por padrão — ficam em $APP_DIR para você recuperar depois, ou restaurar numa instalação nova."
@@ -159,6 +262,7 @@ main_menu() {
             "Restaurar um backup" \
             "Migrar para um servidor novo" \
             "Reverter para uma versão de código anterior" \
+            "Definir/redefinir usuário e senha (admin de página ou super admin)" \
             "Comandos do sistema (status, logs, reiniciar, firewall...)" \
             "Desinstalar" \
             "Sair"
@@ -183,6 +287,8 @@ main_menu() {
                 detect_or_ask_app_dir && do_migrate || true ;;
             "Reverter para uma versão de código anterior")
                 detect_or_ask_app_dir && do_rollback || true ;;
+            "Definir/redefinir usuário e senha (admin de página ou super admin)")
+                detect_or_ask_app_dir && do_set_credentials || true ;;
             "Comandos do sistema (status, logs, reiniciar, firewall...)")
                 detect_or_ask_app_dir && do_system_menu || true ;;
             "Desinstalar")

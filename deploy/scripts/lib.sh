@@ -148,6 +148,26 @@ ask_validated() {
     done
 }
 
+# Atualiza (ou adiciona, se ainda não existir) uma única variável num
+# arquivo .env, sem tocar no resto do arquivo -- usado por ações do menu
+# que trocam uma credencial isolada (ex.: redefinir senha do admin/super
+# admin) sem precisar reconfigurar tudo de novo via configure-env.sh.
+# Reescreve o arquivo inteiro via arquivo temporário (em vez de sed -i
+# no lugar) para preservar dono/permissões (600, midia-indoor:midia-indoor)
+# e evitar problemas de delimitador do sed se o valor contiver caracteres
+# especiais (ex.: senha gerada aleatoriamente). Uso:
+#   set_env_var "$APP_DIR/.env" ADMIN_PASSWORD "$NOVA_SENHA"
+set_env_var() {
+    local env_file="$1" key="$2" value="$3" tmp owner
+    tmp="$(mktemp)"
+    grep -v "^${key}=" "$env_file" 2>/dev/null >"$tmp" || true
+    printf '%s="%s"\n' "$key" "${value//\"/\\\"}" >>"$tmp"
+    chmod 600 "$tmp"
+    owner="$(stat -c '%U:%G' "$env_file" 2>/dev/null || true)"
+    [ -n "$owner" ] && chown "$owner" "$tmp" 2>/dev/null || true
+    mv "$tmp" "$env_file"
+}
+
 # Roda um comando com algumas tentativas, com pausa entre elas —
 # apt/curl em VPS novas falham às vezes por lentidão momentânea de
 # rede/DNS/mirror, e sem retry isso derruba a instalação inteira por
