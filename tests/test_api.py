@@ -39,3 +39,16 @@ def test_get_public_site_content(client, db):
     data = resp.get_json()
     assert "company" in data["data"]
     assert "hero" in data["data"]
+
+
+def test_healthz_ignores_tenant_domain(client, db):
+    """
+    /healthz precisa responder mesmo com um Host desconhecido: quem chama
+    esse endpoint (update.sh, systemd, monitoramento) usa o IP:porta interno
+    do Gunicorn, nunca o domínio público cadastrado como TenantDomain. Se
+    o gate de tenant chegasse a barrar essa rota, o endpoint responderia
+    404 sempre -- fazendo o update.sh concluir (erroneamente) que todo
+    deploy falhou e desfazer a atualização automaticamente.
+    """
+    resp = client.get("/healthz", headers={"Host": "127.0.0.1:8000"})
+    assert resp.status_code == 200
