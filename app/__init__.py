@@ -326,7 +326,12 @@ def _register_cli(app: Flask) -> None:
 
     @app.cli.command("seed-demo")
     @click.option("--tenant-slug", default="default", help="Página (tenant) a popular com conteúdo de demonstração.")
-    def seed_demo(tenant_slug):
+    @click.option(
+        "--template",
+        default="midia_indoor",
+        help="Modelo de conteúdo: midia_indoor, barbearia, salao_beleza, portfolio ou empresa.",
+    )
+    def seed_demo(tenant_slug, template):
         """Popula o banco com conteúdo de demonstração (idempotente) para a página informada."""
         from app.models import Tenant
         from scripts.seed import run_seed
@@ -336,5 +341,5 @@ def _register_cli(app: Flask) -> None:
             print(f"Página '{tenant_slug}' não encontrada. Rode 'flask create-admin' primeiro.")
             return
 
-        run_seed(tenant.id)
-        print(f"Seed de demonstração aplicado à página '{tenant.slug}'.")
+        run_seed(tenant.id, template=template)
+        print(f"Seed de demonstração ('{template}') aplicado à página '{tenant.slug}'.")

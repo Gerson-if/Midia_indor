@@ -1,6 +1,8 @@
 from flask_wtf import FlaskForm
-from wtforms import BooleanField, PasswordField, StringField, TextAreaField
+from wtforms import BooleanField, PasswordField, SelectField, StringField, TextAreaField
 from wtforms.validators import DataRequired, Email, Length, Optional, Regexp
+
+from scripts.seed import TEMPLATE_CHOICES
 
 SLUG_RE = Regexp(
     r"^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$",
@@ -34,6 +36,13 @@ class TenantCreateForm(FlaskForm):
     owner_email = StringField("E-mail do administrador", validators=[DataRequired(), Email(), Length(max=190)])
     owner_password = PasswordField("Senha inicial", validators=[DataRequired(), Length(min=8, max=128)])
 
+    template = SelectField(
+        "Modelo de conteúdo inicial",
+        choices=TEMPLATE_CHOICES,
+        default="midia_indoor",
+        description="A página já abre com textos, serviços e depoimentos de exemplo prontos para adaptar, de acordo com o tipo de negócio escolhido.",
+    )
+
 
 class TenantDomainForm(FlaskForm):
     domain = StringField("Domínio ou subdomínio", validators=[DataRequired(), Length(max=255), DOMAIN_RE])
@@ -45,4 +54,11 @@ class TenantBlockForm(FlaskForm):
         "Motivo do bloqueio (interno)",
         validators=[DataRequired(), Length(max=300)],
         description="Visível só para você e para o administrador desta página -- nunca para o visitante final.",
+    )
+
+
+class TenantDeleteForm(FlaskForm):
+    confirm_slug = StringField(
+        "Digite o identificador da página para confirmar",
+        validators=[DataRequired(), Length(max=140)],
     )

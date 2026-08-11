@@ -6,9 +6,10 @@ from flask_login import current_user, login_user, logout_user
 
 from app.blueprints.auth.forms import LoginForm
 from app.blueprints.superadmin import superadmin_bp
-from app.blueprints.superadmin.forms import TenantBlockForm, TenantCreateForm, TenantDomainForm
+from app.blueprints.superadmin.forms import TenantBlockForm, TenantCreateForm, TenantDeleteForm, TenantDomainForm
 from app.extensions import db, limiter
 from app.models import SiteSettings, Tenant, TenantDomain, TenantStatus, User, UserRole, normalize_domain
+from app.services.tenants import delete_tenant
 from app.utils.decorators import log_action
 
 # ------------------------------------------------------------------ #
@@ -111,6 +112,17 @@ def tenant_new():
             tenant_id=tenant.id,
         )
         db.session.commit()
+
+        if form.template.data and form.template.data != "none":
+            # Página nova abre com um modelo pronto (textos do Hero,
+            # serviços, galeria, depoimentos, parceiros) de acordo com o
+            # tipo de negócio escolhido, em vez de em branco -- mais fácil
+            # do cliente/admin adaptar do que começar do zero. Mesmo
+            # conteúdo aplicado pelo "flask seed-demo --template=...".
+            from scripts.seed import run_seed
+
+            run_seed(tenant.id, template=form.template.data)
+
         flash(f'Página "{tenant.name}" criada com sucesso.', "success")
         return redirect(url_for("superadmin.tenant_detail", tenant_id=tenant.id))
 
@@ -128,6 +140,7 @@ def tenant_detail(tenant_id):
         tenant=tenant,
         domain_form=TenantDomainForm(),
         block_form=TenantBlockForm(),
+        delete_form=TenantDeleteForm(),
     )
 
 
@@ -218,6 +231,36 @@ def tenant_unblock(tenant_id):
     db.session.commit()
     flash(f'Página "{tenant.name}" desbloqueada.', "success")
     return redirect(url_for("superadmin.tenant_detail", tenant_id=tenant.id))
+
+
+# ------------------------------------------------------------------ #
+# Exclusão definitiva (irreversível) -- páginas que não são mais usadas.
+# ------------------------------------------------------------------ #
+@superadmin_bp.route("/paginas/<int:tenant_id>/excluir", methods=["POST"])
+def tenant_delete(tenant_id):
+    tenant = Tenant.query.filter_by(id=tenant_id).first_or_404()
+    form = TenantDeleteForm()
+
+    if not form.validate_on_submit() or form.confirm_slug.data.strip().lower() != tenant.slug:
+        flash(
+            f'Confirmação incorreta -- digite exatamente "{tenant.slug}" para excluir esta página.', "danger"
+        )
+        return redirect(url_for("superadmin.tenant_detail", tenant_id=tenant.id))
+
+    name, slug = tenant.name, tenant.slug
+    delete_tenant(tenant)  # já comita: apaga conteúdo/usuários/domínios e a página
+
+    log_action(
+        "tenant.deleted",
+        entity_type="Tenant",
+        entity_id=tenant_id,
+        description=f"{name} ({slug})",
+        tenant_id=None,  # a página não existe mais -- nada a referenciar
+    )
+    db.session.commit()
+
+    flash(f'Página "{name}" excluída definitivamente.', "success")
+    return redirect(url_for("superadmin.dashboard"))
 
 
 # ------------------------------------------------------------------ #

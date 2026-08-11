@@ -49,6 +49,16 @@
       {% for e in form.owner_password.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
     </div>
 
+    <hr class="border-line">
+
+    <div>
+      {{ form.template.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ form.template(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+      {% if form.template.description %}
+      <p class="text-xs text-low mt-1">{{ form.template.description }}</p>
+      {% endif %}
+    </div>
+
     <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">Criar página</button>
   </form>
 </div>

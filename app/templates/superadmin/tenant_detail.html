@@ -91,4 +91,49 @@
     {% endif %}
   </div>
 </div>
+
+<div class="card p-6 mt-6" style="border-color: rgba(239,68,68,.4)">
+  <h2 class="font-display text-lg mb-2 text-red-400">Excluir página</h2>
+  <p class="text-xs text-mid mb-1">
+    Apaga <strong>definitivamente</strong> esta página: site, painel do admin, domínios cadastrados,
+    serviços, galeria, depoimentos, parceiros, propostas recebidas e o(s) usuário(s) desta página.
+    Não há como desfazer -- se ainda houver dúvida, prefira <strong>Bloquear</strong> acima (reversível).
+  </p>
+  <p class="text-xs text-low mb-4">O histórico de auditoria desta página é preservado, apenas desvinculado.</p>
+
+  <form method="POST" action="{{ url_for('superadmin.tenant_delete', tenant_id=tenant.id) }}"
+        data-confirm-message='Excluir definitivamente "{{ tenant.name }}"? Essa ação não pode ser desfeita.'
+        class="space-y-3">
+    {{ delete_form.hidden_tag() }}
+    <div>
+      {{ delete_form.confirm_slug.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ delete_form.confirm_slug(
+          class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none font-mono",
+          placeholder=tenant.slug,
+          id="confirm-slug-input",
+          autocomplete="off"
+      ) }}
+      {% for e in delete_form.confirm_slug.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+      <p class="text-xs text-low mt-1">Digite <code class="text-red-300">{{ tenant.slug }}</code> para habilitar o botão.</p>
+    </div>
+    <button type="submit" id="confirm-delete-btn" disabled
+            class="btn w-full justify-center py-2.5 text-sm text-red-400 border border-red-400/40 hover:bg-red-500/10 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent">
+      Excluir página definitivamente
+    </button>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    var input = document.getElementById('confirm-slug-input');
+    var btn = document.getElementById('confirm-delete-btn');
+    if (!input || !btn) return;
+    var expected = {{ tenant.slug | tojson }};
+    input.addEventListener('input', function () {
+      btn.disabled = input.value.trim().toLowerCase() !== expected;
+    });
+  })();
+</script>
 {% endblock %}

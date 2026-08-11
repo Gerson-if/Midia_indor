@@ -73,6 +73,94 @@ def test_superadmin_creates_tenant_with_owner_and_domain(client, super_admin_use
     assert domain.is_primary is True
 
 
+def test_superadmin_creates_tenant_with_demo_content_by_default(client, super_admin_user, db):
+    """
+    Página nova deve vir com um modelo pronto (serviços, galeria,
+    depoimentos, parceiros, textos do Hero) em vez de em branco -- o
+    seletor "Modelo de conteúdo inicial" vem em "midia_indoor" por padrão.
+    """
+    from app.models import GalleryItem, Partner, Service, SiteSettings, Testimonial
+
+    login_superadmin(client, "superadmin@teste.com", "SenhaForte123!")
+    resp = client.post(
+        "/super/paginas/nova",
+        data={
+            "name": "Cliente Com Modelo",
+            "slug": "",
+            "domain": "",
+            "owner_name": "Dono Cliente",
+            "owner_email": "dono2@clientenovo.com.br",
+            "owner_password": "SenhaForte123!",
+            "template": "midia_indoor",
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+
+    t = Tenant.query.filter_by(name="Cliente Com Modelo").first()
+    assert t is not None
+    assert Service.query.filter_by(tenant_id=t.id).count() > 0
+    assert GalleryItem.query.filter_by(tenant_id=t.id).count() > 0
+    assert Testimonial.query.filter_by(tenant_id=t.id).count() > 0
+    assert Partner.query.filter_by(tenant_id=t.id).count() > 0
+    settings = SiteSettings.get_solo(tenant_id=t.id)
+    assert settings.hero_title
+
+
+def test_superadmin_creates_tenant_with_barbearia_template(client, super_admin_user, db):
+    """Escolhendo outro modelo (ex.: Barbearia), o conteúdo semeado deve ser o desse nicho, não o de mídia indoor."""
+    from app.models import Service, SiteSettings
+
+    login_superadmin(client, "superadmin@teste.com", "SenhaForte123!")
+    resp = client.post(
+        "/super/paginas/nova",
+        data={
+            "name": "Barbearia do Zé",
+            "slug": "",
+            "domain": "",
+            "owner_name": "Zé",
+            "owner_email": "ze@barbearia.com.br",
+            "owner_password": "SenhaForte123!",
+            "template": "barbearia",
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+
+    t = Tenant.query.filter_by(name="Barbearia do Zé").first()
+    assert t is not None
+    titles = {s.title for s in Service.query.filter_by(tenant_id=t.id).all()}
+    assert "Corte Masculino" in titles
+    assert "Mídia em Elevadores" not in titles
+    settings = SiteSettings.get_solo(tenant_id=t.id)
+    assert settings.services_heading == "Nossos Serviços"
+
+
+def test_superadmin_creates_tenant_without_demo_content_when_unchecked(client, super_admin_user, db):
+    """Escolhendo "Não popular", a página deve continuar vazia (comportamento anterior)."""
+    from app.models import Service
+
+    login_superadmin(client, "superadmin@teste.com", "SenhaForte123!")
+    resp = client.post(
+        "/super/paginas/nova",
+        data={
+            "name": "Cliente Sem Modelo",
+            "slug": "",
+            "domain": "",
+            "owner_name": "Dono Cliente",
+            "owner_email": "dono3@clientenovo.com.br",
+            "owner_password": "SenhaForte123!",
+            "template": "none",
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+
+    t = Tenant.query.filter_by(name="Cliente Sem Modelo").first()
+    assert t is not None
+    assert Service.query.filter_by(tenant_id=t.id).count() == 0
+
+
 def test_superadmin_block_and_unblock_tenant(client, super_admin_user, tenant, db):
     login_superadmin(client, "superadmin@teste.com", "SenhaForte123!")
 
@@ -90,6 +178,69 @@ def test_superadmin_block_and_unblock_tenant(client, super_admin_user, tenant, d
     assert resp.status_code == 200
     db.session.refresh(tenant)
     assert tenant.is_blocked is False
+
+
+def test_superadmin_delete_tenant_requires_matching_slug(client, super_admin_user, tenant, admin_user, db):
+    """Confirmação errada não apaga nada -- só o slug exato da página libera a exclusão."""
+    login_superadmin(client, "superadmin@teste.com", "SenhaForte123!")
+
+    resp = client.post(
+        f"/super/paginas/{tenant.id}/excluir",
+        data={"confirm_slug": "slug-errado"},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert Tenant.query.filter_by(id=tenant.id).first() is not None
+    assert User.query.filter_by(id=admin_user.id).first() is not None
+
+
+def test_superadmin_delete_tenant_removes_everything(client, super_admin_user, tenant, admin_user, db):
+    """
+    Excluir a página remove o tenant, seus usuários e todo o conteúdo
+    (serviços, propostas...), mas preserva o log de auditoria (só
+    desvinculado -- tenant_id/user_id viram NULL).
+    """
+    from app.models import AuditLog, Service
+    from app.utils.decorators import log_action
+
+    # Capturados antes da exclusão: os objetos ORM expiram após o commit
+    # que apaga suas linhas, então acessar .id neles depois estouraria
+    # ObjectDeletedError.
+    tenant_id = tenant.id
+    tenant_slug = tenant.slug
+    admin_user_id = admin_user.id
+
+    service = Service(tenant_id=tenant_id, title="Servico do Cliente", description="d", display_order=1)
+    db.session.add(service)
+    log_action("service.created", entity_type="Service", entity_id=1, tenant_id=tenant_id, description="teste")
+    db.session.commit()
+
+    login_superadmin(client, "superadmin@teste.com", "SenhaForte123!")
+    resp = client.post(
+        f"/super/paginas/{tenant_id}/excluir",
+        data={"confirm_slug": tenant_slug},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+
+    assert Tenant.query.filter_by(id=tenant_id).first() is None
+    assert User.query.filter_by(id=admin_user_id).first() is None
+    assert Service.query.filter_by(tenant_id=tenant_id).count() == 0
+
+    old_log = AuditLog.query.filter_by(action="service.created").first()
+    assert old_log is not None
+    assert old_log.tenant_id is None
+
+    delete_log = AuditLog.query.filter_by(action="tenant.deleted").first()
+    assert delete_log is not None
+    assert tenant_slug in delete_log.description
+
+
+def test_regular_admin_cannot_delete_tenant(client, admin_user, tenant, db):
+    login(client, "admin@teste.com", "SenhaForte123!")
+    resp = client.post(f"/super/paginas/{tenant.id}/excluir", data={"confirm_slug": tenant.slug})
+    assert resp.status_code in (302, 403)
+    assert Tenant.query.filter_by(id=tenant.id).first() is not None
 
 
 # ------------------------------------------------------------------ #
