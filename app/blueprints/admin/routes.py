@@ -21,6 +21,7 @@ from app.models import (
     CustomSection,
     CustomSectionItem,
     GalleryItem,
+    Invoice,
     Partner,
     Proposal,
     Service,
@@ -871,6 +872,19 @@ def user_delete(user_id):
     db.session.commit()
     flash("Usuário removido.", "info")
     return redirect(url_for("admin.users_manage"))
+
+
+# ------------------------------------------------------------------ #
+# Assinatura (faturas lançadas pelo super admin) -- só leitura, o admin
+# da página não edita nada aqui, só acompanha.
+# ------------------------------------------------------------------ #
+@admin_bp.route("/assinatura")
+@admin_required
+def subscription():
+    invoices = (
+        Invoice.query.filter_by(tenant_id=current_user.tenant_id).order_by(Invoice.due_date.desc()).all()
+    )
+    return render_template("admin/subscription.html", invoices=invoices)
 
 
 # ------------------------------------------------------------------ #

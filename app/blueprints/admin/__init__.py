@@ -16,7 +16,9 @@ from app.blueprints.admin import routes  # noqa: E402,F401
 
 @admin_bp.context_processor
 def inject_sidebar_data():
-    from app.models import Proposal, SiteSettings
+    from flask_login import current_user
+
+    from app.models import Invoice, InvoiceStatus, Proposal, SiteSettings
     from app.models.proposal import ProposalStatus
 
     try:
@@ -27,4 +29,17 @@ def inject_sidebar_data():
         site_settings = SiteSettings.get_solo()
     except Exception:
         site_settings = None
-    return {"new_proposals_count": count, "site_settings": site_settings}
+    try:
+        has_pending_cutoff = (
+            Invoice.query.filter_by(tenant_id=current_user.tenant_id, status=InvoiceStatus.PENDING)
+            .filter(Invoice.service_cutoff_at.isnot(None))
+            .count()
+            > 0
+        )
+    except Exception:
+        has_pending_cutoff = False
+    return {
+        "new_proposals_count": count,
+        "site_settings": site_settings,
+        "has_pending_cutoff": has_pending_cutoff,
+    }

@@ -8,6 +8,7 @@ from app.models.content import (
     SiteSettings,
     Testimonial,
 )
+from app.models.invoice import Invoice, InvoiceItem, InvoiceStatus
 from app.models.proposal import Proposal, ProposalStatus
 from app.models.tenant import Tenant, TenantDomain, TenantScopedMixin, TenantStatus, normalize_domain
 from app.models.user import User, UserRole
@@ -21,6 +22,9 @@ __all__ = [
     "Service",
     "SiteSettings",
     "Testimonial",
+    "Invoice",
+    "InvoiceItem",
+    "InvoiceStatus",
     "Proposal",
     "ProposalStatus",
     "Tenant",

@@ -1,0 +1,103 @@
+{% extends "superadmin/base_superadmin.html" %}
+{% block title %}{{ invoice.title }} — {{ tenant.name }}{% endblock %}
+{% block content %}
+<a href="{{ url_for('superadmin.tenant_detail', tenant_id=tenant.id) }}" class="text-xs text-mid hover:text-hi">&larr; {{ tenant.name }}</a>
+
+<div class="flex items-start justify-between gap-3 mt-2 mb-6">
+  <div>
+    <h1 class="font-display text-2xl">{{ invoice.title }}</h1>
+    <p class="text-xs text-low font-mono">vencimento {{ invoice.due_date.strftime('%d/%m/%Y') }}{% if invoice.is_recurring %} · recorrente{% endif %}</p>
+  </div>
+  {% if invoice.status.value == "PAID" %}
+  <span class="inline-flex items-center gap-1 text-xs font-mono shrink-0 mt-1" style="color: var(--cyan)"><span class="w-1.5 h-1.5 rounded-full" style="background: var(--cyan)"></span> paga</span>
+  {% elif invoice.status.value == "CANCELED" %}
+  <span class="inline-flex items-center gap-1 text-low text-xs font-mono shrink-0 mt-1"><span class="w-1.5 h-1.5 rounded-full bg-low"></span> cancelada</span>
+  {% elif invoice.is_overdue %}
+  <span class="inline-flex items-center gap-1 text-red-400 text-xs font-mono shrink-0 mt-1"><span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> vencida</span>
+  {% else %}
+  <span class="inline-flex items-center gap-1 text-amber-300 text-xs font-mono shrink-0 mt-1"><span class="w-1.5 h-1.5 rounded-full" style="background: var(--amber)"></span> pendente</span>
+  {% endif %}
+</div>
+
+{% if invoice.service_cutoff_at %}
+<div class="rounded-lg border p-4 mb-6 text-sm" style="border-color: rgba(239,68,68,.4); background: rgba(239,68,68,.08)">
+  <p class="text-red-400 font-semibold">Aviso de desligamento total do serviço</p>
+  <p class="text-mid text-xs mt-1">
+    Se não for paga, o acesso desta página é encerrado por completo em <strong>{{ invoice.service_cutoff_at.strftime('%d/%m/%Y') }}</strong>
+    (diferente de bloquear: aqui o fornecedor externo de hospedagem corta o serviço). O admin da página já vê este aviso na seção Assinatura do painel dele.
+  </p>
+</div>
+{% endif %}
+
+<div class="grid lg:grid-cols-2 gap-6">
+  <div class="card p-6">
+    <h2 class="font-display text-lg mb-4">Itens da fatura</h2>
+
+    {% if invoice.items %}
+    <ul class="space-y-2 mb-5">
+      {% for item in invoice.items %}
+      <li class="flex items-center justify-between gap-3 text-sm border border-line rounded-lg px-3 py-2">
+        <span class="text-hi min-w-0 truncate">{{ item.description }}</span>
+        <div class="flex items-center gap-3 shrink-0">
+          <span class="font-mono text-mid">R$ {{ "%.2f"|format(item.amount) }}</span>
+          {% if invoice.status.value == "PENDING" %}
+          <form method="POST" action="{{ url_for('superadmin.invoice_remove_item', invoice_id=invoice.id, item_id=item.id) }}"
+                data-confirm-message="Remover este item da fatura?">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="text-red-400 hover:text-red-300 text-xs">Remover</button>
+          </form>
+          {% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm text-low mb-5">Nenhum item ainda -- a fatura não tem valor até adicionar pelo menos um.</p>
+    {% endif %}
+
+    <div class="flex items-center justify-between text-sm font-semibold border-t border-line pt-4 mb-5">
+      <span class="text-mid">Total</span>
+      <span class="text-hi font-mono text-lg">R$ {{ "%.2f"|format(invoice.total) }}</span>
+    </div>
+
+    {% if invoice.status.value == "PENDING" %}
+    <form method="POST" action="{{ url_for('superadmin.invoice_add_item', invoice_id=invoice.id) }}" class="space-y-3">
+      {{ item_form.hidden_tag() }}
+      <div>
+        {{ item_form.description(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", placeholder="ex.: Mensalidade do plano Padrão") }}
+        {% for e in item_form.description.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+      </div>
+      <div>
+        {{ item_form.amount(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", placeholder="0,00") }}
+        {% for e in item_form.amount.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+      </div>
+      <button type="submit" class="btn btn-ghost w-full justify-center py-2 text-sm">+ Adicionar item</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="space-y-6">
+    {% if invoice.notes %}
+    <div class="card p-6">
+      <h2 class="font-display text-lg mb-2">Observações</h2>
+      <p class="text-sm text-mid whitespace-pre-line">{{ invoice.notes }}</p>
+    </div>
+    {% endif %}
+
+    {% if invoice.status.value == "PENDING" %}
+    <div class="card p-6 space-y-3">
+      <h2 class="font-display text-lg mb-2">Ações</h2>
+      <form method="POST" action="{{ url_for('superadmin.invoice_mark_paid', invoice_id=invoice.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">Marcar como paga</button>
+      </form>
+      <form method="POST" action="{{ url_for('superadmin.invoice_cancel', invoice_id=invoice.id) }}"
+            data-confirm-message='Cancelar a fatura "{{ invoice.title }}"?'>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn w-full justify-center py-2.5 text-sm text-red-400 border border-red-400/40 hover:bg-red-500/10">Cancelar fatura</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

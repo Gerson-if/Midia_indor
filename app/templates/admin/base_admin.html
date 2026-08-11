@@ -13,55 +13,6 @@
 <link rel="stylesheet" href="{{ static_asset('css/fonts.css') }}">
 <link rel="stylesheet" href="{{ static_asset('css/tailwind.min.css') }}">
 <link rel="stylesheet" href="{{ static_asset('css/style.css') }}">
-<style>
-  /* ---- Sidebar: largura controlada por variável + classe no <html> ---- */
-  :root{ --sidebar-w: 264px; --sidebar-w-collapsed: 76px; --topbar-h: 64px; }
-
-  .nav-item{ position:relative; display:flex; align-items:center; gap:.75rem; padding:.65rem .85rem; border-radius:10px; color:var(--text-mid); font-size:.875rem; transition:background .15s,color .15s; white-space:nowrap; }
-  .nav-item:hover{ background:var(--overlay-med); color:var(--text-hi); }
-  .nav-item.active{ background:var(--panel2); color:var(--amber-text); }
-  .nav-item.active .nav-icon{ color:var(--amber-text); }
-  .nav-icon{ display:flex; align-items:center; justify-content:center; width:20px; height:20px; flex-shrink:0; }
-  .nav-label{ transition:opacity .15s ease; overflow:hidden; text-overflow:ellipsis; }
-  .badge{ background:#ef4444; color:#fff; font-size:.65rem; line-height:1; padding:.2rem .45rem; border-radius:999px; font-weight:600; }
-  .badge-dot{ display:none; position:absolute; top:2px; left:26px; width:8px; height:8px; border-radius:999px; background:#ef4444; }
-
-  .sidebar{ width:var(--sidebar-w); transition:width .22s ease; }
-  .sidebar-brand-text, .sidebar-section-label, .sidebar-user-info{ transition:opacity .12s ease; }
-  .toggle-btn svg{ transition:transform .3s ease; }
-
-  html.sidebar-collapsed .sidebar{ width:var(--sidebar-w-collapsed); }
-  html.sidebar-collapsed .sidebar-brand-text,
-  html.sidebar-collapsed .sidebar-section-label,
-  html.sidebar-collapsed .sidebar-user-info,
-  html.sidebar-collapsed .nav-label{ display:none; }
-  html.sidebar-collapsed .nav-item{ justify-content:center; }
-  html.sidebar-collapsed .nav-item .badge{ display:none; }
-  html.sidebar-collapsed .nav-item .badge-dot{ display:block; }
-  html.sidebar-collapsed .toggle-btn svg{ transform:rotate(180deg); }
-  html.sidebar-collapsed .sidebar-brand{ justify-content:center; padding-left:.5rem; padding-right:.5rem; }
-  html.sidebar-collapsed .sidebar-brand-mark{ display:none; }
-
-  /* ---- Mobile: sidebar vira off-canvas (drawer) ---- */
-  .sidebar-backdrop{ display:none; }
-  @media (max-width: 767px){
-    .sidebar{ position:fixed; inset-block:0; left:0; top:0; width:280px !important; transform:translateX(-100%); z-index:60; box-shadow:0 0 40px var(--shadow-ambient); }
-    html.mobile-sidebar-open .sidebar{ transform:translateX(0); }
-    html.sidebar-collapsed .sidebar .nav-label,
-    html.sidebar-collapsed .sidebar .sidebar-brand-text,
-    html.sidebar-collapsed .sidebar .sidebar-section-label,
-    html.sidebar-collapsed .sidebar .sidebar-user-info,
-    html.sidebar-collapsed .sidebar .sidebar-brand-mark{ display:block; }
-    html.sidebar-collapsed .sidebar .nav-item{ justify-content:flex-start; }
-    html.sidebar-collapsed .sidebar .badge{ display:inline-flex; }
-    html.sidebar-collapsed .sidebar .badge-dot{ display:none; }
-    .toggle-btn{ display:none; }
-    html.mobile-sidebar-open .sidebar-backdrop{ display:block; position:fixed; inset:0; background:var(--modal-backdrop); z-index:55; }
-  }
-  @media (min-width: 768px){
-    .mobile-menu-btn{ display:none; }
-  }
-</style>
 {% block extra_head %}{% endblock %}
 </head>
 <body class="font-body bg-ink text-hi">
@@ -142,6 +93,13 @@
       <a href="{{ url_for('admin.users_manage') }}" title="Usuários" class="nav-item {{ 'active' if request.endpoint == 'admin.users_manage' }}">
         <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
         <span class="nav-label">Usuários</span>
+      </a>
+      <a href="{{ url_for('admin.subscription') }}" title="Assinatura" class="nav-item {{ 'active' if request.endpoint == 'admin.subscription' }}">
+        <span class="nav-icon relative">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M4 4h16v16H4z"/><path d="M8 9h8"/><path d="M8 13h8"/><path d="M8 17h5"/></svg>
+          {% if has_pending_cutoff %}<span class="badge-dot"></span>{% endif %}
+        </span>
+        <span class="nav-label">Assinatura</span>
       </a>
       {% endif %}
     </nav>

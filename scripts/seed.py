@@ -245,3 +245,61 @@ def run_seed(tenant_id: int, template: str = "midia_indoor"):
         )
 
     db.session.commit()
+
+
+def replace_template_content(tenant_id: int, template: str) -> None:
+    """
+    Troca o modelo de conteúdo de uma página que JÁ existe -- ação
+    explícita do super admin, diferente de run_seed() (que só preenche
+    o que ainda está vazio/no valor de fábrica). Aqui os títulos de
+    seção sempre são trocados, e os serviços/galeria/depoimentos/
+    parceiros atuais são substituídos pelos do novo modelo (perde o que
+    já estava lá nessas 4 listas -- por isso é uma ação com confirmação
+    no painel, não algo que roda sozinho). Hero/textos legais só são
+    preenchidos se ainda estiverem vazios, para não apagar o que o
+    cliente já personalizou de verdade.
+    """
+    data = TEMPLATES.get(template, TEMPLATES["midia_indoor"])
+    settings = SiteSettings.get_solo(tenant_id=tenant_id)
+
+    for field in _FACTORY_HEADINGS:
+        setattr(settings, field, data[field])
+
+    if not settings.hero_title:
+        settings.hero_title = data["hero_title"]
+        settings.hero_subtitle = data["hero_subtitle"]
+        settings.hero_cta_primary_label = data["hero_cta_primary_label"]
+        settings.hero_cta_secondary_label = data["hero_cta_secondary_label"]
+        settings.company_description = data["company_description"]
+
+    Service.query.filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+    GalleryItem.query.filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+    Testimonial.query.filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+    Partner.query.filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+
+    db.session.add_all(
+        [
+            Service(tenant_id=tenant_id, title=title, description=description, display_order=i)
+            for i, (title, description) in enumerate(data["services"], start=1)
+        ]
+    )
+    db.session.add_all(
+        [
+            GalleryItem(tenant_id=tenant_id, title=title, category=category, display_order=i)
+            for i, (title, category) in enumerate(data["gallery"], start=1)
+        ]
+    )
+    db.session.add_all(
+        [
+            Testimonial(tenant_id=tenant_id, name=name, company_name=company_name, text=text, display_order=i)
+            for i, (name, company_name, text) in enumerate(data["testimonials"], start=1)
+        ]
+    )
+    db.session.add_all(
+        [
+            Partner(tenant_id=tenant_id, name=name, display_order=i)
+            for i, name in enumerate(data["partners"], start=1)
+        ]
+    )
+
+    db.session.commit()

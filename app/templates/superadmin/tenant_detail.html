@@ -92,6 +92,63 @@
   </div>
 </div>
 
+<div class="card p-6 mt-6">
+  <h2 class="font-display text-lg mb-2">Modelo de conteúdo</h2>
+  <p class="text-xs text-low mb-4">Troque o tipo de negócio desta página para repopular serviços, galeria, depoimentos e parceiros com um conteúdo mais adequado (ex.: página criada como "Empresa" e o cliente na verdade é uma barbearia).</p>
+  <form method="POST" action="{{ url_for('superadmin.tenant_change_template', tenant_id=tenant.id) }}"
+        data-confirm-message="Trocar o modelo de conteúdo? Isso substitui os serviços, galeria, depoimentos e parceiros atuais desta página pelos do novo modelo."
+        class="flex flex-col sm:flex-row gap-3">
+    {{ template_form.hidden_tag() }}
+    {{ template_form.template(class_="w-full sm:flex-1 bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+    <button type="submit" class="btn btn-ghost !py-2 !px-4 text-sm shrink-0">Trocar modelo</button>
+  </form>
+  {% if template_form.template.description %}<p class="text-xs text-low mt-2">{{ template_form.template.description }}</p>{% endif %}
+</div>
+
+<div class="card p-6 mt-6">
+  <div class="flex items-center justify-between mb-4 gap-3">
+    <h2 class="font-display text-lg">Faturas</h2>
+    <a href="{{ url_for('superadmin.invoice_new', tenant_id=tenant.id) }}" class="btn btn-ghost !py-1.5 !px-3 text-xs">+ Nova fatura</a>
+  </div>
+  {% if not invoices %}
+  <p class="text-sm text-low">Nenhuma fatura lançada para esta página ainda.</p>
+  {% else %}
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm text-left">
+      <thead>
+        <tr class="text-xs font-mono uppercase text-low border-b border-line">
+          <th class="px-3 py-2">Fatura</th>
+          <th class="px-3 py-2">Vencimento</th>
+          <th class="px-3 py-2">Valor</th>
+          <th class="px-3 py-2">Status</th>
+          <th class="px-3 py-2 text-right">Ação</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in invoices %}
+        <tr class="border-b border-line hover:bg-panel2">
+          <td class="px-3 py-2 text-mid">
+            {{ inv.title }}
+            {% if inv.is_recurring %}<span class="ml-1 text-[10px] font-mono uppercase text-low border border-line rounded px-1.5 py-0.5">recorrente</span>{% endif %}
+            {% if inv.service_cutoff_at %}<span class="ml-1 text-[10px] font-mono uppercase text-red-400 border border-red-400/40 rounded px-1.5 py-0.5">corte {{ inv.service_cutoff_at.strftime('%d/%m') }}</span>{% endif %}
+          </td>
+          <td class="px-3 py-2 {{ 'text-red-400' if inv.is_overdue else 'text-mid' }}">{{ inv.due_date.strftime('%d/%m/%Y') }}</td>
+          <td class="px-3 py-2 text-hi font-mono">R$ {{ "%.2f"|format(inv.total) }}</td>
+          <td class="px-3 py-2">
+            {% if inv.status.value == "PAID" %}<span class="text-xs font-mono" style="color: var(--cyan)">paga</span>
+            {% elif inv.status.value == "CANCELED" %}<span class="text-xs font-mono text-low">cancelada</span>
+            {% elif inv.is_overdue %}<span class="text-xs font-mono text-red-400">vencida</span>
+            {% else %}<span class="text-xs font-mono text-amber-300">pendente</span>{% endif %}
+          </td>
+          <td class="px-3 py-2 text-right"><a href="{{ url_for('superadmin.invoice_detail', invoice_id=inv.id) }}" class="text-xs text-mid hover:text-hi">Ver &rarr;</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+
 <div class="card p-6 mt-6" style="border-color: rgba(239,68,68,.4)">
   <h2 class="font-display text-lg mb-2 text-red-400">Excluir página</h2>
   <p class="text-xs text-mid mb-1">

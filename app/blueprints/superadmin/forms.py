@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
-from wtforms import BooleanField, PasswordField, SelectField, StringField, TextAreaField
-from wtforms.validators import DataRequired, Email, Length, Optional, Regexp
+from wtforms import BooleanField, DateField, DecimalField, PasswordField, SelectField, StringField, TextAreaField
+from wtforms.validators import DataRequired, Email, Length, NumberRange, Optional, Regexp
 
 from scripts.seed import TEMPLATE_CHOICES
 
@@ -61,4 +61,43 @@ class TenantDeleteForm(FlaskForm):
     confirm_slug = StringField(
         "Digite o identificador da página para confirmar",
         validators=[DataRequired(), Length(max=140)],
+    )
+
+
+class InvoiceCreateForm(FlaskForm):
+    title = StringField(
+        "Título da fatura", validators=[DataRequired(), Length(max=150)], description="Ex.: Mensalidade Agosto/2026"
+    )
+    due_date = DateField("Data de vencimento", validators=[DataRequired()])
+    is_recurring = BooleanField(
+        "Cobrança recorrente (renova a cada período, ex.: mensalidade)", default=False
+    )
+    service_cutoff_at = DateField(
+        "Data de desligamento total do serviço (opcional)",
+        validators=[Optional()],
+        description=(
+            "Se não for paga até esta data, o acesso é encerrado por completo (ex.: fornecedor "
+            "externo de hospedagem corta o serviço) -- diferente de \"bloquear\", que só tira o "
+            "site público do ar mantendo o painel acessível. Avisado ao admin da página."
+        ),
+    )
+    notes = TextAreaField("Observações (opcional)", validators=[Optional(), Length(max=1000)])
+
+
+class ChangeTemplateForm(FlaskForm):
+    template = SelectField(
+        "Novo modelo de conteúdo",
+        choices=[c for c in TEMPLATE_CHOICES if c[0] != "none"],
+        description=(
+            "Substitui os serviços, galeria, depoimentos e parceiros atuais da página pelos do modelo "
+            "escolhido. Textos do Hero e páginas legais só são preenchidos se ainda estiverem vazios -- "
+            "o que o cliente já personalizou de verdade não é apagado."
+        ),
+    )
+
+
+class InvoiceItemForm(FlaskForm):
+    description = StringField("Descrição do item", validators=[DataRequired(), Length(max=200)])
+    amount = DecimalField(
+        "Valor (R$)", validators=[DataRequired(), NumberRange(min=0.01)], places=2
     )

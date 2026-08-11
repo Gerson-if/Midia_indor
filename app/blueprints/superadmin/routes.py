@@ -1,16 +1,43 @@
 import re
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from flask import flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_user, logout_user
 
 from app.blueprints.auth.forms import LoginForm
 from app.blueprints.superadmin import superadmin_bp
-from app.blueprints.superadmin.forms import TenantBlockForm, TenantCreateForm, TenantDeleteForm, TenantDomainForm
+from app.blueprints.superadmin.forms import (
+    ChangeTemplateForm,
+    InvoiceCreateForm,
+    InvoiceItemForm,
+    TenantBlockForm,
+    TenantCreateForm,
+    TenantDeleteForm,
+    TenantDomainForm,
+)
 from app.extensions import db, limiter
-from app.models import SiteSettings, Tenant, TenantDomain, TenantStatus, User, UserRole, normalize_domain
+from app.models import (
+    Invoice,
+    InvoiceItem,
+    InvoiceStatus,
+    SiteSettings,
+    Tenant,
+    TenantDomain,
+    TenantStatus,
+    User,
+    UserRole,
+    normalize_domain,
+)
 from app.services.tenants import delete_tenant
 from app.utils.decorators import log_action
+
+
+@superadmin_bp.context_processor
+def _inject_pending_invoices_count():
+    if not getattr(current_user, "is_super_admin", False):
+        return {}
+    count = Invoice.query.filter_by(status=InvoiceStatus.PENDING).count()
+    return {"pending_invoices_count": count}
 
 # ------------------------------------------------------------------ #
 # Autenticação (separada do login de cliente: super admin não pertence
@@ -135,13 +162,38 @@ def tenant_new():
 @superadmin_bp.route("/paginas/<int:tenant_id>")
 def tenant_detail(tenant_id):
     tenant = Tenant.query.filter_by(id=tenant_id).first_or_404()
+    invoices = Invoice.query.filter_by(tenant_id=tenant.id).order_by(Invoice.due_date.desc()).all()
     return render_template(
         "superadmin/tenant_detail.html",
         tenant=tenant,
         domain_form=TenantDomainForm(),
         block_form=TenantBlockForm(),
         delete_form=TenantDeleteForm(),
+        template_form=ChangeTemplateForm(),
+        invoices=invoices,
     )
+
+
+@superadmin_bp.route("/paginas/<int:tenant_id>/trocar-modelo", methods=["POST"])
+def tenant_change_template(tenant_id):
+    tenant = Tenant.query.filter_by(id=tenant_id).first_or_404()
+    form = ChangeTemplateForm()
+    if form.validate_on_submit():
+        from scripts.seed import replace_template_content
+
+        replace_template_content(tenant.id, form.template.data)
+        log_action(
+            "tenant.template_changed",
+            entity_type="Tenant",
+            entity_id=tenant.id,
+            description=form.template.data,
+            tenant_id=tenant.id,
+        )
+        db.session.commit()
+        flash(f'Modelo de conteúdo da página "{tenant.name}" trocado.', "success")
+    else:
+        flash("Não foi possível trocar o modelo: selecione uma opção válida.", "danger")
+    return redirect(url_for("superadmin.tenant_detail", tenant_id=tenant.id))
 
 
 @superadmin_bp.route("/paginas/<int:tenant_id>/dominios", methods=["POST"])
@@ -261,6 +313,154 @@ def tenant_delete(tenant_id):
 
     flash(f'Página "{name}" excluída definitivamente.', "success")
     return redirect(url_for("superadmin.dashboard"))
+
+
+# ------------------------------------------------------------------ #
+# Faturamento -- faturas lançadas pelo super admin para os lojistas.
+# ------------------------------------------------------------------ #
+@superadmin_bp.route("/faturas")
+def invoices_overview():
+    status_filter = request.args.get("status", "pending")
+    query = Invoice.query.join(Tenant)
+    if status_filter == "pending":
+        query = query.filter(Invoice.status == InvoiceStatus.PENDING)
+    elif status_filter == "paid":
+        query = query.filter(Invoice.status == InvoiceStatus.PAID)
+    elif status_filter == "canceled":
+        query = query.filter(Invoice.status == InvoiceStatus.CANCELED)
+    # "all" não filtra
+
+    invoices = query.order_by(Invoice.due_date.asc()).all()
+    pending_count = Invoice.query.filter_by(status=InvoiceStatus.PENDING).count()
+    overdue_count = sum(1 for i in Invoice.query.filter_by(status=InvoiceStatus.PENDING).all() if i.is_overdue)
+
+    return render_template(
+        "superadmin/invoices_overview.html",
+        invoices=invoices,
+        status_filter=status_filter,
+        pending_count=pending_count,
+        overdue_count=overdue_count,
+    )
+
+
+@superadmin_bp.route("/paginas/<int:tenant_id>/faturas/nova", methods=["GET", "POST"])
+def invoice_new(tenant_id):
+    tenant = Tenant.query.filter_by(id=tenant_id).first_or_404()
+    form = InvoiceCreateForm()
+    if form.validate_on_submit():
+        invoice = Invoice(
+            tenant_id=tenant.id,
+            title=form.title.data.strip(),
+            due_date=form.due_date.data,
+            is_recurring=form.is_recurring.data,
+            service_cutoff_at=form.service_cutoff_at.data,
+            notes=(form.notes.data or "").strip() or None,
+        )
+        db.session.add(invoice)
+        db.session.flush()
+        log_action(
+            "invoice.created",
+            entity_type="Invoice",
+            entity_id=invoice.id,
+            description=f"{invoice.title} ({tenant.name})",
+            tenant_id=tenant.id,
+        )
+        db.session.commit()
+        flash('Fatura criada. Agora adicione os itens que discriminam o que está incluso.', "success")
+        return redirect(url_for("superadmin.invoice_detail", invoice_id=invoice.id))
+
+    return render_template("superadmin/invoice_form.html", form=form, tenant=tenant)
+
+
+@superadmin_bp.route("/faturas/<int:invoice_id>")
+def invoice_detail(invoice_id):
+    invoice = Invoice.query.filter_by(id=invoice_id).first_or_404()
+    return render_template(
+        "superadmin/invoice_detail.html",
+        invoice=invoice,
+        tenant=invoice.tenant,
+        item_form=InvoiceItemForm(),
+        today=date.today(),
+    )
+
+
+@superadmin_bp.route("/faturas/<int:invoice_id>/itens", methods=["POST"])
+def invoice_add_item(invoice_id):
+    invoice = Invoice.query.filter_by(id=invoice_id).first_or_404()
+    form = InvoiceItemForm()
+    if form.validate_on_submit():
+        next_order = len(invoice.items) + 1
+        db.session.add(
+            InvoiceItem(
+                tenant_id=invoice.tenant_id,
+                invoice_id=invoice.id,
+                description=form.description.data.strip(),
+                amount=form.amount.data,
+                display_order=next_order,
+            )
+        )
+        log_action(
+            "invoice.item_added",
+            entity_type="Invoice",
+            entity_id=invoice.id,
+            description=f"{form.description.data.strip()} (R$ {form.amount.data})",
+            tenant_id=invoice.tenant_id,
+        )
+        db.session.commit()
+        flash("Item adicionado.", "success")
+    else:
+        flash("Não foi possível adicionar o item: verifique a descrição e o valor.", "danger")
+    return redirect(url_for("superadmin.invoice_detail", invoice_id=invoice.id))
+
+
+@superadmin_bp.route("/faturas/<int:invoice_id>/itens/<int:item_id>/excluir", methods=["POST"])
+def invoice_remove_item(invoice_id, item_id):
+    invoice = Invoice.query.filter_by(id=invoice_id).first_or_404()
+    item = InvoiceItem.query.filter_by(id=item_id, invoice_id=invoice.id).first_or_404()
+    db.session.delete(item)
+    log_action(
+        "invoice.item_removed",
+        entity_type="Invoice",
+        entity_id=invoice.id,
+        description=item.description,
+        tenant_id=invoice.tenant_id,
+    )
+    db.session.commit()
+    flash("Item removido.", "info")
+    return redirect(url_for("superadmin.invoice_detail", invoice_id=invoice.id))
+
+
+@superadmin_bp.route("/faturas/<int:invoice_id>/marcar-paga", methods=["POST"])
+def invoice_mark_paid(invoice_id):
+    invoice = Invoice.query.filter_by(id=invoice_id).first_or_404()
+    invoice.status = InvoiceStatus.PAID
+    invoice.paid_at = datetime.now(timezone.utc)
+    log_action(
+        "invoice.paid",
+        entity_type="Invoice",
+        entity_id=invoice.id,
+        description=invoice.title,
+        tenant_id=invoice.tenant_id,
+    )
+    db.session.commit()
+    flash(f'Fatura "{invoice.title}" marcada como paga.', "success")
+    return redirect(request.referrer or url_for("superadmin.tenant_detail", tenant_id=invoice.tenant_id))
+
+
+@superadmin_bp.route("/faturas/<int:invoice_id>/cancelar", methods=["POST"])
+def invoice_cancel(invoice_id):
+    invoice = Invoice.query.filter_by(id=invoice_id).first_or_404()
+    invoice.status = InvoiceStatus.CANCELED
+    log_action(
+        "invoice.canceled",
+        entity_type="Invoice",
+        entity_id=invoice.id,
+        description=invoice.title,
+        tenant_id=invoice.tenant_id,
+    )
+    db.session.commit()
+    flash(f'Fatura "{invoice.title}" cancelada.', "info")
+    return redirect(request.referrer or url_for("superadmin.tenant_detail", tenant_id=invoice.tenant_id))
 
 
 # ------------------------------------------------------------------ #

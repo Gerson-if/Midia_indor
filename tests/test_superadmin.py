@@ -107,6 +107,28 @@ def test_superadmin_creates_tenant_with_demo_content_by_default(client, super_ad
     assert settings.hero_title
 
 
+def test_superadmin_changes_template_of_existing_tenant(client, super_admin_user, tenant, db):
+    """Página já existente (com conteúdo de outro modelo) pode ter o modelo trocado depois."""
+    from app.models import Service, SiteSettings
+
+    db.session.add(Service(tenant_id=tenant.id, title="Serviço Antigo", description="d", display_order=1))
+    db.session.commit()
+
+    login_superadmin(client, "superadmin@teste.com", "SenhaForte123!")
+    resp = client.post(
+        f"/super/paginas/{tenant.id}/trocar-modelo",
+        data={"template": "barbearia"},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+
+    titles = {s.title for s in Service.query.filter_by(tenant_id=tenant.id).all()}
+    assert "Serviço Antigo" not in titles
+    assert "Corte Masculino" in titles
+    settings = SiteSettings.get_solo(tenant_id=tenant.id)
+    assert settings.services_heading == "Nossos Serviços"
+
+
 def test_superadmin_creates_tenant_with_barbearia_template(client, super_admin_user, db):
     """Escolhendo outro modelo (ex.: Barbearia), o conteúdo semeado deve ser o desse nicho, não o de mídia indoor."""
     from app.models import Service, SiteSettings
@@ -200,7 +222,9 @@ def test_superadmin_delete_tenant_removes_everything(client, super_admin_user, t
     (serviços, propostas...), mas preserva o log de auditoria (só
     desvinculado -- tenant_id/user_id viram NULL).
     """
-    from app.models import AuditLog, Service
+    from datetime import date
+
+    from app.models import AuditLog, Invoice, Service
     from app.utils.decorators import log_action
 
     # Capturados antes da exclusão: os objetos ORM expiram após o commit
@@ -212,6 +236,7 @@ def test_superadmin_delete_tenant_removes_everything(client, super_admin_user, t
 
     service = Service(tenant_id=tenant_id, title="Servico do Cliente", description="d", display_order=1)
     db.session.add(service)
+    db.session.add(Invoice(tenant_id=tenant_id, title="Fatura Pendente", due_date=date.today()))
     log_action("service.created", entity_type="Service", entity_id=1, tenant_id=tenant_id, description="teste")
     db.session.commit()
 
@@ -226,6 +251,7 @@ def test_superadmin_delete_tenant_removes_everything(client, super_admin_user, t
     assert Tenant.query.filter_by(id=tenant_id).first() is None
     assert User.query.filter_by(id=admin_user_id).first() is None
     assert Service.query.filter_by(tenant_id=tenant_id).count() == 0
+    assert Invoice.query.filter_by(tenant_id=tenant_id).count() == 0
 
     old_log = AuditLog.query.filter_by(action="service.created").first()
     assert old_log is not None

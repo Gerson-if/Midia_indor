@@ -1,0 +1,47 @@
+{% extends "superadmin/base_superadmin.html" %}
+{% block title %}Nova fatura — {{ tenant.name }}{% endblock %}
+{% block content %}
+<a href="{{ url_for('superadmin.tenant_detail', tenant_id=tenant.id) }}" class="text-xs text-mid hover:text-hi">&larr; {{ tenant.name }}</a>
+<h1 class="font-display text-2xl mt-2 mb-6">Nova fatura — {{ tenant.name }}</h1>
+
+<div class="card p-6 max-w-xl">
+  <form method="POST" class="space-y-5">
+    {{ form.hidden_tag() }}
+
+    <div>
+      {{ form.title.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ form.title(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+      {% if form.title.description %}<p class="text-xs text-low mt-1">{{ form.title.description }}</p>{% endif %}
+      {% for e in form.title.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+    </div>
+
+    <div>
+      {{ form.due_date.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ form.due_date(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+      {% for e in form.due_date.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+    </div>
+
+    <label class="flex items-center gap-2 text-sm text-hi">
+      {{ form.is_recurring() }} {{ form.is_recurring.label.text }}
+    </label>
+
+    <hr class="border-line">
+
+    <div>
+      {{ form.service_cutoff_at.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ form.service_cutoff_at(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+      {% if form.service_cutoff_at.description %}<p class="text-xs text-low mt-1">{{ form.service_cutoff_at.description }}</p>{% endif %}
+      {% for e in form.service_cutoff_at.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+    </div>
+
+    <div>
+      {{ form.notes.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ form.notes(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", rows=3) }}
+      {% for e in form.notes.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+    </div>
+
+    <p class="text-xs text-low">Depois de criar, você adiciona os itens (o que está incluso) na próxima tela.</p>
+    <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">Criar fatura</button>
+  </form>
+</div>
+{% endblock %}

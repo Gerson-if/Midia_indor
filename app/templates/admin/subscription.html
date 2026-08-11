@@ -1,0 +1,68 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Assinatura — {{ APP_NAME }}{% endblock %}
+{% block admin_content %}
+<h2 class="font-display text-2xl mb-6">Assinatura</h2>
+
+{% set next_cutoff = invoices | selectattr('status.value', 'equalto', 'PENDING') | selectattr('service_cutoff_at') | map(attribute='service_cutoff_at') | sort | first %}
+{% if next_cutoff %}
+<div class="rounded-xl border p-4 sm:p-5 mb-6" style="border-color: rgba(239,68,68,.4); background: rgba(239,68,68,.08)">
+  <p class="font-semibold text-red-400 text-sm">Atenção: risco de desligamento total do serviço</p>
+  <p class="text-mid text-xs mt-1">
+    Se a fatura pendente não for paga, o acesso a este site (site público, painel e tudo mais) é encerrado
+    por completo em <strong>{{ next_cutoff.strftime('%d/%m/%Y') }}</strong>. Entre em contato o quanto antes
+    para regularizar.
+  </p>
+</div>
+{% endif %}
+
+{% if not invoices %}
+<div class="card p-10 text-center">
+  <p class="text-mid text-sm">Nenhuma fatura registrada ainda.</p>
+</div>
+{% else %}
+<div class="space-y-4">
+  {% for inv in invoices %}
+  <div class="card p-5">
+    <div class="flex items-start justify-between gap-3 mb-3">
+      <div>
+        <p class="text-hi font-semibold">{{ inv.title }}</p>
+        <p class="text-xs text-low font-mono">
+          vencimento {{ inv.due_date.strftime('%d/%m/%Y') }}
+          {% if inv.is_recurring %} · recorrente{% endif %}
+        </p>
+      </div>
+      {% if inv.status.value == "PAID" %}
+      <span class="inline-flex items-center gap-1 text-xs font-mono shrink-0" style="color: var(--cyan)"><span class="w-1.5 h-1.5 rounded-full" style="background: var(--cyan)"></span> paga</span>
+      {% elif inv.status.value == "CANCELED" %}
+      <span class="inline-flex items-center gap-1 text-low text-xs font-mono shrink-0"><span class="w-1.5 h-1.5 rounded-full bg-low"></span> cancelada</span>
+      {% elif inv.is_overdue %}
+      <span class="inline-flex items-center gap-1 text-red-400 text-xs font-mono shrink-0"><span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> vencida</span>
+      {% else %}
+      <span class="inline-flex items-center gap-1 text-amber-300 text-xs font-mono shrink-0"><span class="w-1.5 h-1.5 rounded-full" style="background: var(--amber)"></span> pendente</span>
+      {% endif %}
+    </div>
+
+    {% if inv.items %}
+    <ul class="text-xs text-mid space-y-1 mb-3 border-t border-line pt-3">
+      {% for item in inv.items %}
+      <li class="flex items-center justify-between">
+        <span>{{ item.description }}</span>
+        <span class="font-mono">R$ {{ "%.2f"|format(item.amount) }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    <div class="flex items-center justify-between text-sm font-semibold border-t border-line pt-3">
+      <span class="text-mid">Total</span>
+      <span class="text-hi font-mono">R$ {{ "%.2f"|format(inv.total) }}</span>
+    </div>
+
+    {% if inv.status.value == "PENDING" and inv.service_cutoff_at %}
+    <p class="text-xs text-red-400 mt-3">Desligamento total do serviço em {{ inv.service_cutoff_at.strftime('%d/%m/%Y') }} se não for paga.</p>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "superadmin/base_superadmin.html" %}
+{% block title %}Faturamento — Super Admin{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-6 gap-3">
+  <h1 class="font-display text-2xl">Faturamento</h1>
+</div>
+
+<div class="grid grid-cols-2 gap-4 mb-6">
+  <div class="card p-4">
+    <p class="text-xs font-mono uppercase text-low mb-1">Faturas pendentes</p>
+    <p class="text-2xl font-display text-hi">{{ pending_count }}</p>
+  </div>
+  <div class="card p-4">
+    <p class="text-xs font-mono uppercase text-low mb-1">Vencidas</p>
+    <p class="text-2xl font-display {{ 'text-red-400' if overdue_count else 'text-hi' }}">{{ overdue_count }}</p>
+  </div>
+</div>
+
+<div class="flex items-center gap-2 mb-4 text-xs font-mono">
+  {% for key, label in [("pending", "Pendentes"), ("paid", "Pagas"), ("canceled", "Canceladas"), ("all", "Todas")] %}
+  <a href="{{ url_for('superadmin.invoices_overview', status=key) }}"
+     class="px-3 py-1.5 rounded-lg border {{ 'border-amber-400/50 text-hi' if status_filter == key else 'border-line text-low hover:text-hi' }}"
+     style="{{ 'background: var(--overlay-soft)' if status_filter == key }}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+{% if not invoices %}
+<div class="card p-10 text-center">
+  <p class="text-mid text-sm">Nenhuma fatura {{ "pendente" if status_filter == "pending" else "" }} por aqui.</p>
+</div>
+{% else %}
+<div class="card overflow-hidden overflow-x-auto">
+  <table class="w-full text-sm text-left">
+    <thead>
+      <tr class="text-xs font-mono uppercase text-low border-b border-line bg-ink">
+        <th class="px-4 py-3">Página</th>
+        <th class="px-4 py-3">Fatura</th>
+        <th class="px-4 py-3">Vencimento</th>
+        <th class="px-4 py-3">Valor</th>
+        <th class="px-4 py-3">Status</th>
+        <th class="px-4 py-3 text-right">Ação</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for inv in invoices %}
+      <tr class="border-b border-line hover:bg-panel2">
+        <td class="px-4 py-3">
+          <a href="{{ url_for('superadmin.tenant_detail', tenant_id=inv.tenant_id) }}" class="text-hi hover:underline">{{ inv.tenant.name }}</a>
+        </td>
+        <td class="px-4 py-3 text-mid">
+          {{ inv.title }}
+          {% if inv.is_recurring %}<span class="ml-1 text-[10px] font-mono uppercase text-low border border-line rounded px-1.5 py-0.5">recorrente</span>{% endif %}
+        </td>
+        <td class="px-4 py-3 {{ 'text-red-400' if inv.is_overdue else 'text-mid' }}">{{ inv.due_date.strftime('%d/%m/%Y') }}</td>
+        <td class="px-4 py-3 text-hi font-mono">R$ {{ "%.2f"|format(inv.total) }}</td>
+        <td class="px-4 py-3">
+          {% if inv.status.value == "PAID" %}
+          <span class="inline-flex items-center gap-1 text-xs font-mono" style="color: var(--cyan)"><span class="w-1.5 h-1.5 rounded-full" style="background: var(--cyan)"></span> paga</span>
+          {% elif inv.status.value == "CANCELED" %}
+          <span class="inline-flex items-center gap-1 text-low text-xs font-mono"><span class="w-1.5 h-1.5 rounded-full bg-low"></span> cancelada</span>
+          {% elif inv.is_overdue %}
+          <span class="inline-flex items-center gap-1 text-red-400 text-xs font-mono"><span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> vencida</span>
+          {% else %}
+          <span class="inline-flex items-center gap-1 text-amber-300 text-xs font-mono"><span class="w-1.5 h-1.5 rounded-full" style="background: var(--amber)"></span> pendente</span>
+          {% endif %}
+        </td>
+        <td class="px-4 py-3 text-right">
+          <a href="{{ url_for('superadmin.invoice_detail', invoice_id=inv.id) }}" class="text-xs text-mid hover:text-hi">Ver &rarr;</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}
