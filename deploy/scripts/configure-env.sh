@@ -301,8 +301,13 @@ REMEMBER_COOKIE_SECURE=${USE_HTTPS}
 PERMANENT_SESSION_LIFETIME_MINUTES=60
 
 # ---- Rate Limiting ----
+# Limites elevados para acomodar acesso concorrente legítimo de vários
+# usuários por trás do mesmo IP público (rede corporativa, shopping,
+# NAT de operadora móvel) -- ver app/config.py para o histórico completo
+# do problema (o valor antigo, 200/dia;50/hora, gerava 429 "Muitas
+# requisições" em acessos simultâneos normais).
 RATELIMIT_STORAGE_URI="${RATELIMIT_STORAGE_URI}"
-RATELIMIT_DEFAULT="200 per day;50 per hour"
+RATELIMIT_DEFAULT="2000 per day;400 per hour"
 
 # ---- Uploads ----
 UPLOAD_FOLDER=app/static/uploads

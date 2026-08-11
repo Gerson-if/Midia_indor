@@ -256,6 +256,9 @@ def test_blocked_tenant_hides_public_site_without_revealing_reason(client, admin
     html = resp.get_data(as_text=True)
     assert "inadimplência" not in html
     assert "não divulgar" not in html
+    # mensagem amigável (avisa que o responsável já está ciente), sem
+    # revelar o motivo real do bloqueio
+    assert "Esta página deu uma pausa" in html
 
 
 def test_blocked_tenant_admin_can_still_login_and_see_notice(client, admin_user, tenant, db):
@@ -281,6 +284,7 @@ def test_blocked_tenant_admin_can_still_login_and_see_notice(client, admin_user,
 def test_unknown_domain_shows_generic_unavailable_page(client):
     resp = client.get("/", headers={"Host": "dominio-nao-cadastrado.example.com"})
     assert resp.status_code == 404
+    assert "Nada por aqui ainda" in resp.get_data(as_text=True)
 
 
 def test_content_is_isolated_between_tenants(client, db, tenant, other_tenant):

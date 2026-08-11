@@ -1,13 +1,21 @@
 {% extends "base.html" %}
-{% block title %}Site indisponível{% endblock %}
+{% block title %}{{ "Voltamos já" if blocked else "Site indisponível" }}{% endblock %}
 {% block content %}
 <div class="min-h-screen flex items-center justify-center px-4">
   <div class="card p-10 max-w-md w-full text-center border border-line">
-    <div class="w-14 h-14 rounded-full mx-auto mb-5 flex items-center justify-center" style="background: var(--overlay-soft)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="28" height="28" class="text-mid"><circle cx="12" cy="12" r="10"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg>
+    {% if blocked %}
+    <div class="w-14 h-14 rounded-full mx-auto mb-5 flex items-center justify-center" style="background: color-mix(in srgb, var(--amber) 18%, transparent)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="28" height="28" style="color: var(--amber-text)"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
     </div>
-    <h1 class="font-display text-2xl font-semibold text-hi mb-3">Site indisponível no momento</h1>
-    <p class="text-mid text-sm">Este endereço não está disponível agora. Tente novamente mais tarde.</p>
+    <h1 class="font-display text-2xl font-semibold text-hi mb-3">Esta página deu uma pausa</h1>
+    <p class="text-mid text-sm">Nada grave — o responsável por ela já está ciente e cuidando disso. Volte em breve, o site já já está de volta ao ar.</p>
+    {% else %}
+    <div class="w-14 h-14 rounded-full mx-auto mb-5 flex items-center justify-center" style="background: var(--overlay-soft)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="28" height="28" class="text-mid"><path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0 0 21 18.83V8.062a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+    </div>
+    <h1 class="font-display text-2xl font-semibold text-hi mb-3">Nada por aqui ainda</h1>
+    <p class="text-mid text-sm">Não encontramos um site configurado neste endereço. Confira se digitou certo, ou tente de novo daqui a pouco.</p>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

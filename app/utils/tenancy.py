@@ -99,15 +99,17 @@ def enforce_tenant_gate():
     # Domínio desconhecido (ainda não configurado no super admin, ou
     # aponta pra essa VPS por engano): mesma página genérica, sem detalhe.
     if g.tenant is None:
-        return render_template("errors/tenant_unavailable.html"), 404
+        return render_template("errors/tenant_unavailable.html", blocked=False), 404
 
     if g.tenant.status == TenantStatus.BLOCKED:
         # O painel admin (login incluso) continua acessível -- é lá que o
         # administrador daquela página vê o aviso de pendência. As demais
-        # rotas (site público e API pública) caem na página genérica.
+        # rotas (site público e API pública) caem na página genérica --
+        # "blocked=True" só troca o tom da mensagem (avisa que o
+        # responsável já está ciente), nunca o motivo real do bloqueio.
         if request.path.startswith("/admin") or request.path.startswith("/login") or request.path.startswith("/logout"):
             return None
-        return render_template("errors/tenant_unavailable.html"), 503
+        return render_template("errors/tenant_unavailable.html", blocked=True), 503
 
 
 def current_tenant() -> Tenant | None:
