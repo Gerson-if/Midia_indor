@@ -24,7 +24,7 @@
       </div>
       <div data-media-group>
         {{ form.image.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-        <div class="flex items-center gap-2 mb-2">
+        <div class="flex flex-wrap items-center gap-2 mb-2">
           <img data-media-preview="image" class="w-20 h-20 rounded-lg object-cover {{ '' if (editing and editing.image_path) else 'hidden' }}" {% if editing and editing.image_path %}src="{{ url_for('static', filename=editing.image_path) }}"{% endif %}>
           <div data-media-placeholder class="w-20 h-20 rounded-lg bg-panel2 flex items-center justify-center text-low text-[10px] text-center px-1 {{ 'hidden' if (editing and editing.image_path) else '' }}">sem imagem</div>
           <div class="flex flex-col gap-1">
@@ -39,6 +39,10 @@
         <p class="text-[11px] text-low mt-1">{{ "Envie uma imagem apenas se quiser substituir a atual." if editing else "Opcional. A imagem é otimizada e redimensionada automaticamente. A prévia aparece assim que você escolher o arquivo." }}</p>
       </div>
       <label class="flex items-center gap-2 text-xs text-mid">{{ form.is_active() }} Ativo</label>
+      <label class="flex items-center gap-2 text-xs text-mid">
+        {{ form.is_featured() }} {{ form.is_featured.label.text }}
+      </label>
+      {% if form.is_featured.description %}<p class="text-[11px] text-low -mt-2">{{ form.is_featured.description }}</p>{% endif %}
       <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">
         {{ "Salvar alterações" if editing else "Adicionar" }}
       </button>
@@ -51,18 +55,27 @@
       <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12" class="shrink-0"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
       Arraste os cards pela alça para reordenar
     </p>
+    <p class="text-[11px] text-low mb-3">
+      <span class="font-mono" style="color: var(--amber-text)">&#9733; {{ items|selectattr('is_featured')|list|length }}/{{ max_featured }}</span>
+      pontos destacados como os melhores.
+    </p>
     {% endif %}
     <div class="grid sm:grid-cols-2 gap-3" data-reorder-list data-reorder-url="{{ url_for('admin.gallery_reorder') }}">
       {% for item in items %}
-      <div class="card card-draggable p-4 flex items-center gap-3 {{ 'card-editing' if editing and editing.id == item.id }}" data-reorder-item data-id="{{ item.id }}">
+      <div class="card card-draggable p-4 flex items-center gap-3 {{ 'card-editing' if editing and editing.id == item.id }} {{ 'ring-1' if item.is_featured }}" style="{{ 'box-shadow: inset 0 0 0 1px var(--amber)' if item.is_featured }}" data-reorder-item data-id="{{ item.id }}">
         <span class="drag-handle" data-drag-handle title="Arrastar para reordenar">
           <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
         </span>
-        {% if item.image_path %}
-        <img src="{{ url_for('static', filename=item.image_path) }}" class="w-14 h-14 rounded-lg object-cover shrink-0">
-        {% else %}
-        <div class="w-14 h-14 rounded-lg bg-panel2 shrink-0"></div>
-        {% endif %}
+        <div class="relative shrink-0">
+          {% if item.image_path %}
+          <img src="{{ url_for('static', filename=item.image_path) }}" class="w-14 h-14 rounded-lg object-cover">
+          {% else %}
+          <div class="w-14 h-14 rounded-lg bg-panel2"></div>
+          {% endif %}
+          {% if item.is_featured %}
+          <span class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px]" style="background: var(--amber); color: #1A1204" title="Destaque">&#9733;</span>
+          {% endif %}
+        </div>
         <div class="flex-1 min-w-0">
           <p class="font-semibold text-hi truncate text-sm">{{ item.title }}</p>
           <p class="text-xs" style="color: var(--amber-text)">{{ item.category }}</p>

@@ -339,6 +339,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .card-hover{ transition:transform .25s ease, border-color .25s ease; }
 .card-hover:hover{ transform:translateY(-4px); border-color:rgba(255,176,32,.35); }
 
+/* ---- Ponto destacado na Galeria (um dos 3 melhores, escolhido pelo admin) ---- */
+.gallery-featured{ border-color:var(--amber); box-shadow:0 0 0 1px var(--amber), 0 8px 24px rgba(255,176,32,.18); }
+
 .stat-num{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
 
 .rule-label{ display:flex; align-items:center; gap:1rem; color:var(--text-low); font-family:var(--font-mono); font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; }

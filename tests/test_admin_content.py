@@ -87,6 +87,41 @@ def test_edit_gallery_item(client, admin_user, db, tenant):
     assert updated.category == "Elevadores"
 
 
+def test_gallery_featured_limited_to_three_best(client, admin_user, db, tenant):
+    """O admin pode destacar até 3 pontos como "os melhores" -- um 4º
+    destaque deve ser recusado até que algum dos 3 seja liberado."""
+    items = [
+        GalleryItem(tenant_id=tenant.id, title=f"Ponto {i}", category="Cat", is_featured=(i < 3))
+        for i in range(4)
+    ]
+    db.session.add_all(items)
+    db.session.commit()
+    fourth_id = items[3].id
+
+    login(client, "admin@teste.com", "SenhaForte123!")
+    resp = client.post(
+        f"/admin/conteudo/galeria/{fourth_id}/editar",
+        data={"title": "Ponto 3", "category": "Cat", "is_active": "y", "is_featured": "y"},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "já tem 3 pontos destacados" in resp.get_data(as_text=True)
+    assert GalleryItem.query.filter_by(is_featured=True).count() == 3
+    assert GalleryItem.query.get(fourth_id).is_featured is False
+
+    # Liberando um dos destaques, o 4º agora pode ser marcado.
+    items[0].is_featured = False
+    db.session.commit()
+    resp = client.post(
+        f"/admin/conteudo/galeria/{fourth_id}/editar",
+        data={"title": "Ponto 3", "category": "Cat", "is_active": "y", "is_featured": "y"},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert GalleryItem.query.get(fourth_id).is_featured is True
+    assert GalleryItem.query.filter_by(is_featured=True).count() == 3
+
+
 def test_edit_testimonial(client, admin_user, db, tenant):
     from app.models import Testimonial
 
@@ -143,6 +178,9 @@ def test_settings_update(client, admin_user, db):
             "gallery_heading": "Nossos Pontos",
             "testimonials_heading": "Marcas que confiam",
             "contact_heading": "Pronto para anunciar?",
+            "services_nav_label": "Vantagens",
+            "gallery_nav_label": "Telas",
+            "testimonials_nav_label": "Clientes",
             "services_accent_color": "#FFB020",
             "gallery_accent_color": "#FFB020",
             "testimonials_accent_color": "#37D6C7",
@@ -181,6 +219,9 @@ def test_settings_update_whatsapp_button_color(client, admin_user, db):
             "gallery_heading": "Nossos Pontos",
             "testimonials_heading": "Marcas que confiam",
             "contact_heading": "Pronto para anunciar?",
+            "services_nav_label": "Vantagens",
+            "gallery_nav_label": "Telas",
+            "testimonials_nav_label": "Clientes",
             "services_accent_color": "#FFB020",
             "gallery_accent_color": "#FFB020",
             "testimonials_accent_color": "#37D6C7",
@@ -221,6 +262,9 @@ def test_settings_update_rejects_invalid_hex_color(client, admin_user, db):
             "gallery_heading": "Nossos Pontos",
             "testimonials_heading": "Marcas que confiam",
             "contact_heading": "Pronto para anunciar?",
+            "services_nav_label": "Vantagens",
+            "gallery_nav_label": "Telas",
+            "testimonials_nav_label": "Clientes",
             "services_accent_color": "#FFB020",
             "gallery_accent_color": "#FFB020",
             "testimonials_accent_color": "#37D6C7",
@@ -262,6 +306,9 @@ def test_settings_update_whatsapp_default_message(client, admin_user, db):
             "gallery_heading": "Nossos Pontos",
             "testimonials_heading": "Marcas que confiam",
             "contact_heading": "Pronto para anunciar?",
+            "services_nav_label": "Vantagens",
+            "gallery_nav_label": "Telas",
+            "testimonials_nav_label": "Clientes",
             "services_accent_color": "#FFB020",
             "gallery_accent_color": "#FFB020",
             "testimonials_accent_color": "#37D6C7",
@@ -309,6 +356,9 @@ def test_settings_hero_media_toggle_and_removal(client, admin_user, db):
         "gallery_heading": "Nossos Pontos",
         "testimonials_heading": "Marcas que confiam",
         "contact_heading": "Pronto para anunciar?",
+        "services_nav_label": "Vantagens",
+        "gallery_nav_label": "Telas",
+        "testimonials_nav_label": "Clientes",
         "services_accent_color": "#FFB020",
         "gallery_accent_color": "#FFB020",
         "testimonials_accent_color": "#37D6C7",
@@ -346,6 +396,9 @@ def test_privacy_and_terms_content_editable_and_rendered(client, admin_user, db)
             "gallery_heading": "Nossos Pontos",
             "testimonials_heading": "Marcas que confiam",
             "contact_heading": "Pronto para anunciar?",
+            "services_nav_label": "Vantagens",
+            "gallery_nav_label": "Telas",
+            "testimonials_nav_label": "Clientes",
             "services_accent_color": "#FFB020",
             "gallery_accent_color": "#FFB020",
             "testimonials_accent_color": "#37D6C7",
@@ -605,6 +658,35 @@ def test_admin_delete_forms_use_custom_confirm_modal_not_native_confirm(client, 
         assert "data-confirm-message=" in html, f"{url} não tem o modal de confirmação"
 
 
+def test_users_list_and_delete_scoped_to_own_tenant(client, admin_user, db, tenant, other_tenant, super_admin_user):
+    """Falha de segurança corrigida: /admin/usuarios não pode listar nem
+    permitir excluir usuários de outra página ou o super admin. User não
+    herda o filtro automático de tenant (e-mail é único globalmente), então
+    a rota precisa filtrar por tenant_id manualmente -- sem isso, qualquer
+    admin via lista (e apaga) usuários de qualquer página, inclusive o
+    super admin."""
+    other_admin = User(
+        name="Admin Outra Empresa", email="outroadmin@teste.com", role=UserRole.ADMIN, tenant_id=other_tenant.id
+    )
+    other_admin.set_password("SenhaForte123!")
+    db.session.add(other_admin)
+    db.session.commit()
+
+    login(client, "admin@teste.com", "SenhaForte123!")
+    resp = client.get("/admin/usuarios")
+    html = resp.get_data(as_text=True)
+    assert "Admin Outra Empresa" not in html
+    assert "Super Admin Teste" not in html
+
+    resp = client.post(f"/admin/usuarios/{other_admin.id}/excluir")
+    assert resp.status_code == 404
+    assert User.query.filter_by(id=other_admin.id).first() is not None
+
+    resp = client.post(f"/admin/usuarios/{super_admin_user.id}/excluir")
+    assert resp.status_code == 404
+    assert User.query.filter_by(id=super_admin_user.id).first() is not None
+
+
 def test_theme_defaults_to_dark_on_public_site_and_admin(client, admin_user, db):
     """O tema é escuro por padrão em qualquer página nova, tanto no site
     público quanto no painel — sem precisar de configuração manual."""
@@ -640,6 +722,9 @@ def test_changing_theme_to_light_reflects_on_public_site_and_admin(client, admin
             "gallery_heading": "Nossos Pontos",
             "testimonials_heading": "Marcas que confiam",
             "contact_heading": "Pronto para anunciar?",
+            "services_nav_label": "Vantagens",
+            "gallery_nav_label": "Telas",
+            "testimonials_nav_label": "Clientes",
             "services_accent_color": "#FFB020",
             "gallery_accent_color": "#FFB020",
             "testimonials_accent_color": "#37D6C7",

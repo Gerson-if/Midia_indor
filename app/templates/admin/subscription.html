@@ -42,24 +42,41 @@
       {% endif %}
     </div>
 
-    {% if inv.items %}
-    <ul class="text-xs text-mid space-y-1 mb-3 border-t border-line pt-3">
-      {% for item in inv.items %}
-      <li class="flex items-center justify-between">
-        <span>{{ item.description }}</span>
-        <span class="font-mono">R$ {{ "%.2f"|format(item.amount) }}</span>
-      </li>
-      {% endfor %}
-    </ul>
+    <div class="border-t border-line pt-3">
+      <p class="text-[10px] font-mono uppercase text-low mb-2">O que está incluso</p>
+      {% if inv.items %}
+      <ul class="text-xs text-mid space-y-1.5">
+        {% for item in inv.items %}
+        <li class="flex items-start justify-between gap-3">
+          <span class="flex items-start gap-2 min-w-0">
+            <span class="text-low shrink-0">&bull;</span>
+            <span class="break-words">{{ item.description }}</span>
+          </span>
+          <span class="font-mono shrink-0">R$ {{ "%.2f"|format(item.amount) }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-xs text-low italic">Nenhum item detalhado nesta fatura.</p>
+      {% endif %}
+    </div>
+
+    {% if inv.notes %}
+    <div class="border-t border-line pt-3 mt-3">
+      <p class="text-[10px] font-mono uppercase text-low mb-1">Observações</p>
+      <p class="text-xs text-mid whitespace-pre-line">{{ inv.notes }}</p>
+    </div>
     {% endif %}
 
-    <div class="flex items-center justify-between text-sm font-semibold border-t border-line pt-3">
+    <div class="flex items-center justify-between text-sm font-semibold border-t border-line pt-3 mt-3">
       <span class="text-mid">Total</span>
       <span class="text-hi font-mono">R$ {{ "%.2f"|format(inv.total) }}</span>
     </div>
 
-    {% if inv.status.value == "PENDING" and inv.service_cutoff_at %}
-    <p class="text-xs text-red-400 mt-3">Desligamento total do serviço em {{ inv.service_cutoff_at.strftime('%d/%m/%Y') }} se não for paga.</p>
+    {% if inv.status.value == "PAID" and inv.paid_at %}
+    <p class="text-xs mt-2" style="color: var(--cyan)">Pagamento confirmado em {{ inv.paid_at.strftime('%d/%m/%Y') }}.</p>
+    {% elif inv.status.value == "PENDING" and inv.service_cutoff_at %}
+    <p class="text-xs text-red-400 mt-2">Desligamento total do serviço em {{ inv.service_cutoff_at.strftime('%d/%m/%Y') }} se não for paga.</p>
     {% endif %}
   </div>
   {% endfor %}

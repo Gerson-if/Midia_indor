@@ -2,22 +2,22 @@
 {% block title %}Dashboard — {{ APP_NAME }}{% endblock %}
 {% block admin_content %}
 <h2 class="font-display text-2xl mb-6">Visão Geral</h2>
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-  <div class="card p-6 border-t-4" style="border-top-color: var(--amber)">
-    <p class="text-sm text-mid font-mono uppercase mb-2">Novas Solicitações</p>
-    <p class="text-3xl font-display font-bold text-hi">{{ new_proposals }}</p>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-8">
+  <div class="card p-3 sm:p-6 border-t-4" style="border-top-color: var(--amber)">
+    <p class="text-[11px] sm:text-sm text-mid font-mono uppercase mb-1 sm:mb-2 leading-tight">Novas Solicitações</p>
+    <p class="text-xl sm:text-3xl font-display font-bold text-hi">{{ new_proposals }}</p>
   </div>
-  <div class="card p-6 border-t-4" style="border-top-color: var(--cyan)">
-    <p class="text-sm text-mid font-mono uppercase mb-2">Total de Solicitações</p>
-    <p class="text-3xl font-display font-bold text-hi">{{ total_proposals }}</p>
+  <div class="card p-3 sm:p-6 border-t-4" style="border-top-color: var(--cyan)">
+    <p class="text-[11px] sm:text-sm text-mid font-mono uppercase mb-1 sm:mb-2 leading-tight">Total de Solicitações</p>
+    <p class="text-xl sm:text-3xl font-display font-bold text-hi">{{ total_proposals }}</p>
   </div>
-  <div class="card p-6 border-t-4" style="border-top-color: var(--amber)">
-    <p class="text-sm text-mid font-mono uppercase mb-2">Convertidas</p>
-    <p class="text-3xl font-display font-bold text-hi">{{ converted }}</p>
+  <div class="card p-3 sm:p-6 border-t-4" style="border-top-color: var(--amber)">
+    <p class="text-[11px] sm:text-sm text-mid font-mono uppercase mb-1 sm:mb-2 leading-tight">Convertidas</p>
+    <p class="text-xl sm:text-3xl font-display font-bold text-hi">{{ converted }}</p>
   </div>
-  <div class="card p-6 border-t-4" style="border-top-color: var(--cyan)">
-    <p class="text-sm text-mid font-mono uppercase mb-2">Locais Ativos</p>
-    <p class="text-3xl font-display font-bold text-hi">{{ active_gallery }}</p>
+  <div class="card p-3 sm:p-6 border-t-4" style="border-top-color: var(--cyan)">
+    <p class="text-[11px] sm:text-sm text-mid font-mono uppercase mb-1 sm:mb-2 leading-tight">Locais Ativos</p>
+    <p class="text-xl sm:text-3xl font-display font-bold text-hi">{{ active_gallery }}</p>
   </div>
 </div>
 

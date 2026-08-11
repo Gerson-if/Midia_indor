@@ -25,7 +25,11 @@ def _active_custom_sections():
 def index():
     settings = SiteSettings.get_solo()
     services = Service.query.filter_by(is_active=True).order_by(Service.display_order).all()
-    gallery = GalleryItem.query.filter_by(is_active=True).order_by(GalleryItem.display_order).all()
+    gallery = (
+        GalleryItem.query.filter_by(is_active=True)
+        .order_by(GalleryItem.is_featured.desc(), GalleryItem.display_order)
+        .all()
+    )
     testimonials = Testimonial.query.filter_by(is_active=True).order_by(Testimonial.display_order).all()
     partners = Partner.query.filter_by(is_active=True).order_by(Partner.display_order).all()
     custom_sections = _active_custom_sections()
@@ -136,7 +140,11 @@ def _render_index_with_errors(form):
     # POST se o visitante der F5 depois de enviar com sucesso.
     settings = SiteSettings.get_solo()
     services = Service.query.filter_by(is_active=True).order_by(Service.display_order).all()
-    gallery = GalleryItem.query.filter_by(is_active=True).order_by(GalleryItem.display_order).all()
+    gallery = (
+        GalleryItem.query.filter_by(is_active=True)
+        .order_by(GalleryItem.is_featured.desc(), GalleryItem.display_order)
+        .all()
+    )
     testimonials = Testimonial.query.filter_by(is_active=True).order_by(Testimonial.display_order).all()
     partners = Partner.query.filter_by(is_active=True).order_by(Partner.display_order).all()
     custom_sections = _active_custom_sections()

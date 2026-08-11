@@ -59,12 +59,15 @@ class GalleryItem(TenantScopedMixin, TimestampMixin, db.Model):
 
     __tablename__ = "gallery_items"
 
+    MAX_FEATURED = 3
+
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(120), nullable=False)
     category = db.Column(db.String(80), nullable=False)
     image_path = db.Column(db.String(255), nullable=True)
     display_order = db.Column(db.Integer, nullable=False, default=0)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
+    is_featured = db.Column(db.Boolean, nullable=False, default=False)
 
     def to_dict(self):
         return {
@@ -74,6 +77,7 @@ class GalleryItem(TenantScopedMixin, TimestampMixin, db.Model):
             "image_url": _static_url(self.image_path),
             "display_order": self.display_order,
             "is_active": self.is_active,
+            "is_featured": self.is_featured,
         }
 
 
@@ -243,6 +247,13 @@ class SiteSettings(TenantScopedMixin, TimestampMixin, db.Model):
     gallery_subtitle = db.Column(db.String(300), nullable=True, default="Confira os locais onde sua marca será exibida.")
     testimonials_heading = db.Column(db.String(150), nullable=False, default="Marcas que confiam")
     contact_heading = db.Column(db.String(150), nullable=False, default="Pronto para anunciar?")
+
+    # ---- Rótulos do menu para as seções fixas (o texto curto que aparece
+    # no cabeçalho/menu do site, diferente do título de cada seção acima --
+    # ex.: título "Por que anunciar conosco?" mas menu só "Vantagens") ----
+    services_nav_label = db.Column(db.String(40), nullable=False, default="Vantagens")
+    gallery_nav_label = db.Column(db.String(40), nullable=False, default="Telas")
+    testimonials_nav_label = db.Column(db.String(40), nullable=False, default="Clientes")
 
     # ---- Aparência das demais seções (cards, destaques) ----
     services_accent_color = db.Column(db.String(9), nullable=False, default="#FFB020")

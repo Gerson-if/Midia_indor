@@ -50,6 +50,11 @@ class GalleryItemForm(FlaskForm):
     title = StringField("Título", validators=[DataRequired(), Length(max=120)])
     category = StringField("Categoria", validators=[DataRequired(), Length(max=80)])
     is_active = BooleanField("Ativo", default=True)
+    is_featured = BooleanField(
+        "Destacar como um dos 3 melhores pontos",
+        default=False,
+        description="Aparece com destaque especial no site. No máximo 3 pontos podem estar destacados ao mesmo tempo.",
+    )
     image = FileField("Imagem", validators=[Optional(), FileAllowed(["jpg", "jpeg", "png", "webp", "gif"])])
     remove_image = BooleanField("Remover imagem atual")
 
@@ -137,6 +142,11 @@ class SiteSettingsForm(FlaskForm):
     gallery_subtitle = StringField("Subtítulo — Galeria", validators=[Optional(), Length(max=300)])
     testimonials_heading = StringField("Título — Depoimentos", validators=[DataRequired(), Length(max=150)])
     contact_heading = StringField("Título — Chamada final (Contato)", validators=[DataRequired(), Length(max=150)])
+
+    # ---- Rótulos do menu para as seções fixas (texto curto no cabeçalho) ----
+    services_nav_label = StringField("Menu — Vantagens", validators=[DataRequired(), Length(max=40)])
+    gallery_nav_label = StringField("Menu — Galeria", validators=[DataRequired(), Length(max=40)])
+    testimonials_nav_label = StringField("Menu — Depoimentos", validators=[DataRequired(), Length(max=40)])
 
     # ---- Aparência das demais seções ----
     services_accent_color = StringField("Destaque — Vantagens", validators=[DataRequired(), Length(max=9), HEX_COLOR_RE])

@@ -337,22 +337,31 @@ def service_delete(item_id):
 def gallery_manage():
     form = GalleryItemForm()
     if form.validate_on_submit():
-        item = GalleryItem(
-            tenant_id=g.tenant_id,
-            title=form.title.data,
-            category=form.category.data,
-            display_order=_next_display_order(GalleryItem),
-            is_active=form.is_active.data,
-        )
-        _attach_image(form.image, item, "image_path", "content/gallery", remove_field=form.remove_image)
-        db.session.add(item)
-        log_action("gallery.created", entity_type="GalleryItem", description=item.title)
-        db.session.commit()
-        flash("Item de galeria adicionado.", "success")
-        return redirect(url_for("admin.gallery_manage"))
+        if form.is_featured.data and _featured_gallery_count() >= GalleryItem.MAX_FEATURED:
+            flash(
+                f"Você já tem {GalleryItem.MAX_FEATURED} pontos destacados. Remova o destaque de um deles antes de destacar outro.",
+                "danger",
+            )
+        else:
+            item = GalleryItem(
+                tenant_id=g.tenant_id,
+                title=form.title.data,
+                category=form.category.data,
+                display_order=_next_display_order(GalleryItem),
+                is_active=form.is_active.data,
+                is_featured=form.is_featured.data,
+            )
+            _attach_image(form.image, item, "image_path", "content/gallery", remove_field=form.remove_image)
+            db.session.add(item)
+            log_action("gallery.created", entity_type="GalleryItem", description=item.title)
+            db.session.commit()
+            flash("Item de galeria adicionado.", "success")
+            return redirect(url_for("admin.gallery_manage"))
 
     items = GalleryItem.query.order_by(GalleryItem.display_order).all()
-    return render_template("admin/content_gallery.html", form=form, items=items, editing=None)
+    return render_template(
+        "admin/content_gallery.html", form=form, items=items, editing=None, max_featured=GalleryItem.MAX_FEATURED
+    )
 
 
 @admin_bp.route("/conteudo/galeria/<int:item_id>/editar", methods=["GET", "POST"])
@@ -362,17 +371,27 @@ def gallery_edit(item_id):
     form = GalleryItemForm(obj=item) if request.method == "GET" else GalleryItemForm()
 
     if form.validate_on_submit():
-        item.title = form.title.data
-        item.category = form.category.data
-        item.is_active = form.is_active.data
-        _attach_image(form.image, item, "image_path", "content/gallery", remove_field=form.remove_image)
-        log_action("gallery.updated", entity_type="GalleryItem", entity_id=item.id, description=item.title)
-        db.session.commit()
-        flash("Item de galeria atualizado com sucesso.", "success")
-        return redirect(url_for("admin.gallery_manage"))
+        newly_featured = form.is_featured.data and not item.is_featured
+        if newly_featured and _featured_gallery_count() >= GalleryItem.MAX_FEATURED:
+            flash(
+                f"Você já tem {GalleryItem.MAX_FEATURED} pontos destacados. Remova o destaque de um deles antes de destacar outro.",
+                "danger",
+            )
+        else:
+            item.title = form.title.data
+            item.category = form.category.data
+            item.is_active = form.is_active.data
+            item.is_featured = form.is_featured.data
+            _attach_image(form.image, item, "image_path", "content/gallery", remove_field=form.remove_image)
+            log_action("gallery.updated", entity_type="GalleryItem", entity_id=item.id, description=item.title)
+            db.session.commit()
+            flash("Item de galeria atualizado com sucesso.", "success")
+            return redirect(url_for("admin.gallery_manage"))
 
     items = GalleryItem.query.order_by(GalleryItem.display_order).all()
-    return render_template("admin/content_gallery.html", form=form, items=items, editing=item)
+    return render_template(
+        "admin/content_gallery.html", form=form, items=items, editing=item, max_featured=GalleryItem.MAX_FEATURED
+    )
 
 
 @admin_bp.route("/conteudo/galeria/<int:item_id>/excluir", methods=["POST"])
@@ -762,6 +781,10 @@ def settings_manage():
             settings.testimonials_heading = form.testimonials_heading.data
             settings.contact_heading = form.contact_heading.data
 
+            settings.services_nav_label = form.services_nav_label.data
+            settings.gallery_nav_label = form.gallery_nav_label.data
+            settings.testimonials_nav_label = form.testimonials_nav_label.data
+
             settings.services_accent_color = form.services_accent_color.data
             settings.gallery_accent_color = form.gallery_accent_color.data
             settings.testimonials_accent_color = form.testimonials_accent_color.data
@@ -856,7 +879,12 @@ def users_manage():
             flash("Usuário criado com sucesso.", "success")
             return redirect(url_for("admin.users_manage"))
 
-    users = User.query.order_by(User.created_at).all()
+    # User não herda TenantScopedMixin (o e-mail é único globalmente e o
+    # super admin não pertence a nenhum tenant) -- por isso o filtro por
+    # tenant_id aqui é manual, e é indispensável: sem ele, esta listagem
+    # (e a exclusão abaixo) exporia/permitiria apagar usuários de QUALQUER
+    # página, inclusive o super admin.
+    users = User.query.filter_by(tenant_id=current_user.tenant_id).order_by(User.created_at).all()
     return render_template("admin/users.html", form=form, users=users)
 
 
@@ -866,7 +894,10 @@ def user_delete(user_id):
     if user_id == current_user.id:
         flash("Você não pode excluir seu próprio usuário.", "danger")
         return redirect(url_for("admin.users_manage"))
-    user = User.query.filter_by(id=user_id).first_or_404()
+    # Ver comentário em users_manage(): filtro por tenant_id manual e
+    # obrigatório aqui -- sem ele, um admin poderia excluir usuários de
+    # outra página (ou o próprio super admin) só sabendo/adivinhando o id.
+    user = User.query.filter_by(id=user_id, tenant_id=current_user.tenant_id).first_or_404()
     log_action("user.deleted", entity_type="User", entity_id=user.id, description=user.email)
     db.session.delete(user)
     db.session.commit()
@@ -899,6 +930,10 @@ def _next_display_order(model):
     """
     max_order = db.session.query(db.func.max(model.display_order)).scalar()
     return 0 if max_order is None else max_order + 1
+
+
+def _featured_gallery_count() -> int:
+    return GalleryItem.query.filter_by(is_featured=True).count()
 
 
 def _next_display_order_scoped(model, **filters):

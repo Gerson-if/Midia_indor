@@ -205,6 +205,28 @@
       </div>
 
       <div class="card p-6 space-y-4">
+        <h3 class="font-display text-lg text-hi mb-2">Nomes no Menu</h3>
+        <p class="text-xs text-low -mt-2">Texto curto exibido no menu do cabeçalho e no rodapé do site (diferente do título mostrado dentro de cada seção, logo abaixo).</p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            {{ form.services_nav_label.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+            {{ form.services_nav_label(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+            {% for e in form.services_nav_label.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+          </div>
+          <div>
+            {{ form.gallery_nav_label.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+            {{ form.gallery_nav_label(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+            {% for e in form.gallery_nav_label.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+          </div>
+          <div>
+            {{ form.testimonials_nav_label.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+            {{ form.testimonials_nav_label(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+            {% for e in form.testimonials_nav_label.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div class="card p-6 space-y-4">
         <h3 class="font-display text-lg text-hi mb-2">Títulos das Seções</h3>
         <p class="text-xs text-low -mt-2">Textos exibidos acima de cada seção fixa do site (Vantagens, Galeria, Depoimentos e a chamada final antes do formulário de contato).</p>
         <div class="grid sm:grid-cols-2 gap-4">
@@ -313,7 +335,7 @@
       <div class="card p-6 space-y-4">
         <h3 class="font-display text-lg text-hi mb-2">Cores da Marca</h3>
         <p class="text-xs text-low -mt-2">Escolha visualmente ou digite/cole o hexadecimal direto no campo ao lado (ex.: #FFB020).</p>
-        <div class="grid grid-cols-2 gap-3 max-w-md">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-md">
           {{ color_field(form.color_primary, "f_color_primary") }}
           {{ color_field(form.color_secondary, "f_color_secondary") }}
           {{ color_field(form.whatsapp_button_color, "f_whatsapp_button_color") }}
@@ -323,7 +345,7 @@
       <div class="card p-6 space-y-4">
         <h3 class="font-display text-lg text-hi mb-2">Aparência das Seções</h3>
         <p class="text-xs text-low -mt-2">Personalize as cores de destaque e o estilo dos cards nas seções de Vantagens, Galeria e Depoimentos, sem precisar editar código.</p>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           {{ color_field(form.services_accent_color, "f_services_accent_color") }}
           {{ color_field(form.gallery_accent_color, "f_gallery_accent_color") }}
           {{ color_field(form.testimonials_accent_color, "f_testimonials_accent_color") }}
@@ -382,7 +404,7 @@
               <span id="preview-company-header">{{ settings.company_name }}</span>
             </div>
             <div class="hidden md:flex items-center gap-8 font-mono text-xs uppercase tracking-wider text-mid">
-              <span>Vantagens</span><span>Telas</span><span>Clientes</span>
+              <span>{{ settings.services_nav_label }}</span><span>{{ settings.gallery_nav_label }}</span><span>{{ settings.testimonials_nav_label }}</span>
               <span class="btn btn-primary !py-1.5 !px-4 text-xs" id="preview-cta-header" style="background-color: {{ settings.color_primary }}">Anunciar</span>
             </div>
           </div>

@@ -78,7 +78,7 @@ def logout():
 # ------------------------------------------------------------------ #
 # Dashboard / listagem de páginas
 # ------------------------------------------------------------------ #
-@superadmin_bp.route("/")
+@superadmin_bp.route("/", strict_slashes=False)
 def dashboard():
     tenants = Tenant.query.order_by(Tenant.created_at.desc()).all()
     stats = {
