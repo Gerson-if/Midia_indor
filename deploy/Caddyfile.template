@@ -26,7 +26,7 @@
 # então não as usamos aqui.
 #
 # Fluxo para o super admin adicionar uma página nova, na prática:
-#   1. Cadastra o domínio no painel (/superadmin)
+#   1. Cadastra o domínio no painel (/super)
 #   2. Aponta o DNS (registro A) daquele domínio para o IP desta VPS
 #   3. Pronto — no primeiro acesso, o Caddy já emite o HTTPS sozinho.
 # Nenhum passo manual nesta VPS é necessário.

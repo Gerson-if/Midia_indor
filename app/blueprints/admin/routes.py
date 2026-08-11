@@ -754,6 +754,13 @@ def settings_manage():
             settings.hero_cta_primary_label = form.hero_cta_primary_label.data
             settings.hero_cta_secondary_label = form.hero_cta_secondary_label.data
 
+            settings.services_heading = form.services_heading.data
+            settings.services_subtitle = form.services_subtitle.data
+            settings.gallery_heading = form.gallery_heading.data
+            settings.gallery_subtitle = form.gallery_subtitle.data
+            settings.testimonials_heading = form.testimonials_heading.data
+            settings.contact_heading = form.contact_heading.data
+
             settings.services_accent_color = form.services_accent_color.data
             settings.gallery_accent_color = form.gallery_accent_color.data
             settings.testimonials_accent_color = form.testimonials_accent_color.data

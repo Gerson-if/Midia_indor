@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import password_field %}
 {% block title %}Login Administrativo — {{ APP_NAME }}{% endblock %}
 {% block extra_head %}
 <style> body { display:flex; align-items:center; justify-content:center; min-height:100vh; } </style>
@@ -25,7 +26,7 @@
       </div>
       <div>
         <label class="block text-xs font-mono uppercase text-low mb-1">Senha</label>
-        {{ form.password(class_="w-full bg-panel2 border border-line rounded-lg px-4 py-3 text-sm focus:outline-none text-hi transition-colors", placeholder="••••••••", required=true, autocomplete="current-password") }}
+        {{ password_field(form.password, field_class="w-full bg-panel2 border border-line rounded-lg px-4 py-3 text-sm focus:outline-none text-hi transition-colors", placeholder="••••••••", required=true, autocomplete="current-password") }}
         {% for e in form.password.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
       </div>
       <label class="flex items-center gap-2 text-xs text-mid">

@@ -1,4 +1,5 @@
 {% extends "superadmin/base_superadmin.html" %}
+{% from "_macros.html" import password_field %}
 {% block title %}Nova página — Super Admin{% endblock %}
 {% block content %}
 <a href="{{ url_for('superadmin.dashboard') }}" class="text-xs text-mid hover:text-hi">&larr; Páginas</a>
@@ -44,7 +45,7 @@
 
     <div>
       {{ form.owner_password.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-      {{ form.owner_password(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+      {{ password_field(form.owner_password, field_class="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
       {% for e in form.owner_password.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
     </div>
 

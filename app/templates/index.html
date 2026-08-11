@@ -159,8 +159,8 @@
 <section id="servicos" class="py-24 bg-inksoft border-y border-line">
   <div class="container-nx">
     <div class="text-center max-w-2xl mx-auto mb-16" data-aos="fade-up">
-      <h2 class="font-display text-3xl md:text-4xl font-semibold text-hi mb-4">Por que anunciar conosco?</h2>
-      <p class="text-mid">Gerenciamento inteligente e telas nos pontos mais estratégicos da cidade.</p>
+      <h2 class="font-display text-3xl md:text-4xl font-semibold text-hi mb-4">{{ settings.services_heading }}</h2>
+      {% if settings.services_subtitle %}<p class="text-mid">{{ settings.services_subtitle }}</p>{% endif %}
     </div>
     <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
       {% for s in services %}
@@ -179,8 +179,8 @@
 <section id="galeria" class="py-24">
   <div class="container-nx">
     <div class="text-center mb-16" data-aos="fade-up">
-      <h2 class="font-display text-3xl md:text-4xl font-semibold text-hi mb-4">Nossos Pontos</h2>
-      <p class="text-mid">Confira os locais onde sua marca será exibida.</p>
+      <h2 class="font-display text-3xl md:text-4xl font-semibold text-hi mb-4">{{ settings.gallery_heading }}</h2>
+      {% if settings.gallery_subtitle %}<p class="text-mid">{{ settings.gallery_subtitle }}</p>{% endif %}
     </div>
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       {% for g in gallery %}
@@ -204,7 +204,7 @@
 <section id="depoimentos" class="py-24 bg-inksoft border-y border-line">
   <div class="container-nx grid lg:grid-cols-2 gap-16 items-center">
     <div data-aos="fade-right">
-      <h2 class="font-display text-3xl md:text-4xl font-semibold text-hi mb-8">Marcas que confiam</h2>
+      <h2 class="font-display text-3xl md:text-4xl font-semibold text-hi mb-8">{{ settings.testimonials_heading }}</h2>
       <div class="flex flex-wrap gap-4 mb-10">
         {% for p in partners %}
         <span class="px-4 py-2 rounded-lg bg-panel border border-line text-sm text-mid shadow-lg">{{ p.name }}</span>
@@ -264,7 +264,7 @@
   <div class="absolute inset-0 opacity-10" style="background:radial-gradient(circle at center, var(--amber) 0%, transparent 70%)"></div>
   <div class="container-nx relative z-10 max-w-5xl mx-auto">
     <div class="text-center mb-12" data-aos="fade-up">
-      <h2 class="font-display text-3xl md:text-4xl font-semibold text-hi mb-4">Pronto para anunciar?</h2>
+      <h2 class="font-display text-3xl md:text-4xl font-semibold text-hi mb-4">{{ settings.contact_heading }}</h2>
       <p class="text-mid text-lg">{{ settings.company_description }}</p>
     </div>
     <div class="grid md:grid-cols-2 gap-10 bg-panel p-8 md:p-12 rounded-2xl border border-line shadow-2xl" data-aos="zoom-in">

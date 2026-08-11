@@ -1,7 +1,7 @@
 from flask import Blueprint, abort, redirect, url_for
 from flask_login import current_user
 
-superadmin_bp = Blueprint("superadmin", __name__, url_prefix="/superadmin")
+superadmin_bp = Blueprint("superadmin", __name__, url_prefix="/super")
 
 
 @superadmin_bp.before_request

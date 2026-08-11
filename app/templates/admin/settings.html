@@ -205,6 +205,37 @@
       </div>
 
       <div class="card p-6 space-y-4">
+        <h3 class="font-display text-lg text-hi mb-2">Títulos das Seções</h3>
+        <p class="text-xs text-low -mt-2">Textos exibidos acima de cada seção fixa do site (Vantagens, Galeria, Depoimentos e a chamada final antes do formulário de contato).</p>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div>
+            {{ form.services_heading.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+            {{ form.services_heading(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+          </div>
+          <div>
+            {{ form.services_subtitle.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+            {{ form.services_subtitle(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+          </div>
+          <div>
+            {{ form.gallery_heading.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+            {{ form.gallery_heading(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+          </div>
+          <div>
+            {{ form.gallery_subtitle.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+            {{ form.gallery_subtitle(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+          </div>
+          <div>
+            {{ form.testimonials_heading.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+            {{ form.testimonials_heading(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+          </div>
+          <div>
+            {{ form.contact_heading.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+            {{ form.contact_heading(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+          </div>
+        </div>
+      </div>
+
+      <div class="card p-6 space-y-4">
         <h3 class="font-display text-lg text-hi mb-2">Mídia de Capa do Hero</h3>
         <div>
           <label class="block text-xs font-mono uppercase text-low mb-2">Tipo de capa exibida no site</label>

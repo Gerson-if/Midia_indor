@@ -1,0 +1,15 @@
+{% macro password_field(field, field_class="") %}
+<div class="relative" data-password-field>
+  {{ field(class_=(field_class ~ " pr-11").strip(), **kwargs) }}
+  <button type="button" data-password-toggle tabindex="-1" aria-label="Mostrar senha"
+          class="absolute inset-y-0 right-0 flex items-center px-3 text-low hover:text-hi">
+    <svg data-icon-show viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+      <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/>
+    </svg>
+    <svg data-icon-hide class="hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+      <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.6 21.6 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a21.6 21.6 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+      <path d="M1 1l22 22"/>
+    </svg>
+  </button>
+</div>
+{% endmacro %}

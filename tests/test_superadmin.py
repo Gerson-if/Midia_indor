@@ -4,7 +4,7 @@ from tests.conftest import login
 
 def login_superadmin(client, email, password):
     return client.post(
-        "/superadmin/login",
+        "/super/login",
         data={"email": email, "password": password},
         follow_redirects=True,
     )
@@ -16,14 +16,14 @@ def login_superadmin(client, email, password):
 def test_superadmin_login_and_dashboard(client, super_admin_user):
     resp = login_superadmin(client, "superadmin@teste.com", "SenhaForte123!")
     assert resp.status_code == 200
-    resp = client.get("/superadmin/")
+    resp = client.get("/super/")
     assert resp.status_code == 200
     assert "Páginas" in resp.get_data(as_text=True)
 
 
 def test_regular_admin_cannot_access_superadmin_panel(client, admin_user):
     login(client, "admin@teste.com", "SenhaForte123!")
-    resp = client.get("/superadmin/")
+    resp = client.get("/super/")
     assert resp.status_code == 403
 
 
@@ -39,7 +39,7 @@ def test_superadmin_cannot_login_via_tenant_login(client, super_admin_user):
 
 
 def test_anonymous_redirected_to_superadmin_login(client):
-    resp = client.get("/superadmin/", follow_redirects=True)
+    resp = client.get("/super/", follow_redirects=True)
     assert resp.status_code == 200
     assert "Super Admin" in resp.get_data(as_text=True)
 
@@ -50,7 +50,7 @@ def test_anonymous_redirected_to_superadmin_login(client):
 def test_superadmin_creates_tenant_with_owner_and_domain(client, super_admin_user, db):
     login_superadmin(client, "superadmin@teste.com", "SenhaForte123!")
     resp = client.post(
-        "/superadmin/paginas/nova",
+        "/super/paginas/nova",
         data={
             "name": "Cliente Novo",
             "slug": "",
@@ -77,7 +77,7 @@ def test_superadmin_block_and_unblock_tenant(client, super_admin_user, tenant, d
     login_superadmin(client, "superadmin@teste.com", "SenhaForte123!")
 
     resp = client.post(
-        f"/superadmin/paginas/{tenant.id}/bloquear",
+        f"/super/paginas/{tenant.id}/bloquear",
         data={"reason": "fatura em aberto"},
         follow_redirects=True,
     )
@@ -86,7 +86,7 @@ def test_superadmin_block_and_unblock_tenant(client, super_admin_user, tenant, d
     assert tenant.is_blocked is True
     assert tenant.blocked_reason == "fatura em aberto"
 
-    resp = client.post(f"/superadmin/paginas/{tenant.id}/desbloquear", follow_redirects=True)
+    resp = client.post(f"/super/paginas/{tenant.id}/desbloquear", follow_redirects=True)
     assert resp.status_code == 200
     db.session.refresh(tenant)
     assert tenant.is_blocked is False

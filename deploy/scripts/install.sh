@@ -205,6 +205,13 @@ ok "Migrações aplicadas."
 (cd "$APP_DIR" && "$APP_DIR/venv/bin/flask" create-admin)
 ok "Usuário administrador criado/atualizado (login: $ADMIN_EMAIL)."
 
+if [ -n "${SUPERADMIN_EMAIL:-}" ] && [ -n "${SUPERADMIN_PASSWORD:-}" ]; then
+    (cd "$APP_DIR" && "$APP_DIR/venv/bin/flask" create-superadmin)
+    ok "Super admin criado/atualizado (login: $SUPERADMIN_EMAIL, painel: /super)."
+else
+    warn "Super admin não configurado nesta instalação. Crie depois com: sudo -u $APP_USER bash -c 'cd $APP_DIR && SUPERADMIN_EMAIL=... SUPERADMIN_PASSWORD=... venv/bin/flask create-superadmin'"
+fi
+
 if confirm "Popular o site com conteúdo de demonstração (serviços, galeria de exemplo)?" "n"; then
     (cd "$APP_DIR" && "$APP_DIR/venv/bin/flask" seed-demo)
     ok "Conteúdo de demonstração criado."
@@ -287,6 +294,10 @@ Administrador:
   E-mail: $ADMIN_EMAIL
   Senha:  $ADMIN_PASSWORD
 
+$( [ -n "${SUPERADMIN_EMAIL:-}" ] && echo "Super admin (painel: $URL/super/login):
+  E-mail: $SUPERADMIN_EMAIL
+  Senha:  $SUPERADMIN_PASSWORD" )
+
 $( [ -n "$PG_DB_NAME_FINAL" ] && echo "Banco de dados (.env em $APP_DIR/.env tem a senha completa):
   Nome: $PG_DB_NAME_FINAL" )
 
@@ -309,12 +320,16 @@ if [ -n "$DOMAIN_FINAL" ]; then
     info "HTTPS já foi validado nesta instalação (Caddy + Let's Encrypt, automático a cada domínio novo)."
 else
     echo
-    warn "Nenhum domínio configurado ainda: o site está acessível só por HTTP/IP. Para ativar HTTPS, cadastre um domínio pelo painel do super admin (/superadmin) e aponte o DNS dele para o IP desta VPS, ou rode 'sudo bash deploy/scripts/configure-env.sh $APP_DIR/.env' de novo."
+    warn "Nenhum domínio configurado ainda: o site está acessível só por HTTP/IP. Para ativar HTTPS, cadastre um domínio pelo painel do super admin (/super) e aponte o DNS dele para o IP desta VPS, ou rode 'sudo bash deploy/scripts/configure-env.sh $APP_DIR/.env' de novo."
 fi
 echo
 echo "Painel do super admin (cria/gerencia/bloqueia páginas de clientes):"
-echo "  $URL/superadmin/login"
-echo "  (crie o primeiro acesso com: sudo -u midia-indoor bash -c 'cd $APP_DIR && SUPERADMIN_EMAIL=... SUPERADMIN_PASSWORD=... venv/bin/flask create-superadmin')"
+echo "  $URL/super/login"
+if [ -n "${SUPERADMIN_EMAIL:-}" ]; then
+    echo "  Login: $SUPERADMIN_EMAIL (senha no resumo acima e em $CREDS_FILE)"
+else
+    echo "  (nenhum super admin configurado nesta instalação — crie com: sudo -u midia-indoor bash -c 'cd $APP_DIR && SUPERADMIN_EMAIL=... SUPERADMIN_PASSWORD=... venv/bin/flask create-superadmin')"
+fi
 echo
 echo "Cada instalação gera SECRET_KEY, senha do banco e senha do admin únicas — nada disso é compartilhado entre VPS/clientes diferentes."
 echo

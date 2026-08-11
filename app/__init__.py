@@ -91,7 +91,7 @@ def _init_extensions(app: Flask) -> None:
         # cookie de sessão já é isolado por domínio pelo navegador, mas
         # isso cobre cenários de domínios compartilhados/alias mal
         # configurados). O super admin (tenant_id nulo) só "existe" fora
-        # de qualquer tenant (painel /superadmin).
+        # de qualquer tenant (painel /super).
         tenant_id = getattr(g, "tenant_id", None)
         if user.tenant_id is not None and tenant_id is not None and user.tenant_id != tenant_id:
             return None
@@ -240,7 +240,7 @@ def _register_cli(app: Flask) -> None:
             user = User(name=name, email=email, role=UserRole.SUPER_ADMIN)
             user.set_password(password)
             db.session.add(user)
-            print(f"Super admin '{email}' criado. Acesse em /superadmin/login.")
+            print(f"Super admin '{email}' criado. Acesse em /super/login.")
         db.session.commit()
 
     @app.cli.command("create-admin")
@@ -252,7 +252,7 @@ def _register_cli(app: Flask) -> None:
         funcionando: se a página informada (TENANT_SLUG, padrão "default")
         ainda não existir, ela é criada agora, com o domínio de DOMAIN (se
         definido) já associado. Para criar páginas adicionais depois, use
-        o painel do super admin em /superadmin.
+        o painel do super admin em /super.
         """
         from app.models import Tenant, TenantDomain, User, UserRole, normalize_domain
 
@@ -298,13 +298,13 @@ def _register_cli(app: Flask) -> None:
             elif is_ip:
                 print(
                     f"Aviso: '{domain_env}' parece ser um IP, não um domínio -- HTTPS automático (Caddy) "
-                    "exige um domínio real. Cadastre o domínio pelo painel /superadmin assim que tiver um; "
+                    "exige um domínio real. Cadastre o domínio pelo painel /super assim que tiver um; "
                     "por enquanto o acesso via IP fica só em HTTP."
                 )
             else:
                 print(
                     f"Aviso: a página '{tenant.slug}' ainda não tem nenhum domínio cadastrado. "
-                    "O site fica inacessível até você cadastrar um em /superadmin ou definir "
+                    "O site fica inacessível até você cadastrar um em /super ou definir "
                     "DOMAIN/SERVER_NAME no ambiente e rodar este comando de novo."
                 )
 

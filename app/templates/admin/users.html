@@ -1,4 +1,5 @@
 {% extends "admin/base_admin.html" %}
+{% from "_macros.html" import password_field %}
 {% block title %}Usuários — {{ APP_NAME }}{% endblock %}
 {% block admin_content %}
 <h2 class="font-display text-2xl mb-6">Usuários do Painel</h2>
@@ -21,7 +22,7 @@
       </div>
       <div>
         {{ form.password.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-        {{ form.password(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+        {{ password_field(form.password, field_class="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
         {% for e in form.password.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
       </div>
       <label class="flex items-center gap-2 text-xs text-mid">{{ form.is_active() }} Ativo</label>

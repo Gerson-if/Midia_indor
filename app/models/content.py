@@ -233,6 +233,17 @@ class SiteSettings(TenantScopedMixin, TimestampMixin, db.Model):
     hero_cta_primary_label = db.Column(db.String(80), nullable=True)
     hero_cta_secondary_label = db.Column(db.String(80), nullable=True)
 
+    # ---- Títulos das seções fixas do site (antes fixos no template;
+    # editáveis pelo admin, igual às seções personalizadas) ----
+    services_heading = db.Column(db.String(150), nullable=False, default="Por que anunciar conosco?")
+    services_subtitle = db.Column(
+        db.String(300), nullable=True, default="Gerenciamento inteligente e telas nos pontos mais estratégicos da cidade."
+    )
+    gallery_heading = db.Column(db.String(150), nullable=False, default="Nossos Pontos")
+    gallery_subtitle = db.Column(db.String(300), nullable=True, default="Confira os locais onde sua marca será exibida.")
+    testimonials_heading = db.Column(db.String(150), nullable=False, default="Marcas que confiam")
+    contact_heading = db.Column(db.String(150), nullable=False, default="Pronto para anunciar?")
+
     # ---- Aparência das demais seções (cards, destaques) ----
     services_accent_color = db.Column(db.String(9), nullable=False, default="#FFB020")
     gallery_accent_color = db.Column(db.String(9), nullable=False, default="#FFB020")

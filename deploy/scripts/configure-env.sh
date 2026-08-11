@@ -50,7 +50,7 @@ cur() { echo "${CUR[$1]:-$2}"; }
 # ---------------------------------------------------------------
 # 1) Domínio ou apenas IP da VPS
 # ---------------------------------------------------------------
-title "1/6 — Endereço público"
+title "1/7 — Endereço público"
 echo "Como os usuários vão acessar o sistema?"
 ACCESS_MODE=""
 choose "Modo de acesso" ACCESS_MODE "Tenho um domínio (ex: meusite.com.br)" "Vou usar apenas o IP da VPS (sem domínio por enquanto)"
@@ -102,7 +102,7 @@ fi
 # ---------------------------------------------------------------
 # 2) Segredos
 # ---------------------------------------------------------------
-title "2/6 — Chaves de segurança"
+title "2/7 — Chaves de segurança"
 EXISTING_SECRET="$(cur SECRET_KEY '')"
 if [ -n "$EXISTING_SECRET" ] && [ "$EXISTING_SECRET" != "troque-esta-chave-em-producao-0000000000000000000000000000" ]; then
     if confirm "Já existe uma SECRET_KEY configurada. Manter a mesma?" "s"; then
@@ -122,7 +122,7 @@ fi
 # ---------------------------------------------------------------
 # 3) Banco de dados
 # ---------------------------------------------------------------
-title "3/6 — Banco de dados"
+title "3/7 — Banco de dados"
 DB_CHOICE=""
 choose "Qual banco de dados usar?" DB_CHOICE \
     "PostgreSQL (recomendado em produção)" \
@@ -173,7 +173,7 @@ fi
 # ---------------------------------------------------------------
 # 4) Rate limiting (Redis)
 # ---------------------------------------------------------------
-title "4/6 — Limitação de requisições (rate limiting)"
+title "4/7 — Limitação de requisições (rate limiting)"
 if confirm "Usar Redis para rate limiting entre múltiplos workers (recomendado em produção)?" "s"; then
     RATELIMIT_STORAGE_URI="redis://localhost:6379/0"
     USE_REDIS="1"
@@ -186,7 +186,7 @@ fi
 # ---------------------------------------------------------------
 # 5) Dados da empresa
 # ---------------------------------------------------------------
-title "5/6 — Dados exibidos no site"
+title "5/7 — Dados exibidos no site"
 ask "Nome da empresa" "$(cur COMPANY_NAME 'Nexo Mídia')" COMPANY_NAME
 while true; do
     ask "WhatsApp (somente números, com DDI+DDD)" "$(cur COMPANY_WHATSAPP '5567999990000')" COMPANY_WHATSAPP
@@ -202,7 +202,7 @@ ask "Endereço (exibição)" "$(cur COMPANY_ADDRESS 'Sua cidade, UF')" COMPANY_A
 # ---------------------------------------------------------------
 # 6) Administrador inicial
 # ---------------------------------------------------------------
-title "6/6 — Usuário administrador"
+title "6/7 — Usuário administrador"
 ask "Nome do administrador" "$(cur ADMIN_NAME 'Administrador Principal')" ADMIN_NAME
 ask_validated "E-mail do administrador (login)" "$(cur ADMIN_EMAIL '')" ADMIN_EMAIL \
     is_valid_email "E-mail com formato inválido"
@@ -219,6 +219,31 @@ else
         [ "${#ADMIN_PASSWORD}" -ge 12 ] && break
         warn "Senha muito curta (${#ADMIN_PASSWORD} caracteres) — use pelo menos 12."
     done
+fi
+
+# ---------------------------------------------------------------
+# 7) Super administrador (dono do sistema — gerencia todas as páginas)
+# ---------------------------------------------------------------
+title "7/7 — Super administrador"
+info "O super admin é quem cria/gerencia as páginas de clientes em /super — diferente do administrador de página configurado acima. Veja deploy/README.md para detalhes."
+if confirm "Configurar o acesso do super admin agora? (recomendado — sem isso, o painel /super fica sem nenhum usuário até você rodar 'flask create-superadmin' manualmente depois)" "s"; then
+    ask "Nome do super admin" "$(cur SUPERADMIN_NAME 'Super Admin')" SUPERADMIN_NAME
+    ask_validated "E-mail do super admin (login em /super)" "$(cur SUPERADMIN_EMAIL '')" SUPERADMIN_EMAIL \
+        is_valid_email "E-mail com formato inválido"
+    if confirm "Gerar uma senha forte automaticamente para o super admin? (recomendado)" "s"; then
+        SUPERADMIN_PASSWORD="$(gen_secret | cut -c1-16)"
+        ok "Senha gerada: ${C_BOLD}${SUPERADMIN_PASSWORD}${C_RESET}  (anote agora — também fica salva no .env e no resumo final da instalação)"
+    else
+        while true; do
+            ask_secret "Senha do super admin (mínimo 12 caracteres)" SUPERADMIN_PASSWORD
+            [ "${#SUPERADMIN_PASSWORD}" -ge 12 ] && break
+            warn "Senha muito curta (${#SUPERADMIN_PASSWORD} caracteres) — use pelo menos 12."
+        done
+    fi
+else
+    SUPERADMIN_NAME="$(cur SUPERADMIN_NAME '')"
+    SUPERADMIN_EMAIL="$(cur SUPERADMIN_EMAIL '')"
+    SUPERADMIN_PASSWORD="$(cur SUPERADMIN_PASSWORD '')"
 fi
 
 # ---------------------------------------------------------------
@@ -296,6 +321,11 @@ COMPANY_ADDRESS="${COMPANY_ADDRESS}"
 ADMIN_NAME="${ADMIN_NAME}"
 ADMIN_EMAIL="${ADMIN_EMAIL}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD}"
+
+# ---- Super admin (usado por "flask create-superadmin"; painel em /super) ----
+SUPERADMIN_NAME="${SUPERADMIN_NAME}"
+SUPERADMIN_EMAIL="${SUPERADMIN_EMAIL}"
+SUPERADMIN_PASSWORD="${SUPERADMIN_PASSWORD}"
 
 # ---- Logs ----
 LOG_LEVEL=INFO

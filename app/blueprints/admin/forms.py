@@ -130,6 +130,14 @@ class SiteSettingsForm(FlaskForm):
     remove_hero_video = BooleanField("Remover vídeo atual")
     remove_hero_image = BooleanField("Remover imagem atual")
 
+    # ---- Títulos das seções fixas do site ----
+    services_heading = StringField("Título — Vantagens", validators=[DataRequired(), Length(max=150)])
+    services_subtitle = StringField("Subtítulo — Vantagens", validators=[Optional(), Length(max=300)])
+    gallery_heading = StringField("Título — Galeria", validators=[DataRequired(), Length(max=150)])
+    gallery_subtitle = StringField("Subtítulo — Galeria", validators=[Optional(), Length(max=300)])
+    testimonials_heading = StringField("Título — Depoimentos", validators=[DataRequired(), Length(max=150)])
+    contact_heading = StringField("Título — Chamada final (Contato)", validators=[DataRequired(), Length(max=150)])
+
     # ---- Aparência das demais seções ----
     services_accent_color = StringField("Destaque — Vantagens", validators=[DataRequired(), Length(max=9), HEX_COLOR_RE])
     gallery_accent_color = StringField("Destaque — Galeria", validators=[DataRequired(), Length(max=9), HEX_COLOR_RE])

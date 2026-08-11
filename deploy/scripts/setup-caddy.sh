@@ -145,4 +145,4 @@ rm -f "${CADDYFILE}.bak"
 ok "Caddy configurado e recarregado — HTTPS automático ativo para qualquer domínio cadastrado no painel do super admin."
 
 info "Portas 80/443 abertas? Confira 'ufw status' (ou o firewall do provedor da VPS) se o acesso externo não funcionar."
-info "Para cada domínio novo cadastrado depois pelo painel /superadmin, basta apontar o DNS (registro A) para o IP desta VPS — nenhum passo aqui precisa ser repetido."
+info "Para cada domínio novo cadastrado depois pelo painel /super, basta apontar o DNS (registro A) para o IP desta VPS — nenhum passo aqui precisa ser repetido."
