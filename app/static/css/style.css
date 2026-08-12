@@ -439,10 +439,36 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   50%{ transform:scale(1.08); }
 }
 
+/* ---- Indicador "ver detalhes" no hover (desktop) ----
+   Só existe em dispositivos com mouse de verdade (hover:hover e
+   pointer:fine) -- no toque quem avisa é o .gallery-tap-again acima, via
+   JS. Ícone + rótulo aparecem centralizados com um leve "bounce" ao
+   passar o mouse, sobre o escurecimento que a imagem já ganha no hover. */
+.gallery-hover-reveal{
+  position:absolute; inset:0; z-index:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:.65rem; opacity:0; transform:scale(.82); pointer-events:none;
+  transition:opacity .3s ease, transform .35s cubic-bezier(.34,1.56,.64,1);
+}
+.gallery-hover-reveal-icon{
+  width:2.75rem; height:2.75rem; border-radius:999px; display:flex; align-items:center; justify-content:center;
+  background:var(--amber); color:#1A1204; box-shadow:0 10px 26px -6px rgba(255,176,32,.6);
+}
+.gallery-hover-reveal-icon svg{ width:19px; height:19px; }
+.gallery-hover-reveal-label{
+  font-family:var(--font-mono); font-size:.72rem; font-weight:600; letter-spacing:.04em;
+  text-transform:uppercase; color:#fff; text-shadow:0 2px 10px rgba(0,0,0,.5);
+}
+@media (hover:hover) and (pointer:fine){
+  .group:hover .gallery-hover-reveal, .group:focus-visible .gallery-hover-reveal{
+    opacity:1; transform:scale(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce){
   .gallery-tap-again{ transition:none; }
   .gallery-tap-again-icon{ animation:none; }
   .gallery-tap-again-icon::before, .gallery-tap-again-icon::after{ animation:none; opacity:0; }
+  .gallery-hover-reveal{ transition:none; }
 }
 
 .stat-num{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
