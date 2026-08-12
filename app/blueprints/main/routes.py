@@ -161,6 +161,20 @@ def _render_index_with_errors(form):
     )
 
 
+@main_bp.route("/ponto/<int:item_id>")
+def gallery_detail(item_id):
+    item = GalleryItem.query.filter_by(id=item_id, is_active=True, has_detail_page=True).first_or_404()
+    settings = SiteSettings.get_solo()
+    other_points = (
+        GalleryItem.query.filter_by(is_active=True)
+        .filter(GalleryItem.id != item.id)
+        .order_by(GalleryItem.is_featured.desc(), GalleryItem.display_order)
+        .limit(3)
+        .all()
+    )
+    return render_template("gallery_detail.html", settings=settings, item=item, other_points=other_points)
+
+
 @main_bp.route("/privacidade")
 def privacidade():
     settings = SiteSettings.get_solo()

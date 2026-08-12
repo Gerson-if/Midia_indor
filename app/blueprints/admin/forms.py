@@ -58,6 +58,37 @@ class GalleryItemForm(FlaskForm):
     image = FileField("Imagem", validators=[Optional(), FileAllowed(["jpg", "jpeg", "png", "webp", "gif"])])
     remove_image = BooleanField("Remover imagem atual")
 
+    # ---- Página de detalhes do ponto (opcional) ----
+    has_detail_page = BooleanField(
+        "Ativar página de detalhes para este ponto",
+        default=False,
+        description="O card na galeria vira um link levando para uma página própria, com mais contexto sobre o ponto.",
+    )
+    detail_description = TextAreaField(
+        "Sobre este ponto", validators=[Optional(), Length(max=2000)]
+    )
+    detail_tags = StringField(
+        "Recomendado para",
+        validators=[Optional(), Length(max=300)],
+        description="Separe por vírgula, ex.: Delivery e Alimentação, Barbearias e Salões, Eventos e Shows.",
+    )
+    detail_monthly_reach = StringField(
+        "Fluxo mensal estimado", validators=[Optional(), Length(max=40)], render_kw={"placeholder": "ex.: +4.500"}
+    )
+    detail_retention_time = StringField(
+        "Tempo médio de permanência",
+        validators=[Optional(), Length(max=40)],
+        render_kw={"placeholder": "ex.: 45 min"},
+    )
+    detail_visibility_percent = IntegerField(
+        "Índice de visibilidade (%)", validators=[Optional(), NumberRange(min=0, max=100)]
+    )
+    detail_cta_message = StringField(
+        "Mensagem do WhatsApp nesta página (opcional)",
+        validators=[Optional(), Length(max=300)],
+        description="Deixe em branco para usar uma mensagem padrão mencionando o nome deste ponto.",
+    )
+
 
 class CustomSectionForm(FlaskForm):
     nav_label = StringField("Nome no menu", validators=[DataRequired(), Length(max=60)])

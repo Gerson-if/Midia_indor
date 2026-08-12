@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title }} — {{ settings.company_name }}{% endblock %}
+
+{% block content %}
+<header class="border-b border-line py-5 sticky top-0 z-30 glass">
+  <div class="container-nx flex items-center justify-between">
+    <a href="{{ url_for('main.index') }}" class="flex items-center gap-2 font-display font-semibold text-lg text-hi min-w-0">
+      {% if settings.logo_path %}
+      <img src="{{ url_for('static', filename=settings.logo_path) }}" alt="{{ settings.company_name }}" class="w-8 h-8 rounded-md object-contain shrink-0">
+      {% else %}
+      <span class="w-8 h-8 rounded-md flex items-center justify-center text-onbrand font-bold shrink-0" style="background-color: var(--amber)">{{ settings.company_name[0] if settings.company_name else 'N' }}</span>
+      {% endif %}
+      <span class="truncate">{{ settings.company_name }}</span>
+    </a>
+    <a href="{{ url_for('main.index') }}#galeria" class="text-sm text-mid hover:text-hi shrink-0">&larr; Voltar para {{ settings.gallery_nav_label }}</a>
+  </div>
+</header>
+
+<main class="container-nx py-10 sm:py-14 max-w-5xl">
+
+  <!-- Hero do ponto -->
+  <div class="screen relative overflow-hidden rounded-2xl mb-8" style="height: min(60vh, 420px);">
+    {% if item.image_path %}
+    <img src="{{ url_for('static', filename=item.image_path) }}" alt="{{ item.title }}" class="absolute inset-0 w-full h-full object-cover">
+    {% else %}
+    <div class="absolute inset-0" style="background:linear-gradient(160deg, var(--gallery-accent, var(--amber)), var(--cyan))"></div>
+    {% endif %}
+    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent"></div>
+    <div class="absolute inset-0 flex flex-col justify-end p-6 sm:p-10">
+      <span class="pill-live mb-3" style="color:rgba(255,255,255,.9); border-color:rgba(255,255,255,.3); width:fit-content">
+        <span class="dot" style="background-color: var(--amber)"></span>{{ item.category }}
+      </span>
+      <h1 class="font-display text-3xl sm:text-5xl font-bold text-white leading-tight drop-shadow-lg">{{ item.title }}</h1>
+    </div>
+  </div>
+
+  <div class="grid lg:grid-cols-3 gap-6">
+    <!-- Coluna principal: descrição e recomendações -->
+    <div class="lg:col-span-2 space-y-6">
+      {% if item.detail_description %}
+      <div class="card p-6 sm:p-8">
+        <h2 class="font-display text-xl text-hi mb-3">Sobre este ponto</h2>
+        <p class="text-mid leading-relaxed whitespace-pre-line">{{ item.detail_description }}</p>
+      </div>
+      {% endif %}
+
+      {% if item.detail_tags_list %}
+      <div class="card p-6 sm:p-8">
+        <h2 class="font-display text-xl text-hi mb-1">Recomendado para</h2>
+        <p class="text-sm text-mid mb-4">Anúncios com maior potencial de conversão neste ponto:</p>
+        <div class="flex flex-wrap gap-2">
+          {% for tag in item.detail_tags_list %}
+          <span class="text-sm font-medium px-3 py-1.5 rounded-lg" style="background: rgba(255,176,32,.1); color: var(--amber-text)">{{ tag }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      {% if other_points %}
+      <div class="card p-6 sm:p-8">
+        <h2 class="font-display text-xl text-hi mb-4">Outros pontos</h2>
+        <div class="grid sm:grid-cols-3 gap-3">
+          {% for p in other_points %}
+          <a href="{% if p.has_detail_page %}{{ url_for('main.gallery_detail', item_id=p.id) }}{% else %}{{ url_for('main.index') }}#galeria{% endif %}" class="screen aspect-[3/4] relative overflow-hidden rounded-lg border border-line block group">
+            {% if p.image_path %}
+            <img src="{{ url_for('static', filename=p.image_path) }}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
+            {% else %}
+            <div class="absolute inset-0" style="background:linear-gradient(160deg, var(--amber), var(--cyan))"></div>
+            {% endif %}
+            <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent"></div>
+            <span class="absolute bottom-2 left-2 right-2 text-white text-xs font-semibold truncate drop-shadow-md">{{ p.title }}</span>
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Coluna lateral: métricas e CTA -->
+    <div class="space-y-4">
+      {% if item.detail_monthly_reach %}
+      <div class="card p-5" style="border-left: 3px solid var(--amber)">
+        <p class="text-xs font-mono uppercase text-low mb-1">Fluxo mensal estimado</p>
+        <p class="font-display text-3xl font-bold text-hi">{{ item.detail_monthly_reach }}</p>
+        <p class="text-xs text-low mt-1">Pessoas impactadas todo mês</p>
+      </div>
+      {% endif %}
+
+      {% if item.detail_retention_time %}
+      <div class="card p-5" style="border-left: 3px solid var(--cyan)">
+        <p class="text-xs font-mono uppercase text-low mb-1">Tempo de retenção</p>
+        <p class="font-display text-3xl font-bold text-hi">{{ item.detail_retention_time }}</p>
+        <p class="text-xs text-low mt-1">Tempo médio do público no local</p>
+      </div>
+      {% endif %}
+
+      {% if item.detail_visibility_percent is not none %}
+      <div class="card p-5" style="border-left: 3px solid var(--amber)">
+        <p class="text-xs font-mono uppercase text-low mb-1">Índice de visibilidade</p>
+        <p class="font-display text-3xl font-bold text-hi mb-2">{{ item.detail_visibility_percent }}%</p>
+        <div class="rounded-full h-2 overflow-hidden" style="background: var(--panel2)">
+          <div class="h-full rounded-full" style="width: {{ item.detail_visibility_percent }}%; background: var(--amber)"></div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Chamada para ação -->
+      <div class="card p-6 text-center" style="background: var(--ink)">
+        <h3 class="font-display text-lg text-hi mb-1">Gostou deste ponto?</h3>
+        <p class="text-xs text-low mb-4">Garanta seu espaço antes que a concorrência anuncie aqui.</p>
+        <a href="https://wa.me/{{ settings.company_whatsapp }}?text={{ (item.detail_cta_message or ('Olá! Gostaria de anunciar no ponto "' ~ item.title ~ '".')) | urlencode }}"
+           target="_blank" rel="noopener"
+           class="inline-flex items-center justify-center gap-2 text-white px-6 py-3.5 rounded-full font-bold text-sm w-full hover:scale-[1.02] transition-transform"
+           style="background-color: {{ settings.whatsapp_button_color }}">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 21.171l-2.072.54 1.1-1.996a9.949 9.949 0 0 1-1.488-5.32c0-5.514 4.486-10 10-10s10 4.486 10 10-4.486 10-10 10a9.932 9.932 0 0 1-5.46-1.62l-2.08.396zm8.125-14.496C18.066 4.542 15.228 3.33 12 3.33c-4.664 0-8.455 3.79-8.455 8.455 0 1.558.423 3.064 1.22 4.385l-1.34 3.96 4.095-1.074a8.414 8.414 0 0 0 4.48 1.28h.003c4.665 0 8.456-3.79 8.456-8.456 0-2.26-.88-4.386-2.298-6.205z"/></svg>
+          Quero anunciar aqui
+        </a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="border-t border-line py-8 text-xs text-low text-center">&copy; {{ now_year }} {{ settings.company_name }}</footer>
+{% endblock %}

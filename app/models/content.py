@@ -69,6 +69,28 @@ class GalleryItem(TenantScopedMixin, TimestampMixin, db.Model):
     is_active = db.Column(db.Boolean, nullable=False, default=True)
     is_featured = db.Column(db.Boolean, nullable=False, default=False)
 
+    # ---- Página de detalhes do ponto (opcional, por item) -- o admin
+    # decide, item a item, se o card da galeria vira um link navegável
+    # para uma página própria com mais contexto (texto, recomendações de
+    # nicho e métricas) ou continua só um card estático, como antes. ----
+    has_detail_page = db.Column(db.Boolean, nullable=False, default=False)
+    detail_description = db.Column(db.Text, nullable=True)
+    # Tags "recomendado para" separadas por vírgula (ex.: "Delivery,
+    # Barbearias, Eventos") -- texto livre em vez de uma tabela própria:
+    # é só um detalhe visual da página, não precisa ser uma entidade
+    # relacional consultável.
+    detail_tags = db.Column(db.String(300), nullable=True)
+    detail_monthly_reach = db.Column(db.String(40), nullable=True)
+    detail_retention_time = db.Column(db.String(40), nullable=True)
+    detail_visibility_percent = db.Column(db.Integer, nullable=True)
+    detail_cta_message = db.Column(db.String(300), nullable=True)
+
+    @property
+    def detail_tags_list(self):
+        if not self.detail_tags:
+            return []
+        return [t.strip() for t in self.detail_tags.split(",") if t.strip()]
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -78,6 +100,7 @@ class GalleryItem(TenantScopedMixin, TimestampMixin, db.Model):
             "display_order": self.display_order,
             "is_active": self.is_active,
             "is_featured": self.is_featured,
+            "has_detail_page": self.has_detail_page,
         }
 
 

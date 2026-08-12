@@ -351,6 +351,7 @@ def gallery_manage():
                 is_active=form.is_active.data,
                 is_featured=form.is_featured.data,
             )
+            _apply_gallery_detail_fields(form, item)
             _attach_image(form.image, item, "image_path", "content/gallery", remove_field=form.remove_image)
             db.session.add(item)
             log_action("gallery.created", entity_type="GalleryItem", description=item.title)
@@ -382,6 +383,7 @@ def gallery_edit(item_id):
             item.category = form.category.data
             item.is_active = form.is_active.data
             item.is_featured = form.is_featured.data
+            _apply_gallery_detail_fields(form, item)
             _attach_image(form.image, item, "image_path", "content/gallery", remove_field=form.remove_image)
             log_action("gallery.updated", entity_type="GalleryItem", entity_id=item.id, description=item.title)
             db.session.commit()
@@ -934,6 +936,16 @@ def _next_display_order(model):
 
 def _featured_gallery_count() -> int:
     return GalleryItem.query.filter_by(is_featured=True).count()
+
+
+def _apply_gallery_detail_fields(form, item):
+    item.has_detail_page = form.has_detail_page.data
+    item.detail_description = (form.detail_description.data or "").strip() or None
+    item.detail_tags = (form.detail_tags.data or "").strip() or None
+    item.detail_monthly_reach = (form.detail_monthly_reach.data or "").strip() or None
+    item.detail_retention_time = (form.detail_retention_time.data or "").strip() or None
+    item.detail_visibility_percent = form.detail_visibility_percent.data
+    item.detail_cta_message = (form.detail_cta_message.data or "").strip() or None
 
 
 def _next_display_order_scoped(model, **filters):

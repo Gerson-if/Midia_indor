@@ -43,6 +43,50 @@
         {{ form.is_featured() }} {{ form.is_featured.label.text }}
       </label>
       {% if form.is_featured.description %}<p class="text-[11px] text-low -mt-2">{{ form.is_featured.description }}</p>{% endif %}
+
+      {% set detail_errors = form.detail_description.errors or form.detail_tags.errors or form.detail_monthly_reach.errors or form.detail_retention_time.errors or form.detail_visibility_percent.errors or form.detail_cta_message.errors %}
+      <details class="rounded-lg border border-line" {{ 'open' if (editing and editing.has_detail_page) or detail_errors }}>
+        <summary class="cursor-pointer select-none px-3 py-2.5 text-xs font-mono uppercase text-mid hover:text-hi">Página de detalhes do ponto</summary>
+        <div class="px-3 pb-3 pt-1 space-y-3 border-t border-line">
+          <label class="flex items-center gap-2 text-xs text-mid pt-2">
+            {{ form.has_detail_page() }} {{ form.has_detail_page.label.text }}
+          </label>
+          {% if form.has_detail_page.description %}<p class="text-[11px] text-low">{{ form.has_detail_page.description }}</p>{% endif %}
+
+          <div>
+            {{ form.detail_description.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+            {{ form.detail_description(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", rows="3") }}
+            {% for e in form.detail_description.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+          </div>
+          <div>
+            {{ form.detail_tags.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+            {{ form.detail_tags(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", placeholder="Delivery e Alimentação, Barbearias, Eventos...") }}
+            {% if form.detail_tags.description %}<p class="text-[11px] text-low mt-1">{{ form.detail_tags.description }}</p>{% endif %}
+            {% for e in form.detail_tags.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              {{ form.detail_monthly_reach.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+              {{ form.detail_monthly_reach(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+            </div>
+            <div>
+              {{ form.detail_retention_time.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+              {{ form.detail_retention_time(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+            </div>
+          </div>
+          <div class="max-w-[10rem]">
+            {{ form.detail_visibility_percent.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+            {{ form.detail_visibility_percent(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", min="0", max="100") }}
+            {% for e in form.detail_visibility_percent.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+          </div>
+          <div>
+            {{ form.detail_cta_message.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+            {{ form.detail_cta_message(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+            {% if form.detail_cta_message.description %}<p class="text-[11px] text-low mt-1">{{ form.detail_cta_message.description }}</p>{% endif %}
+          </div>
+        </div>
+      </details>
+
       <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">
         {{ "Salvar alterações" if editing else "Adicionar" }}
       </button>
@@ -79,6 +123,12 @@
         <div class="flex-1 min-w-0">
           <p class="font-semibold text-hi truncate text-sm">{{ item.title }}</p>
           <p class="text-xs" style="color: var(--amber-text)">{{ item.category }}</p>
+          {% if item.has_detail_page %}
+          <p class="text-[10px] font-mono uppercase text-low mt-0.5 flex items-center gap-1">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="10" height="10"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            página de detalhes
+          </p>
+          {% endif %}
         </div>
         <div class="flex items-center gap-1.5 shrink-0">
           <a href="{{ url_for('admin.gallery_edit', item_id=item.id) }}#form-card" class="icon-btn icon-btn-edit" title="Editar">
