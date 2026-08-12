@@ -195,13 +195,18 @@
         {% if g.is_featured %}
         <span class="absolute top-3 right-3 inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded-full drop-shadow-md" style="background: var(--amber); color: #1A1204">&#9733; Destaque</span>
         {% endif %}
-        <div class="absolute inset-0 flex flex-col justify-end p-5">
+        <div class="absolute inset-0 flex flex-col justify-end p-5 {{ 'pr-12' if g.has_detail_page }}">
           <span class="text-xs font-mono uppercase tracking-wider mb-1 drop-shadow-md" style="color: var(--gallery-accent)">{{ g.category }}</span>
           <span class="text-white text-xl font-bold leading-tight drop-shadow-lg">{{ g.title }}</span>
           {% if g.has_detail_page %}
-          <span class="text-[11px] font-mono text-white/80 mt-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">Ver detalhes &rarr;</span>
+          <span class="gallery-detail-hint text-[11px] font-mono text-white/85 mt-1 flex items-center gap-1">Ver detalhes <span class="gallery-detail-arrow">&rarr;</span></span>
           {% endif %}
         </div>
+        {% if g.has_detail_page %}
+        <span class="gallery-detail-badge" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+        </span>
+        {% endif %}
       {% if g.has_detail_page %}</a>{% else %}</div>{% endif %}
       {% endfor %}
     </div>

@@ -342,6 +342,47 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 /* ---- Ponto destacado na Galeria (um dos 3 melhores, escolhido pelo admin) ---- */
 .gallery-featured{ border-color:var(--amber); box-shadow:0 0 0 1px var(--amber), 0 8px 24px rgba(255,176,32,.18); }
 
+/* ---- Indicador "ver detalhes" nos cards com página própria (galeria) ----
+   Em telas sem hover de verdade (celular/tablet) tudo já fica visível por
+   padrão -- só em dispositivos com hover de mouse real (hover:hover e
+   pointer:fine) é que o texto some e reaparece suavemente ao passar o
+   mouse, já que ":hover" nunca "solta" sozinho no toque. O selo circular
+   (seta) sempre aparece com uma pulsação bem discreta, funcionando como
+   affordance de link em qualquer dispositivo. Regras isoladas nestas duas
+   classes -- não alteram nada fora dos cards da galeria. */
+.gallery-detail-hint{ opacity:1; transform:translateY(0); transition:opacity .25s ease, transform .25s ease; }
+.gallery-detail-arrow{ display:inline-block; transition:transform .25s ease; }
+
+.gallery-detail-badge{
+  position:absolute; bottom:.75rem; right:.75rem; width:2.1rem; height:2.1rem; z-index:1;
+  border-radius:999px; display:flex; align-items:center; justify-content:center;
+  background:rgba(255,255,255,.16); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+  border:1px solid rgba(255,255,255,.4); color:#fff;
+  transition:transform .25s ease, background-color .25s ease, border-color .25s ease, box-shadow .25s ease;
+  animation:gallery-badge-pulse 2.6s ease-in-out infinite;
+}
+.gallery-detail-badge svg{ width:15px; height:15px; }
+
+@keyframes gallery-badge-pulse{
+  0%, 100%{ box-shadow:0 0 0 0 rgba(255,255,255,.3); }
+  50%{ box-shadow:0 0 0 5px rgba(255,255,255,0); }
+}
+
+@media (hover:hover) and (pointer:fine){
+  .gallery-detail-hint{ opacity:0; transform:translateY(6px); }
+  .group:hover .gallery-detail-hint, .group:focus-visible .gallery-detail-hint{ opacity:1; transform:translateY(0); }
+  .group:hover .gallery-detail-arrow, .group:focus-visible .gallery-detail-arrow{ transform:translateX(3px); }
+}
+
+.group:hover .gallery-detail-badge, .group:focus-visible .gallery-detail-badge{
+  background:var(--amber); border-color:var(--amber); color:#1A1204; transform:scale(1.15);
+  box-shadow:0 6px 18px -4px rgba(255,176,32,.6); animation:none;
+}
+
+@media (prefers-reduced-motion: reduce){
+  .gallery-detail-badge{ animation:none; }
+}
+
 .stat-num{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
 
 .rule-label{ display:flex; align-items:center; gap:1rem; color:var(--text-low); font-family:var(--font-mono); font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; }
