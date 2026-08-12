@@ -8,6 +8,7 @@ from app.blueprints.admin.forms import (
     CustomSectionForm,
     CustomSectionItemForm,
     GalleryItemForm,
+    GalleryRecommendationForm,
     PartnerForm,
     ProposalStatusForm,
     ServiceForm,
@@ -21,6 +22,7 @@ from app.models import (
     CustomSection,
     CustomSectionItem,
     GalleryItem,
+    GalleryRecommendation,
     Invoice,
     Partner,
     Proposal,
@@ -361,7 +363,12 @@ def gallery_manage():
 
     items = GalleryItem.query.order_by(GalleryItem.display_order).all()
     return render_template(
-        "admin/content_gallery.html", form=form, items=items, editing=None, max_featured=GalleryItem.MAX_FEATURED
+        "admin/content_gallery.html",
+        form=form,
+        items=items,
+        editing=None,
+        max_featured=GalleryItem.MAX_FEATURED,
+        recommendation_prototype=_gallery_recommendation_prototype(),
     )
 
 
@@ -392,7 +399,12 @@ def gallery_edit(item_id):
 
     items = GalleryItem.query.order_by(GalleryItem.display_order).all()
     return render_template(
-        "admin/content_gallery.html", form=form, items=items, editing=item, max_featured=GalleryItem.MAX_FEATURED
+        "admin/content_gallery.html",
+        form=form,
+        items=items,
+        editing=item,
+        max_featured=GalleryItem.MAX_FEATURED,
+        recommendation_prototype=_gallery_recommendation_prototype(),
     )
 
 
@@ -938,14 +950,39 @@ def _featured_gallery_count() -> int:
     return GalleryItem.query.filter_by(is_featured=True).count()
 
 
+def _gallery_recommendation_prototype():
+    """Formulário 'molde', usado só para desenhar o HTML de uma linha vazia
+    de recomendação dentro do <template> (ver content_gallery.html) -- o JS
+    clona esse HTML e troca "__INDEX__" pela próxima posição da lista ao
+    clicar em "+ Adicionar recomendação". Nunca é validado/submetido."""
+    return GalleryRecommendationForm(formdata=None, prefix="recommendations-__INDEX__-")
+
+
 def _apply_gallery_detail_fields(form, item):
     item.has_detail_page = form.has_detail_page.data
     item.detail_description = (form.detail_description.data or "").strip() or None
-    item.detail_tags = (form.detail_tags.data or "").strip() or None
     item.detail_monthly_reach = (form.detail_monthly_reach.data or "").strip() or None
-    item.detail_retention_time = (form.detail_retention_time.data or "").strip() or None
+    item.detail_retention_value = form.detail_retention_value.data
+    item.detail_retention_unit = form.detail_retention_unit.data or "min"
     item.detail_visibility_percent = form.detail_visibility_percent.data
     item.detail_cta_message = (form.detail_cta_message.data or "").strip() or None
+
+    # Reatribuir a coleção inteira (em vez de tentar sincronizar item a
+    # item) é mais simples e continua correto: o cascade="all,
+    # delete-orphan" do relacionamento cuida de apagar as recomendações
+    # antigas que não estão mais na lista nova.
+    new_recommendations = []
+    order = 0
+    for entry in form.recommendations.data:
+        label = (entry.get("label") or "").strip()
+        if not label:
+            continue
+        icon = (entry.get("icon") or "").strip() or None
+        new_recommendations.append(
+            GalleryRecommendation(tenant_id=item.tenant_id, icon=icon, label=label, display_order=order)
+        )
+        order += 1
+    item.recommendations = new_recommendations
 
 
 def _next_display_order_scoped(model, **filters):

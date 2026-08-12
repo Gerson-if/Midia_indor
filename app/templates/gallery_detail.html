@@ -53,13 +53,15 @@
       </div>
       {% endif %}
 
-      {% if item.detail_tags_list %}
+      {% if item.recommendations %}
       <div class="card p-6 sm:p-8" data-aos="fade-up" data-aos-delay="100">
         <h2 class="font-display text-xl text-hi mb-1">Recomendado para</h2>
         <p class="text-sm text-mid mb-4">Anúncios com maior potencial de conversão neste ponto:</p>
         <div class="flex flex-wrap gap-2">
-          {% for tag in item.detail_tags_list %}
-          <span class="text-sm font-medium px-3 py-1.5 rounded-lg" style="background: rgba(255,176,32,.1); color: var(--amber-text)">{{ tag }}</span>
+          {% for rec in item.recommendations %}
+          <span class="text-sm font-medium px-3 py-1.5 rounded-lg inline-flex items-center gap-1.5" style="background: rgba(255,176,32,.1); color: var(--amber-text)">
+            {% if rec.icon %}<span>{{ rec.icon }}</span>{% endif %}{{ rec.label }}
+          </span>
           {% endfor %}
         </div>
       </div>
@@ -76,10 +78,10 @@
       </div>
       {% endif %}
 
-      {% if item.detail_retention_time %}
+      {% if item.detail_retention_display %}
       <div class="card p-5" style="border-left: 3px solid var(--cyan)" data-aos="fade-left" data-aos-delay="100">
         <p class="text-xs font-mono uppercase text-low mb-1">Tempo de retenção</p>
-        <p class="font-display text-3xl font-bold text-hi">{{ item.detail_retention_time }}</p>
+        <p class="font-display text-3xl font-bold text-hi">{{ item.detail_retention_display }}</p>
         <p class="text-xs text-low mt-1">Tempo médio do público no local</p>
       </div>
       {% endif %}

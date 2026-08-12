@@ -1,8 +1,11 @@
 from app.models.audit import AuditLog
 from app.models.content import (
+    RECOMMENDATION_ICON_CHOICES,
+    RETENTION_UNIT_CHOICES,
     CustomSection,
     CustomSectionItem,
     GalleryItem,
+    GalleryRecommendation,
     Partner,
     Service,
     SiteSettings,
@@ -15,9 +18,12 @@ from app.models.user import User, UserRole
 
 __all__ = [
     "AuditLog",
+    "RECOMMENDATION_ICON_CHOICES",
+    "RETENTION_UNIT_CHOICES",
     "CustomSection",
     "CustomSectionItem",
     "GalleryItem",
+    "GalleryRecommendation",
     "Partner",
     "Service",
     "SiteSettings",

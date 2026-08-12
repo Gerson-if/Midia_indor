@@ -2,7 +2,9 @@ from flask_wtf import FlaskForm
 from flask_wtf.file import FileAllowed, FileField
 from wtforms import (
     BooleanField,
+    FieldList,
     FloatField,
+    FormField,
     IntegerField,
     PasswordField,
     RadioField,
@@ -11,6 +13,8 @@ from wtforms import (
     TextAreaField,
 )
 from wtforms.validators import DataRequired, Email, Length, NumberRange, Optional, Regexp
+
+from app.models.content import RECOMMENDATION_ICON_CHOICES, RETENTION_UNIT_CHOICES
 
 # Aceita hexadecimal de 6 dígitos com # (ex.: #FFB020) — é o formato que o
 # próprio <input type="color"> do navegador sempre envia, e também o que
@@ -46,6 +50,17 @@ class ServiceForm(FlaskForm):
     remove_image = BooleanField("Remover imagem atual")
 
 
+class GalleryRecommendationForm(FlaskForm):
+    """Uma linha de 'Recomendado para' -- sub-formulário dentro da FieldList
+    de GalleryItemForm, adicionada/removida dinamicamente pelo admin."""
+
+    class Meta:
+        csrf = False  # o token já vem uma vez no formulário principal
+
+    icon = SelectField("Ícone", choices=RECOMMENDATION_ICON_CHOICES, validators=[Optional()])
+    label = StringField("Recomendação", validators=[DataRequired(), Length(max=80)])
+
+
 class GalleryItemForm(FlaskForm):
     title = StringField("Título", validators=[DataRequired(), Length(max=120)])
     category = StringField("Categoria", validators=[DataRequired(), Length(max=80)])
@@ -67,19 +82,14 @@ class GalleryItemForm(FlaskForm):
     detail_description = TextAreaField(
         "Sobre este ponto", validators=[Optional(), Length(max=2000)]
     )
-    detail_tags = StringField(
-        "Recomendado para",
-        validators=[Optional(), Length(max=300)],
-        description="Separe por vírgula, ex.: Delivery e Alimentação, Barbearias e Salões, Eventos e Shows.",
-    )
+    recommendations = FieldList(FormField(GalleryRecommendationForm), min_entries=0, max_entries=15)
     detail_monthly_reach = StringField(
         "Fluxo mensal estimado", validators=[Optional(), Length(max=40)], render_kw={"placeholder": "ex.: +4.500"}
     )
-    detail_retention_time = StringField(
-        "Tempo médio de permanência",
-        validators=[Optional(), Length(max=40)],
-        render_kw={"placeholder": "ex.: 45 min"},
+    detail_retention_value = IntegerField(
+        "Tempo médio de permanência", validators=[Optional(), NumberRange(min=0, max=100000)]
     )
+    detail_retention_unit = SelectField("Unidade", choices=RETENTION_UNIT_CHOICES, default="min")
     detail_visibility_percent = IntegerField(
         "Índice de visibilidade (%)", validators=[Optional(), NumberRange(min=0, max=100)]
     )

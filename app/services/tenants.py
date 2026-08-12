@@ -20,6 +20,7 @@ from app.models import (
     CustomSection,
     CustomSectionItem,
     GalleryItem,
+    GalleryRecommendation,
     Partner,
     Proposal,
     Service,
@@ -50,9 +51,11 @@ def delete_tenant(tenant) -> None:
             {"user_id": None}, synchronize_session=False
         )
 
-    # Filhos antes dos pais (custom_section_items referencia custom_sections).
+    # Filhos antes dos pais (custom_section_items referencia custom_sections;
+    # gallery_recommendations referencia gallery_items).
     CustomSectionItem.query.filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
     CustomSection.query.filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+    GalleryRecommendation.query.filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
     GalleryItem.query.filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
     Partner.query.filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
     Proposal.query.filter_by(tenant_id=tenant_id).delete(synchronize_session=False)

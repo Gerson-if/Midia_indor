@@ -54,6 +54,36 @@ class Service(TenantScopedMixin, TimestampMixin, db.Model):
         }
 
 
+# Ícones que o admin pode escolher (opcionalmente) para cada recomendação
+# de nicho de uma página de detalhes -- emoji direto no banco (sem tabela
+# de apoio): simples de renderizar em qualquer lugar (admin, site público,
+# API) sem precisar resolver uma chave para um ícone antes de exibir.
+RECOMMENDATION_ICON_CHOICES = [
+    ("", "Sem ícone"),
+    ("🍕", "🍕 Alimentação e Delivery"),
+    ("💇", "💇 Beleza e Estética"),
+    ("🚗", "🚗 Automotivo"),
+    ("🎓", "🎓 Cursos e Educação"),
+    ("🏋️", "🏋️ Fitness e Academia"),
+    ("🛍️", "🛍️ Moda e Varejo"),
+    ("🏠", "🏠 Imóveis"),
+    ("💊", "💊 Saúde e Bem-estar"),
+    ("🎉", "🎉 Eventos e Shows"),
+    ("📱", "📱 Tecnologia"),
+    ("💼", "💼 Serviços Profissionais"),
+    ("🐾", "🐾 Pet"),
+    ("⚖️", "⚖️ Jurídico"),
+    ("🏦", "🏦 Finanças"),
+    ("✈️", "✈️ Turismo e Viagens"),
+]
+
+# Unidade do tempo médio de permanência -- o sistema já sabe o texto certo
+# ("min"/"h"); o admin só escolhe a unidade e digita a quantidade, em vez
+# de digitar um texto livre (evita "45min", "45 minutos", "45m" etc. tudo
+# diferente entre pontos).
+RETENTION_UNIT_CHOICES = [("min", "minutos"), ("h", "horas")]
+
+
 class GalleryItem(TenantScopedMixin, TimestampMixin, db.Model):
     """Itens da seção 'Nossos Pontos'."""
 
@@ -75,21 +105,27 @@ class GalleryItem(TenantScopedMixin, TimestampMixin, db.Model):
     # nicho e métricas) ou continua só um card estático, como antes. ----
     has_detail_page = db.Column(db.Boolean, nullable=False, default=False)
     detail_description = db.Column(db.Text, nullable=True)
-    # Tags "recomendado para" separadas por vírgula (ex.: "Delivery,
-    # Barbearias, Eventos") -- texto livre em vez de uma tabela própria:
-    # é só um detalhe visual da página, não precisa ser uma entidade
-    # relacional consultável.
-    detail_tags = db.Column(db.String(300), nullable=True)
     detail_monthly_reach = db.Column(db.String(40), nullable=True)
-    detail_retention_time = db.Column(db.String(40), nullable=True)
+    # Quantidade + unidade em vez de texto livre -- o sistema monta o
+    # texto final ("45 min"/"2 h"), o admin só aloca o número.
+    detail_retention_value = db.Column(db.Integer, nullable=True)
+    detail_retention_unit = db.Column(db.String(10), nullable=True, default="min")
     detail_visibility_percent = db.Column(db.Integer, nullable=True)
     detail_cta_message = db.Column(db.String(300), nullable=True)
 
+    recommendations = db.relationship(
+        "GalleryRecommendation",
+        backref="gallery_item",
+        cascade="all, delete-orphan",
+        order_by="GalleryRecommendation.display_order",
+    )
+
     @property
-    def detail_tags_list(self):
-        if not self.detail_tags:
-            return []
-        return [t.strip() for t in self.detail_tags.split(",") if t.strip()]
+    def detail_retention_display(self):
+        if self.detail_retention_value is None:
+            return None
+        unit = self.detail_retention_unit or "min"
+        return f"{self.detail_retention_value} {unit}"
 
     def to_dict(self):
         return {
@@ -102,6 +138,22 @@ class GalleryItem(TenantScopedMixin, TimestampMixin, db.Model):
             "is_featured": self.is_featured,
             "has_detail_page": self.has_detail_page,
         }
+
+
+class GalleryRecommendation(TenantScopedMixin, db.Model):
+    """Uma linha da seção 'Recomendado para' na página de detalhes de um
+    ponto -- texto curto com um ícone opcional (ver RECOMMENDATION_ICON_CHOICES),
+    cadastrada dinamicamente pelo admin (adiciona/remove quantas quiser)."""
+
+    __tablename__ = "gallery_recommendations"
+
+    id = db.Column(db.Integer, primary_key=True)
+    gallery_item_id = db.Column(
+        db.Integer, db.ForeignKey("gallery_items.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    icon = db.Column(db.String(8), nullable=True)
+    label = db.Column(db.String(80), nullable=False)
+    display_order = db.Column(db.Integer, nullable=False, default=0)
 
 
 class Testimonial(TenantScopedMixin, TimestampMixin, db.Model):

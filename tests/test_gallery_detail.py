@@ -1,4 +1,4 @@
-from app.models import GalleryItem
+from app.models import GalleryItem, GalleryRecommendation
 from tests.conftest import login
 
 
@@ -12,9 +12,13 @@ def test_admin_creates_gallery_item_with_detail_page(client, admin_user, db, ten
             "is_active": "y",
             "has_detail_page": "y",
             "detail_description": "Ponto de alta retenção no centro da cidade.",
-            "detail_tags": "Delivery e Alimentação, Barbearias e Salões, Eventos e Shows",
+            "recommendations-0-icon": "🍕",
+            "recommendations-0-label": "Delivery e Alimentação",
+            "recommendations-1-icon": "",
+            "recommendations-1-label": "Barbearias e Salões",
             "detail_monthly_reach": "+4.500",
-            "detail_retention_time": "45 min",
+            "detail_retention_value": "45",
+            "detail_retention_unit": "min",
             "detail_visibility_percent": "95",
             "detail_cta_message": "Olá! Quero anunciar na Pizzaria Italia.",
         },
@@ -26,8 +30,13 @@ def test_admin_creates_gallery_item_with_detail_page(client, admin_user, db, ten
     assert item is not None
     assert item.has_detail_page is True
     assert item.detail_description == "Ponto de alta retenção no centro da cidade."
-    assert item.detail_tags_list == ["Delivery e Alimentação", "Barbearias e Salões", "Eventos e Shows"]
+    assert [r.label for r in item.recommendations] == ["Delivery e Alimentação", "Barbearias e Salões"]
+    assert item.recommendations[0].icon == "🍕"
+    assert item.recommendations[1].icon is None
     assert item.detail_monthly_reach == "+4.500"
+    assert item.detail_retention_value == 45
+    assert item.detail_retention_unit == "min"
+    assert item.detail_retention_display == "45 min"
     assert item.detail_visibility_percent == 95
 
 
@@ -49,6 +58,36 @@ def test_admin_can_toggle_detail_page_off(client, admin_user, db, tenant):
     assert item.has_detail_page is False
 
 
+def test_admin_edits_recommendations_replacing_the_whole_list(client, admin_user, db, tenant):
+    """Reatribuir a lista inteira no submit precisa apagar as recomendações
+    antigas que não vieram de novo (cascade delete-orphan)."""
+    item = GalleryItem(tenant_id=tenant.id, title="Ponto A", category="Cat", has_detail_page=True)
+    item.recommendations = [
+        GalleryRecommendation(tenant_id=tenant.id, label="Antiga", icon="🚗", display_order=0),
+    ]
+    db.session.add(item)
+    db.session.commit()
+    old_rec_id = item.recommendations[0].id
+
+    login(client, "admin@teste.com", "SenhaForte123!")
+    resp = client.post(
+        f"/admin/conteudo/galeria/{item.id}/editar",
+        data={
+            "title": "Ponto A",
+            "category": "Cat",
+            "is_active": "y",
+            "has_detail_page": "y",
+            "recommendations-0-icon": "🎓",
+            "recommendations-0-label": "Nova",
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    db.session.refresh(item)
+    assert [r.label for r in item.recommendations] == ["Nova"]
+    assert GalleryRecommendation.query.filter_by(id=old_rec_id).first() is None
+
+
 def test_public_gallery_detail_page_renders_when_enabled(client, db, tenant):
     item = GalleryItem(
         tenant_id=tenant.id,
@@ -57,11 +96,15 @@ def test_public_gallery_detail_page_renders_when_enabled(client, db, tenant):
         is_active=True,
         has_detail_page=True,
         detail_description="Ponto de alta retenção no centro da cidade.",
-        detail_tags="Delivery e Alimentação, Barbearias e Salões",
         detail_monthly_reach="+4.500",
-        detail_retention_time="45 min",
+        detail_retention_value=45,
+        detail_retention_unit="min",
         detail_visibility_percent=95,
     )
+    item.recommendations = [
+        GalleryRecommendation(tenant_id=tenant.id, icon="🍕", label="Delivery e Alimentação", display_order=0),
+        GalleryRecommendation(tenant_id=tenant.id, icon=None, label="Barbearias e Salões", display_order=1),
+    ]
     db.session.add(item)
     db.session.commit()
 

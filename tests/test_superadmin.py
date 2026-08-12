@@ -224,7 +224,7 @@ def test_superadmin_delete_tenant_removes_everything(client, super_admin_user, t
     """
     from datetime import date
 
-    from app.models import AuditLog, Invoice, Service
+    from app.models import AuditLog, GalleryItem, GalleryRecommendation, Invoice, Service
     from app.utils.decorators import log_action
 
     # Capturados antes da exclusão: os objetos ORM expiram após o commit
@@ -237,6 +237,9 @@ def test_superadmin_delete_tenant_removes_everything(client, super_admin_user, t
     service = Service(tenant_id=tenant_id, title="Servico do Cliente", description="d", display_order=1)
     db.session.add(service)
     db.session.add(Invoice(tenant_id=tenant_id, title="Fatura Pendente", due_date=date.today()))
+    gallery_item = GalleryItem(tenant_id=tenant_id, title="Ponto", category="Cat", has_detail_page=True)
+    gallery_item.recommendations = [GalleryRecommendation(tenant_id=tenant_id, label="Delivery", display_order=0)]
+    db.session.add(gallery_item)
     log_action("service.created", entity_type="Service", entity_id=1, tenant_id=tenant_id, description="teste")
     db.session.commit()
 
@@ -252,6 +255,8 @@ def test_superadmin_delete_tenant_removes_everything(client, super_admin_user, t
     assert User.query.filter_by(id=admin_user_id).first() is None
     assert Service.query.filter_by(tenant_id=tenant_id).count() == 0
     assert Invoice.query.filter_by(tenant_id=tenant_id).count() == 0
+    assert GalleryItem.query.filter_by(tenant_id=tenant_id).count() == 0
+    assert GalleryRecommendation.query.filter_by(tenant_id=tenant_id).count() == 0
 
     old_log = AuditLog.query.filter_by(action="service.created").first()
     assert old_log is not None

@@ -44,7 +44,7 @@
       </label>
       {% if form.is_featured.description %}<p class="text-[11px] text-low -mt-2">{{ form.is_featured.description }}</p>{% endif %}
 
-      {% set detail_errors = form.detail_description.errors or form.detail_tags.errors or form.detail_monthly_reach.errors or form.detail_retention_time.errors or form.detail_visibility_percent.errors or form.detail_cta_message.errors %}
+      {% set detail_errors = form.detail_description.errors or form.recommendations.errors or form.detail_monthly_reach.errors or form.detail_retention_value.errors or form.detail_visibility_percent.errors or form.detail_cta_message.errors %}
       <details class="rounded-lg border border-line" {{ 'open' if (editing and editing.has_detail_page) or detail_errors }}>
         <summary class="cursor-pointer select-none px-3 py-2.5 text-xs font-mono uppercase text-mid hover:text-hi">Página de detalhes do ponto</summary>
         <div class="px-3 pb-3 pt-1 space-y-3 border-t border-line">
@@ -58,20 +58,46 @@
             {{ form.detail_description(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", rows="3") }}
             {% for e in form.detail_description.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
           </div>
+
           <div>
-            {{ form.detail_tags.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-            {{ form.detail_tags(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", placeholder="Delivery e Alimentação, Barbearias, Eventos...") }}
-            {% if form.detail_tags.description %}<p class="text-[11px] text-low mt-1">{{ form.detail_tags.description }}</p>{% endif %}
-            {% for e in form.detail_tags.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+            <label class="block text-xs font-mono uppercase text-low mb-1">Recomendado para</label>
+            <p class="text-[11px] text-low mb-2">Adicione quantas quiser. O ícone é opcional -- só aparece na página se você escolher um.</p>
+            <div id="recommendations-list" class="space-y-2" data-next-index="{{ form.recommendations|length }}">
+              {% for entry in form.recommendations %}
+              <div class="recommendation-row flex items-center gap-2">
+                {{ entry.icon(class_="bg-panel2 border border-line rounded-lg px-1 py-2 text-sm focus:outline-none w-16 shrink-0") }}
+                {{ entry.label(class_="flex-1 min-w-0 bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", placeholder="Ex.: Delivery e Alimentação") }}
+                <button type="button" class="icon-btn icon-btn-danger shrink-0" data-remove-recommendation title="Remover">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+              </div>
+              {% for e in entry.label.errors %}<p class="text-red-400 text-xs">{{ e }}</p>{% endfor %}
+              {% endfor %}
+            </div>
+            <button type="button" id="add-recommendation" class="btn btn-ghost !py-1.5 !px-3 text-xs mt-2">+ Adicionar recomendação</button>
+            <template id="recommendation-row-template">
+              <div class="recommendation-row flex items-center gap-2">
+                {{ recommendation_prototype.icon(class_="bg-panel2 border border-line rounded-lg px-1 py-2 text-sm focus:outline-none w-16 shrink-0") }}
+                {{ recommendation_prototype.label(class_="flex-1 min-w-0 bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", placeholder="Ex.: Delivery e Alimentação") }}
+                <button type="button" class="icon-btn icon-btn-danger shrink-0" data-remove-recommendation title="Remover">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+              </div>
+            </template>
           </div>
+
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               {{ form.detail_monthly_reach.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
               {{ form.detail_monthly_reach(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
             </div>
             <div>
-              {{ form.detail_retention_time.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-              {{ form.detail_retention_time(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+              {{ form.detail_retention_value.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+              <div class="flex gap-2">
+                {{ form.detail_retention_value(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", min="0", placeholder="Ex.: 45") }}
+                {{ form.detail_retention_unit(class_="bg-panel2 border border-line rounded-lg px-2 py-2 text-sm focus:outline-none w-28 shrink-0") }}
+              </div>
+              {% for e in form.detail_retention_value.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
             </div>
           </div>
           <div class="max-w-[10rem]">
@@ -150,4 +176,8 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ static_asset('js/admin-gallery-recommendations.js') }}"></script>
 {% endblock %}
