@@ -397,40 +397,13 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 /* ---- Ponto destacado na Galeria (um dos 3 melhores, escolhido pelo admin) ---- */
 .gallery-featured{ border-color:var(--amber); box-shadow:0 0 0 1px var(--amber), 0 8px 24px rgba(255,176,32,.18); }
 
-/* ---- Indicador "ver detalhes" nos cards com página própria (galeria) ----
-   Selo circular (seta) sempre visível com uma pulsação discreta -- é a
-   única affordance de link, funciona em qualquer dispositivo sem depender
-   de hover (que não existe no toque). No toque, o selo muda de estado via
-   .is-armed (ver gallery-detail-tap.js); com mouse, muda no :hover. Regra
-   isolada nesta classe -- não altera nada fora dos cards da galeria. */
-.gallery-detail-badge{
-  position:absolute; bottom:.75rem; right:.75rem; width:2.25rem; height:2.25rem; z-index:1;
-  border-radius:999px; display:flex; align-items:center; justify-content:center;
-  background:rgba(255,255,255,.14); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
-  border:1px solid rgba(255,255,255,.38); color:#fff;
-  box-shadow:0 4px 14px -2px rgba(0,0,0,.35);
-  transition:transform .25s ease, background-color .25s ease, border-color .25s ease, box-shadow .25s ease;
-  animation:gallery-badge-pulse 2.6s ease-in-out infinite;
-}
-.gallery-detail-badge svg{ width:14px; height:14px; }
-
-@keyframes gallery-badge-pulse{
-  0%, 100%{ box-shadow:0 0 0 0 rgba(255,255,255,.3); }
-  50%{ box-shadow:0 0 0 5px rgba(255,255,255,0); }
-}
-
-.group:hover .gallery-detail-badge, .group:focus-visible .gallery-detail-badge{
-  background:var(--amber); border-color:var(--amber); color:#1A1204; transform:scale(1.15);
-  box-shadow:0 6px 18px -4px rgba(255,176,32,.6); animation:none;
-}
-
 /* ---- Estado "armado" no toque (gallery-detail-tap.js) ----
    Em telas sem mouse, o 1º toque num card com página de detalhes não
    navega ainda -- só sinaliza com uma animação clara que outro toque
-   confirma. O selo pulsa mais forte e vira âmbar com um "ripple"
-   (anel se expandindo), e um rótulo "Toque de novo" aparece por cima do
-   card. Some sozinho depois de alguns segundos se o visitante não tocar
-   de novo (ver JS), ou ao tocar em outro lugar da tela. */
+   confirma: um rótulo "Toque de novo" aparece por cima do card. Some
+   sozinho depois de alguns segundos se o visitante não tocar de novo (ver
+   JS), ou ao tocar em outro lugar da tela. Com mouse, o próprio :hover do
+   card (zoom da imagem + overlay mais escuro) já avisa antes do clique. */
 .gallery-tap-again{
   position:absolute; inset:0; z-index:2; display:flex; flex-direction:column; align-items:center; justify-content:center;
   gap:.4rem; text-align:center; padding:1rem; font-family:var(--font-mono); font-size:.8rem; font-weight:600;
@@ -466,19 +439,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   50%{ transform:scale(1.08); }
 }
 
-.is-armed .gallery-detail-badge{
-  background:var(--amber); border-color:var(--amber); color:#1A1204;
-  animation:gallery-badge-ripple .6s ease-out;
-}
-@keyframes gallery-badge-ripple{
-  0%{ box-shadow:0 0 0 0 rgba(255,176,32,.55); transform:scale(1); }
-  70%{ box-shadow:0 0 0 14px rgba(255,176,32,0); transform:scale(1.18); }
-  100%{ box-shadow:0 0 0 14px rgba(255,176,32,0); transform:scale(1.15); }
-}
-
 @media (prefers-reduced-motion: reduce){
-  .gallery-detail-badge{ animation:none; }
-  .is-armed .gallery-detail-badge{ animation:none; }
   .gallery-tap-again{ transition:none; }
   .gallery-tap-again-icon{ animation:none; }
   .gallery-tap-again-icon::before, .gallery-tap-again-icon::after{ animation:none; opacity:0; }
