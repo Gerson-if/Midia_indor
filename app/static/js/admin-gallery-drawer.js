@@ -1,0 +1,59 @@
+// Gaveta lateral do formulário de galeria: abre/fecha sem depender de
+// navegação sempre que possível. O formulário já vem renderizado pelo
+// servidor (com os dados do item em edição, se houver) -- este script só
+// controla a exibição.
+document.addEventListener('DOMContentLoaded', () => {
+  const drawer = document.getElementById('gallery-drawer');
+  const backdrop = document.getElementById('gallery-drawer-backdrop');
+  const addBtn = document.getElementById('gallery-add-btn');
+  const closeBtn = document.getElementById('gallery-drawer-close');
+  if (!drawer || !backdrop || !addBtn || !closeBtn) return;
+
+  const isEditing = drawer.dataset.editing === 'true';
+
+  function openDrawer() {
+    drawer.classList.add('open');
+    backdrop.classList.add('open');
+    drawer.setAttribute('aria-hidden', 'false');
+    const firstField = drawer.querySelector('.gallery-drawer-body input, .gallery-drawer-body textarea');
+    if (firstField) firstField.focus({ preventScroll: true });
+  }
+
+  function closeDrawer() {
+    drawer.classList.remove('open');
+    backdrop.classList.remove('open');
+    drawer.setAttribute('aria-hidden', 'true');
+  }
+
+  // Editando um item existente (veio de um link "Editar#form-card") ou
+  // acabou de chegar aqui pelo botão "+ Novo ponto" (mesma âncora): abre
+  // já na primeira renderização, sem esperar clique.
+  if (isEditing || window.location.hash === '#form-card') {
+    openDrawer();
+  }
+
+  addBtn.addEventListener('click', (event) => {
+    // Sem item em edição, o formulário em branco já está pronto no DOM --
+    // só mostra a gaveta, sem recarregar a página.
+    if (!isEditing) {
+      event.preventDefault();
+      openDrawer();
+    }
+    // Editando: deixa o link navegar de verdade para a rota de criação,
+    // já que o <form> desta página está apontado para atualizar o item atual.
+  });
+
+  closeBtn.addEventListener('click', (event) => {
+    if (!isEditing) {
+      event.preventDefault();
+      closeDrawer();
+    }
+    // Editando: deixa o link navegar para limpar o estado de edição.
+  });
+
+  backdrop.addEventListener('click', closeDrawer);
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && drawer.classList.contains('open')) closeDrawer();
+  });
+});

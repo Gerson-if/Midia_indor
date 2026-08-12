@@ -1,15 +1,81 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}Galeria — {{ APP_NAME }}{% endblock %}
 {% block admin_content %}
-<h2 class="font-display text-2xl mb-6">Galeria (Seção "Nossos Pontos")</h2>
-<div class="grid lg:grid-cols-3 gap-6">
-  <div class="card p-6" id="form-card">
-    <div class="flex items-center justify-between mb-4">
-      <h3 class="font-display text-lg">{{ "Editando ponto" if editing else "Novo ponto" }}</h3>
-      {% if editing %}
-      <a href="{{ url_for('admin.gallery_manage') }}" class="text-xs text-mid hover:text-hi">Cancelar</a>
+<div class="flex items-center justify-between gap-3 mb-6 flex-wrap">
+  <h2 class="font-display text-2xl">Galeria (Seção "Nossos Pontos")</h2>
+  <a href="{{ url_for('admin.gallery_manage') }}#form-card" id="gallery-add-btn" class="btn btn-primary !py-2 !px-4 text-sm shrink-0" style="background-color: var(--amber)">
+    + Novo ponto
+  </a>
+</div>
+
+{% if items %}
+<p class="text-[11px] text-low mb-2 flex items-center gap-1.5">
+  <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12" class="shrink-0"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
+  Arraste os cards pela alça para reordenar
+</p>
+<p class="text-[11px] text-low mb-3">
+  <span class="font-mono" style="color: var(--amber-text)">&#9733; {{ items|selectattr('is_featured')|list|length }}/{{ max_featured }}</span>
+  pontos destacados como os melhores.
+</p>
+{% endif %}
+<div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-3" data-reorder-list data-reorder-url="{{ url_for('admin.gallery_reorder') }}">
+  {% for item in items %}
+  <div class="card card-draggable p-4 flex items-center gap-3 {{ 'card-editing' if editing and editing.id == item.id }} {{ 'ring-1' if item.is_featured }}" style="{{ 'box-shadow: inset 0 0 0 1px var(--amber)' if item.is_featured }}" data-reorder-item data-id="{{ item.id }}">
+    <span class="drag-handle" data-drag-handle title="Arrastar para reordenar">
+      <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
+    </span>
+    <div class="relative shrink-0">
+      {% if item.image_path %}
+      <img src="{{ url_for('static', filename=item.image_path) }}" class="w-14 h-14 rounded-lg object-cover">
+      {% else %}
+      <div class="w-14 h-14 rounded-lg bg-panel2"></div>
+      {% endif %}
+      {% if item.is_featured %}
+      <span class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px]" style="background: var(--amber); color: #1A1204" title="Destaque">&#9733;</span>
       {% endif %}
     </div>
+    <div class="flex-1 min-w-0">
+      <p class="font-semibold text-hi truncate text-sm">{{ item.title }}</p>
+      <p class="text-xs" style="color: var(--amber-text)">{{ item.category }}</p>
+      {% if item.has_detail_page %}
+      <p class="text-[10px] font-mono uppercase text-low mt-0.5 flex items-center gap-1">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="10" height="10"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        página de detalhes
+      </p>
+      {% endif %}
+    </div>
+    <div class="flex items-center gap-1.5 shrink-0">
+      <a href="{{ url_for('admin.gallery_edit', item_id=item.id) }}#form-card" class="icon-btn icon-btn-edit" title="Editar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+        <span class="hidden sm:inline">Editar</span>
+      </a>
+      <form method="POST" action="{{ url_for('admin.gallery_delete', item_id=item.id) }}" data-confirm-message="Excluir este item da galeria? Esta ação não pode ser desfeita.">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="icon-btn icon-btn-danger" title="Excluir">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          <span class="hidden sm:inline">Excluir</span>
+        </button>
+      </form>
+    </div>
+  </div>
+  {% else %}
+  <p class="text-mid text-sm">Nenhum item cadastrado.</p>
+  {% endfor %}
+</div>
+
+<!-- Gaveta lateral: formulário de criar/editar um item da galeria. Fica
+     sempre no DOM (server-rendered, com os dados do item em edição já
+     preenchidos quando for o caso) -- o JS só controla abrir/fechar. Isso
+     evita ter que reimplementar o formulário em JS puro. -->
+<div id="gallery-drawer-backdrop" class="gallery-drawer-backdrop"></div>
+<aside id="gallery-drawer" class="gallery-drawer" data-editing="{{ 'true' if editing else 'false' }}" aria-hidden="true">
+  <div class="gallery-drawer-header">
+    <h3 class="font-display text-lg" id="form-card">{{ "Editando ponto" if editing else "Novo ponto" }}</h3>
+    <a href="{{ url_for('admin.gallery_manage') }}" id="gallery-drawer-close" class="gallery-drawer-close" title="Fechar" aria-label="Fechar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </a>
+  </div>
+  <div class="gallery-drawer-body">
     <form method="POST" action="{{ url_for('admin.gallery_edit', item_id=editing.id) if editing else url_for('admin.gallery_manage') }}" enctype="multipart/form-data" class="space-y-4">
       {{ form.hidden_tag() }}
       <div>
@@ -47,7 +113,7 @@
       {% set detail_errors = form.detail_description.errors or form.recommendations.errors or form.detail_monthly_reach.errors or form.detail_retention_value.errors or form.detail_visibility_percent.errors or form.detail_cta_message.errors %}
       <details class="rounded-lg border border-line" {{ 'open' if (editing and editing.has_detail_page) or detail_errors }}>
         <summary class="cursor-pointer select-none px-3 py-2.5 text-xs font-mono uppercase text-mid hover:text-hi">Página de detalhes do ponto</summary>
-        <div class="px-3 pb-3 pt-1 space-y-3 border-t border-line">
+        <div class="px-3 pb-3 pt-1 space-y-4 border-t border-line">
           <label class="flex items-center gap-2 text-xs text-mid pt-2">
             {{ form.has_detail_page() }} {{ form.has_detail_page.label.text }}
           </label>
@@ -65,7 +131,7 @@
             <div id="recommendations-list" class="space-y-2" data-next-index="{{ form.recommendations|length }}">
               {% for entry in form.recommendations %}
               <div class="recommendation-row flex items-center gap-2">
-                {{ entry.icon(class_="bg-panel2 border border-line rounded-lg px-1 py-2 text-sm focus:outline-none w-16 shrink-0") }}
+                {{ entry.icon(class_="bg-panel2 border border-line rounded-lg px-1 py-2 text-sm focus:outline-none w-20 shrink-0") }}
                 {{ entry.label(class_="flex-1 min-w-0 bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", placeholder="Ex.: Delivery e Alimentação") }}
                 <button type="button" class="icon-btn icon-btn-danger shrink-0" data-remove-recommendation title="Remover">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
@@ -77,7 +143,7 @@
             <button type="button" id="add-recommendation" class="btn btn-ghost !py-1.5 !px-3 text-xs mt-2">+ Adicionar recomendação</button>
             <template id="recommendation-row-template">
               <div class="recommendation-row flex items-center gap-2">
-                {{ recommendation_prototype.icon(class_="bg-panel2 border border-line rounded-lg px-1 py-2 text-sm focus:outline-none w-16 shrink-0") }}
+                {{ recommendation_prototype.icon(class_="bg-panel2 border border-line rounded-lg px-1 py-2 text-sm focus:outline-none w-20 shrink-0") }}
                 {{ recommendation_prototype.label(class_="flex-1 min-w-0 bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", placeholder="Ex.: Delivery e Alimentação") }}
                 <button type="button" class="icon-btn icon-btn-danger shrink-0" data-remove-recommendation title="Remover">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
@@ -86,20 +152,20 @@
             </template>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              {{ form.detail_monthly_reach.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-              {{ form.detail_monthly_reach(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
-            </div>
-            <div>
-              {{ form.detail_retention_value.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-              <div class="flex gap-2">
-                {{ form.detail_retention_value(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", min="0", placeholder="Ex.: 45") }}
-                {{ form.detail_retention_unit(class_="bg-panel2 border border-line rounded-lg px-2 py-2 text-sm focus:outline-none w-28 shrink-0") }}
-              </div>
-              {% for e in form.detail_retention_value.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
-            </div>
+          <div>
+            {{ form.detail_monthly_reach.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+            {{ form.detail_monthly_reach(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
           </div>
+
+          <div>
+            {{ form.detail_retention_value.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+            <div class="flex items-center gap-2">
+              {{ form.detail_retention_value(class_="w-24 shrink-0 bg-panel2 border border-line rounded-lg px-3 py-2 text-sm text-center focus:outline-none", min="0", placeholder="45") }}
+              {{ form.detail_retention_unit(class_="flex-1 min-w-0 bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+            </div>
+            {% for e in form.detail_retention_value.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+          </div>
+
           <div class="max-w-[10rem]">
             {{ form.detail_visibility_percent.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
             {{ form.detail_visibility_percent(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", min="0", max="100") }}
@@ -118,66 +184,10 @@
       </button>
     </form>
   </div>
-
-  <div class="lg:col-span-2">
-    {% if items %}
-    <p class="text-[11px] text-low mb-2 flex items-center gap-1.5">
-      <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12" class="shrink-0"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
-      Arraste os cards pela alça para reordenar
-    </p>
-    <p class="text-[11px] text-low mb-3">
-      <span class="font-mono" style="color: var(--amber-text)">&#9733; {{ items|selectattr('is_featured')|list|length }}/{{ max_featured }}</span>
-      pontos destacados como os melhores.
-    </p>
-    {% endif %}
-    <div class="grid sm:grid-cols-2 gap-3" data-reorder-list data-reorder-url="{{ url_for('admin.gallery_reorder') }}">
-      {% for item in items %}
-      <div class="card card-draggable p-4 flex items-center gap-3 {{ 'card-editing' if editing and editing.id == item.id }} {{ 'ring-1' if item.is_featured }}" style="{{ 'box-shadow: inset 0 0 0 1px var(--amber)' if item.is_featured }}" data-reorder-item data-id="{{ item.id }}">
-        <span class="drag-handle" data-drag-handle title="Arrastar para reordenar">
-          <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
-        </span>
-        <div class="relative shrink-0">
-          {% if item.image_path %}
-          <img src="{{ url_for('static', filename=item.image_path) }}" class="w-14 h-14 rounded-lg object-cover">
-          {% else %}
-          <div class="w-14 h-14 rounded-lg bg-panel2"></div>
-          {% endif %}
-          {% if item.is_featured %}
-          <span class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px]" style="background: var(--amber); color: #1A1204" title="Destaque">&#9733;</span>
-          {% endif %}
-        </div>
-        <div class="flex-1 min-w-0">
-          <p class="font-semibold text-hi truncate text-sm">{{ item.title }}</p>
-          <p class="text-xs" style="color: var(--amber-text)">{{ item.category }}</p>
-          {% if item.has_detail_page %}
-          <p class="text-[10px] font-mono uppercase text-low mt-0.5 flex items-center gap-1">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="10" height="10"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-            página de detalhes
-          </p>
-          {% endif %}
-        </div>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <a href="{{ url_for('admin.gallery_edit', item_id=item.id) }}#form-card" class="icon-btn icon-btn-edit" title="Editar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-            <span class="hidden sm:inline">Editar</span>
-          </a>
-          <form method="POST" action="{{ url_for('admin.gallery_delete', item_id=item.id) }}" data-confirm-message="Excluir este item da galeria? Esta ação não pode ser desfeita.">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="icon-btn icon-btn-danger" title="Excluir">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-              <span class="hidden sm:inline">Excluir</span>
-            </button>
-          </form>
-        </div>
-      </div>
-      {% else %}
-      <p class="text-mid text-sm">Nenhum item cadastrado.</p>
-      {% endfor %}
-    </div>
-  </div>
-</div>
+</aside>
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ static_asset('js/admin-gallery-recommendations.js') }}"></script>
+<script src="{{ static_asset('js/admin-gallery-drawer.js') }}"></script>
 {% endblock %}
