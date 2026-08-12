@@ -87,6 +87,7 @@
     {% if invoice.status.value == "PENDING" %}
     <div class="card p-6 space-y-3">
       <h2 class="font-display text-lg mb-2">Ações</h2>
+      <a href="{{ url_for('superadmin.invoice_edit', invoice_id=invoice.id) }}" class="btn btn-ghost w-full justify-center py-2.5 text-sm">Editar fatura</a>
       <form method="POST" action="{{ url_for('superadmin.invoice_mark_paid', invoice_id=invoice.id) }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">Marcar como paga</button>
@@ -95,6 +96,16 @@
             data-confirm-message='Cancelar a fatura "{{ invoice.title }}"?'>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn w-full justify-center py-2.5 text-sm text-red-400 border border-red-400/40 hover:bg-red-500/10">Cancelar fatura</button>
+      </form>
+    </div>
+
+    <div class="card p-6 space-y-3" style="border-color: rgba(239,68,68,.3)">
+      <h2 class="font-display text-lg text-red-400 mb-1">Excluir fatura</h2>
+      <p class="text-xs text-low">Remove esta fatura em aberto por completo (diferente de cancelar: some do sistema, não fica guardada como registro). Use quando a fatura foi lançada por engano.</p>
+      <form method="POST" action="{{ url_for('superadmin.invoice_delete', invoice_id=invoice.id) }}"
+            data-confirm-message='Excluir a fatura "{{ invoice.title }}" por completo? Esta ação não pode ser desfeita.'>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn w-full justify-center py-2.5 text-sm text-red-400 border border-red-400/40 hover:bg-red-500/10">Excluir fatura</button>
       </form>
     </div>
     {% endif %}

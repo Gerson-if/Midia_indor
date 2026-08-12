@@ -58,6 +58,65 @@ def test_superadmin_marks_invoice_paid_and_cancel(client, super_admin_user, tena
     assert invoice2.status == InvoiceStatus.CANCELED
 
 
+def test_superadmin_edits_pending_invoice_including_cutoff_date(client, super_admin_user, tenant, db):
+    login_superadmin(client, "superadmin@teste.com", "SenhaForte123!")
+    invoice = Invoice(tenant_id=tenant.id, title="Mensalidade Julho", due_date=date(2026, 7, 25))
+    db.session.add(invoice)
+    db.session.commit()
+
+    resp = client.post(
+        f"/super/faturas/{invoice.id}/editar",
+        data={
+            "title": "Mensalidade Agosto",
+            "due_date": "2026-08-25",
+            "is_recurring": "y",
+            "service_cutoff_at": "2026-09-10",
+            "notes": "Reajuste combinado com o cliente.",
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    db.session.refresh(invoice)
+    assert invoice.title == "Mensalidade Agosto"
+    assert invoice.due_date == date(2026, 8, 25)
+    assert invoice.is_recurring is True
+    assert invoice.service_cutoff_at == date(2026, 9, 10)
+    assert invoice.notes == "Reajuste combinado com o cliente."
+
+
+def test_superadmin_cannot_edit_or_delete_paid_invoice(client, super_admin_user, tenant, db):
+    login_superadmin(client, "superadmin@teste.com", "SenhaForte123!")
+    invoice = Invoice(tenant_id=tenant.id, title="Fatura Paga", due_date=date.today(), status=InvoiceStatus.PAID)
+    db.session.add(invoice)
+    db.session.commit()
+    invoice_id = invoice.id
+
+    resp = client.post(
+        f"/super/faturas/{invoice_id}/editar",
+        data={"title": "Tentando mudar", "due_date": "2026-08-25", "service_cutoff_at": ""},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    db.session.refresh(invoice)
+    assert invoice.title == "Fatura Paga"
+
+    resp = client.post(f"/super/faturas/{invoice_id}/excluir", follow_redirects=True)
+    assert resp.status_code == 200
+    assert Invoice.query.filter_by(id=invoice_id).first() is not None
+
+
+def test_superadmin_deletes_pending_invoice(client, super_admin_user, tenant, db):
+    login_superadmin(client, "superadmin@teste.com", "SenhaForte123!")
+    invoice = Invoice(tenant_id=tenant.id, title="Fatura Lançada por Engano", due_date=date.today())
+    db.session.add(invoice)
+    db.session.commit()
+    invoice_id = invoice.id
+
+    resp = client.post(f"/super/faturas/{invoice_id}/excluir", follow_redirects=True)
+    assert resp.status_code == 200
+    assert Invoice.query.filter_by(id=invoice_id).first() is None
+
+
 def test_invoices_overview_filters_by_status(client, super_admin_user, tenant, db):
     login_superadmin(client, "superadmin@teste.com", "SenhaForte123!")
     db.session.add(Invoice(tenant_id=tenant.id, title="Fatura Aberta", due_date=date.today()))

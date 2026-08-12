@@ -384,6 +384,62 @@ def invoice_detail(invoice_id):
     )
 
 
+@superadmin_bp.route("/faturas/<int:invoice_id>/editar", methods=["GET", "POST"])
+def invoice_edit(invoice_id):
+    invoice = Invoice.query.filter_by(id=invoice_id).first_or_404()
+    if invoice.status != InvoiceStatus.PENDING:
+        flash("Só é possível editar faturas pendentes. Faturas pagas ou canceladas ficam travadas para manter o registro.", "danger")
+        return redirect(url_for("superadmin.invoice_detail", invoice_id=invoice.id))
+
+    form = InvoiceCreateForm(obj=invoice) if request.method == "GET" else InvoiceCreateForm()
+    if form.validate_on_submit():
+        invoice.title = form.title.data.strip()
+        invoice.due_date = form.due_date.data
+        invoice.is_recurring = form.is_recurring.data
+        invoice.service_cutoff_at = form.service_cutoff_at.data
+        invoice.notes = (form.notes.data or "").strip() or None
+        log_action(
+            "invoice.updated",
+            entity_type="Invoice",
+            entity_id=invoice.id,
+            description=invoice.title,
+            tenant_id=invoice.tenant_id,
+        )
+        db.session.commit()
+        flash("Fatura atualizada.", "success")
+        return redirect(url_for("superadmin.invoice_detail", invoice_id=invoice.id))
+
+    return render_template(
+        "superadmin/invoice_form.html", form=form, tenant=invoice.tenant, editing=invoice
+    )
+
+
+@superadmin_bp.route("/faturas/<int:invoice_id>/excluir", methods=["POST"])
+def invoice_delete(invoice_id):
+    invoice = Invoice.query.filter_by(id=invoice_id).first_or_404()
+    if invoice.status != InvoiceStatus.PENDING:
+        flash(
+            "Só é possível excluir faturas em aberto (pendentes). Faturas pagas ficam guardadas para "
+            "registro; para uma fatura cancelada, o registro já fica marcado como cancelado.",
+            "danger",
+        )
+        return redirect(url_for("superadmin.invoice_detail", invoice_id=invoice.id))
+
+    tenant_id = invoice.tenant_id
+    title = invoice.title
+    log_action(
+        "invoice.deleted",
+        entity_type="Invoice",
+        entity_id=invoice.id,
+        description=title,
+        tenant_id=tenant_id,
+    )
+    db.session.delete(invoice)
+    db.session.commit()
+    flash(f'Fatura "{title}" excluída.', "info")
+    return redirect(url_for("superadmin.tenant_detail", tenant_id=tenant_id))
+
+
 @superadmin_bp.route("/faturas/<int:invoice_id>/itens", methods=["POST"])
 def invoice_add_item(invoice_id):
     invoice = Invoice.query.filter_by(id=invoice_id).first_or_404()

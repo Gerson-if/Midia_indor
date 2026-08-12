@@ -1,8 +1,12 @@
 {% extends "superadmin/base_superadmin.html" %}
-{% block title %}Nova fatura — {{ tenant.name }}{% endblock %}
+{% block title %}{{ "Editar fatura" if editing else "Nova fatura" }} — {{ tenant.name }}{% endblock %}
 {% block content %}
+{% if editing %}
+<a href="{{ url_for('superadmin.invoice_detail', invoice_id=editing.id) }}" class="text-xs text-mid hover:text-hi">&larr; {{ editing.title }}</a>
+{% else %}
 <a href="{{ url_for('superadmin.tenant_detail', tenant_id=tenant.id) }}" class="text-xs text-mid hover:text-hi">&larr; {{ tenant.name }}</a>
-<h1 class="font-display text-2xl mt-2 mb-6">Nova fatura — {{ tenant.name }}</h1>
+{% endif %}
+<h1 class="font-display text-2xl mt-2 mb-6">{{ "Editar fatura" if editing else "Nova fatura" }} — {{ tenant.name }}</h1>
 
 <div class="card p-6 max-w-xl">
   <form method="POST" class="space-y-5">
@@ -40,8 +44,12 @@
       {% for e in form.notes.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
     </div>
 
+    {% if not editing %}
     <p class="text-xs text-low">Depois de criar, você adiciona os itens (o que está incluso) na próxima tela.</p>
-    <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">Criar fatura</button>
+    {% endif %}
+    <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">
+      {{ "Salvar alterações" if editing else "Criar fatura" }}
+    </button>
   </form>
 </div>
 {% endblock %}
