@@ -150,6 +150,28 @@ h1,h2,h3,h4,.font-display{ font-family:var(--font-display); letter-spacing:-0.02
   *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; scroll-behavior:auto !important; }
 }
 
+/* ---- Transição animada entre páginas (View Transitions API nativa) ----
+   Ativa um crossfade suave ao navegar entre páginas do mesmo site (ex.:
+   início -> página de detalhes de um ponto, ou entre telas do painel) --
+   sem nenhum JavaScript e sem alterar a navegação em si (continua sendo
+   uma troca de página normal por baixo). Só o efeito visual é novo.
+   Navegadores sem suporte (Firefox, Safari mais antigo) simplesmente
+   ignoram estas regras e navegam do jeito de sempre -- não quebra nada. */
+@view-transition{
+  navigation:auto;
+}
+::view-transition-old(root){ animation:page-fade-out .22s ease-in both; }
+::view-transition-new(root){ animation:page-fade-in .32s cubic-bezier(.16,1,.3,1) both; }
+@keyframes page-fade-out{
+  to{ opacity:0; transform:translateY(-10px) scale(.99); }
+}
+@keyframes page-fade-in{
+  from{ opacity:0; transform:translateY(10px) scale(.99); }
+}
+@media (prefers-reduced-motion: reduce){
+  ::view-transition-old(root), ::view-transition-new(root){ animation:none; }
+}
+
 a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, [tabindex]:focus-visible{
   outline:2px solid var(--amber);
   outline-offset:2px;
@@ -379,8 +401,36 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   box-shadow:0 6px 18px -4px rgba(255,176,32,.6); animation:none;
 }
 
+/* ---- Estado "armado" no toque (gallery-detail-tap.js) ----
+   Em telas sem mouse, o 1º toque num card com página de detalhes não
+   navega ainda -- só sinaliza com uma animação clara que outro toque
+   confirma. O selo pulsa mais forte e vira âmbar com um "ripple"
+   (anel se expandindo), e um rótulo "Toque de novo" aparece por cima do
+   card. Some sozinho depois de alguns segundos se o visitante não tocar
+   de novo (ver JS), ou ao tocar em outro lugar da tela. */
+.gallery-tap-again{
+  position:absolute; inset:0; z-index:2; display:flex; align-items:center; justify-content:center;
+  text-align:center; padding:1rem; font-family:var(--font-mono); font-size:.8rem; font-weight:600;
+  color:#fff; background:rgba(10,14,22,.55); backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
+  opacity:0; transform:scale(.96); pointer-events:none;
+  transition:opacity .22s ease, transform .22s ease;
+}
+.is-armed .gallery-tap-again{ opacity:1; transform:scale(1); }
+
+.is-armed .gallery-detail-badge{
+  background:var(--amber); border-color:var(--amber); color:#1A1204;
+  animation:gallery-badge-ripple .6s ease-out;
+}
+@keyframes gallery-badge-ripple{
+  0%{ box-shadow:0 0 0 0 rgba(255,176,32,.55); transform:scale(1); }
+  70%{ box-shadow:0 0 0 14px rgba(255,176,32,0); transform:scale(1.18); }
+  100%{ box-shadow:0 0 0 14px rgba(255,176,32,0); transform:scale(1.15); }
+}
+
 @media (prefers-reduced-motion: reduce){
   .gallery-detail-badge{ animation:none; }
+  .is-armed .gallery-detail-badge{ animation:none; }
+  .gallery-tap-again{ transition:none; }
 }
 
 .stat-num{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }

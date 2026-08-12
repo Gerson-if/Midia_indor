@@ -184,7 +184,7 @@
     </div>
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       {% for g in gallery %}
-      {% if g.has_detail_page %}<a href="{{ url_for('main.gallery_detail', item_id=g.id) }}"{% else %}<div{% endif %}
+      {% if g.has_detail_page %}<a href="{{ url_for('main.gallery_detail', item_id=g.id) }}" data-detail-link{% else %}<div{% endif %}
         class="screen aspect-[3/4] relative overflow-hidden rounded-xl border group {{ 'gallery-featured' if g.is_featured else 'border-line' }}" data-aos="zoom-in" data-aos-delay="{{ loop.index0 * 100 }}">
         {% if g.image_path %}
         <img src="{{ url_for('static', filename=g.image_path) }}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
@@ -206,6 +206,7 @@
         <span class="gallery-detail-badge" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
         </span>
+        <span class="gallery-tap-again" aria-hidden="true">Toque de novo para ver &rarr;</span>
         {% endif %}
       {% if g.has_detail_page %}</a>{% else %}</div>{% endif %}
       {% endfor %}
@@ -413,6 +414,7 @@
 
 {% block scripts %}
 <script src="{{ static_asset('vendor/aos/aos.js') }}" defer></script>
+<script src="{{ static_asset('js/gallery-detail-tap.js') }}" defer></script>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     AOS.init({ once: true, duration: 800 });
