@@ -14,6 +14,30 @@
 <link rel="stylesheet" href="{{ static_asset('css/tailwind.min.css') }}">
 <link rel="stylesheet" href="{{ static_asset('css/style.css') }}">
 {% block extra_head %}{% endblock %}
+<!-- Pré-renderização especulativa: ao passar o mouse sobre um link do
+     painel, o Chrome/Edge já carrega a página de destino inteira (fora da
+     tela) e só "troca" pra ela quando o clique acontece de verdade --
+     navegação parece instantânea, sem precisar reescrever o painel como
+     SPA. Navegadores sem suporte (Firefox, Safari) ignoram esta tag e
+     navegam do jeito de sempre; não quebra nada.
+     Exclui rotas GET que têm efeito colateral no servidor (hoje só o
+     redirecionamento de WhatsApp de uma solicitação, que já registra o
+     contato em auditoria) -- essas não podem ser disparadas só de passar o
+     mouse por cima. Ações que alteram dados (excluir etc.) já são só POST
+     via formulário, então nunca entram nessa pré-renderização por link. -->
+<script type="speculationrules">
+{
+  "prerender": [{
+    "where": {
+      "and": [
+        { "href_matches": "/admin/*" },
+        { "not": { "href_matches": "/admin/solicitacoes/*/whatsapp" } }
+      ]
+    },
+    "eagerness": "moderate"
+  }]
+}
+</script>
 </head>
 <body class="font-body bg-ink text-hi">
 <script>

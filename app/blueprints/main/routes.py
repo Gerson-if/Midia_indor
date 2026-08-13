@@ -4,8 +4,12 @@ from app.blueprints.main import main_bp
 from app.blueprints.main.forms import ProposalRequestForm
 from app.extensions import db, limiter, talisman
 from app.models import CustomSection, GalleryItem, Partner, Proposal, Service, SiteSettings, Testimonial
+from app.services.analytics import apply_visitor_cookie, record_page_view
 from app.utils.decorators import log_action
 from app.utils.errors import APIError
+
+main_bp.before_request(record_page_view)
+main_bp.after_request(apply_visitor_cookie)
 
 
 def _active_custom_sections():

@@ -1,3 +1,4 @@
+from app.models.analytics import PageView
 from app.models.audit import AuditLog
 from app.models.content import (
     RECOMMENDATION_ICON_CHOICES,
@@ -17,6 +18,7 @@ from app.models.tenant import Tenant, TenantDomain, TenantScopedMixin, TenantSta
 from app.models.user import User, UserRole
 
 __all__ = [
+    "PageView",
     "AuditLog",
     "RECOMMENDATION_ICON_CHOICES",
     "RETENTION_UNIT_CHOICES",

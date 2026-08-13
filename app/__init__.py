@@ -131,6 +131,7 @@ def _register_context_processors(app: Flask) -> None:
             "now_year": datetime.now(timezone.utc).year,
             "global_settings": settings,
             "current_tenant": current_tenant(),
+            "page_view_id": g.get("page_view_id"),
         }
 
     # Cache por instância de app (não módulo): evita vazar valores entre

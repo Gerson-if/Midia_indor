@@ -36,6 +36,52 @@
   </div>
 </div>
 
+<h3 class="font-display text-lg text-hi mb-4">Tráfego do site (últimos 30 dias)</h3>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
+  <div class="card p-3 sm:p-6 border-t-4" style="border-top-color: var(--cyan)">
+    <p class="text-[11px] sm:text-sm text-mid font-mono uppercase mb-1 sm:mb-2 leading-tight">Visualizações</p>
+    <p class="text-xl sm:text-3xl font-display font-bold text-hi">{{ page_views_30d }}</p>
+  </div>
+  <div class="card p-3 sm:p-6 border-t-4" style="border-top-color: var(--amber)">
+    <p class="text-[11px] sm:text-sm text-mid font-mono uppercase mb-1 sm:mb-2 leading-tight">Visitantes únicos</p>
+    <p class="text-xl sm:text-3xl font-display font-bold text-hi">{{ unique_visitors_30d }}</p>
+  </div>
+  <div class="card p-3 sm:p-6 border-t-4" style="border-top-color: var(--cyan)">
+    <p class="text-[11px] sm:text-sm text-mid font-mono uppercase mb-1 sm:mb-2 leading-tight">Tempo médio na página</p>
+    <p class="text-xl sm:text-3xl font-display font-bold text-hi">{{ avg_duration_display }}</p>
+  </div>
+</div>
+
+<div class="grid lg:grid-cols-3 gap-6 mb-8">
+  <div class="card p-6 lg:col-span-2">
+    <h3 class="font-display text-lg text-hi mb-4">Visualizações nos últimos 14 dias</h3>
+    <div class="relative" style="height: 260px;">
+      <canvas id="viewsChart"></canvas>
+    </div>
+    <p class="text-[11px] text-low mt-3">Mesmo período do gráfico de "Solicitações" acima -- picos de visita que não viram solicitação podem indicar uma origem de tráfego pouco qualificada.</p>
+  </div>
+  <div class="card p-6">
+    <h3 class="font-display text-lg text-hi mb-4">De onde vêm os visitantes</h3>
+    {% if top_sources %}
+    <div class="space-y-3">
+      {% for label, count in top_sources %}
+      <div>
+        <div class="flex items-center justify-between text-xs mb-1 gap-2">
+          <span class="text-mid truncate">{{ label }}</span>
+          <span class="font-mono text-low shrink-0">{{ count }}</span>
+        </div>
+        <div class="rounded-full h-1.5 overflow-hidden" style="background: var(--panel2)">
+          <div class="h-full rounded-full" style="width: {{ (count / max_source_count * 100) if max_source_count else 0 }}%; background: var(--amber)"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-mid text-sm">Ainda sem dados de visitas suficientes.</p>
+    {% endif %}
+  </div>
+</div>
+
 <div class="card overflow-hidden">
   <div class="flex justify-between items-center p-4 border-b border-line bg-panel2">
     <h3 class="font-display text-lg text-hi">Últimas solicitações</h3>
@@ -150,6 +196,35 @@
           responsive: true,
           maintainAspectRatio: false,
           plugins: { legend: { position: 'bottom', labels: { color: tickColor, boxWidth: 12, font: { size: 11 } } } }
+        }
+      });
+    }
+
+    const viewsCtx = document.getElementById('viewsChart');
+    if (viewsCtx) {
+      new Chart(viewsCtx, {
+        type: 'line',
+        data: {
+          labels: {{ views_timeline_chart.labels | tojson }},
+          datasets: [{
+            label: 'Visualizações',
+            data: {{ views_timeline_chart.data | tojson }},
+            borderColor: '#37D6C7',
+            backgroundColor: 'rgba(55,214,199,.15)',
+            fill: true,
+            tension: 0.35,
+            pointRadius: 3,
+            pointBackgroundColor: '#37D6C7',
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: tickColor }, grid: { color: gridColor } },
+            y: { ticks: { color: tickColor, precision: 0 }, grid: { color: gridColor }, beginAtZero: true }
+          }
         }
       });
     }

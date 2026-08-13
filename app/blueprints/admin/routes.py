@@ -24,6 +24,7 @@ from app.models import (
     GalleryItem,
     GalleryRecommendation,
     Invoice,
+    PageView,
     Partner,
     Proposal,
     Service,
@@ -111,6 +112,65 @@ def dashboard():
         "data": [counts_by_day[d] for d in days],
     }
 
+    # ---- Visitas do site (últimos 30 dias): visualizações, visitantes
+    # únicos, tempo médio na página e de onde vêm -- ajuda a cruzar picos
+    # de tráfego com picos de solicitações recebidas. ----
+    window_30d = datetime.now(timezone.utc) - timedelta(days=30)
+
+    page_views_30d = PageView.query.filter(PageView.created_at >= window_30d).count()
+    unique_visitors_30d = (
+        db.session.query(db.func.count(db.distinct(PageView.session_id)))
+        .filter(PageView.created_at >= window_30d)
+        .scalar()
+        or 0
+    )
+    avg_duration_raw = (
+        db.session.query(db.func.avg(PageView.duration_seconds))
+        .filter(PageView.created_at >= window_30d, PageView.duration_seconds.isnot(None))
+        .scalar()
+    )
+    avg_duration_seconds = int(avg_duration_raw) if avg_duration_raw else 0
+    if avg_duration_seconds >= 60:
+        avg_duration_display = f"{avg_duration_seconds // 60}m {avg_duration_seconds % 60:02d}s"
+    else:
+        avg_duration_display = f"{avg_duration_seconds}s"
+
+    # Mesmo bucketamento/janela de 14 dias já calculados acima para as
+    # solicitações (days/oldest_day) -- os dois gráficos ficam lado a lado
+    # com o eixo X idêntico, então dá pra comparar visualmente picos.
+    views_by_day = {d: 0 for d in days}
+    recent_view_created_ats = (
+        db.session.query(PageView.created_at).order_by(PageView.created_at.desc()).yield_per(500)
+    )
+    for (created_at,) in recent_view_created_ats:
+        if created_at is None:
+            continue
+        day = created_at.date()
+        if day < oldest_day:
+            break
+        if day in views_by_day:
+            views_by_day[day] += 1
+
+    views_timeline_chart = {
+        "labels": [d.strftime("%d/%m") for d in days],
+        "data": [views_by_day[d] for d in days],
+    }
+
+    # ---- Origem do tráfego (top 6 + "Outros") ----
+    TOP_SOURCES_LIMIT = 6
+    source_rows = (
+        db.session.query(PageView.referrer_source, db.func.count(PageView.id))
+        .filter(PageView.created_at >= window_30d)
+        .group_by(PageView.referrer_source)
+        .order_by(db.func.count(PageView.id).desc())
+        .all()
+    )
+    top_sources = [(label or "Direto", count) for label, count in source_rows[:TOP_SOURCES_LIMIT]]
+    other_count = sum(count for _, count in source_rows[TOP_SOURCES_LIMIT:])
+    if other_count:
+        top_sources.append(("Outros", other_count))
+    max_source_count = max((count for _, count in top_sources), default=0)
+
     return render_template(
         "admin/dashboard.html",
         total_proposals=total_proposals,
@@ -121,6 +181,12 @@ def dashboard():
         active_partners=Partner.query.filter_by(is_active=True).count(),
         status_chart=status_chart,
         timeline_chart=timeline_chart,
+        page_views_30d=page_views_30d,
+        unique_visitors_30d=unique_visitors_30d,
+        avg_duration_display=avg_duration_display,
+        views_timeline_chart=views_timeline_chart,
+        top_sources=top_sources,
+        max_source_count=max_source_count,
     )
 
 

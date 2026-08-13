@@ -224,7 +224,7 @@ def test_superadmin_delete_tenant_removes_everything(client, super_admin_user, t
     """
     from datetime import date
 
-    from app.models import AuditLog, GalleryItem, GalleryRecommendation, Invoice, Service
+    from app.models import AuditLog, GalleryItem, GalleryRecommendation, Invoice, PageView, Service
     from app.utils.decorators import log_action
 
     # Capturados antes da exclusão: os objetos ORM expiram após o commit
@@ -240,6 +240,7 @@ def test_superadmin_delete_tenant_removes_everything(client, super_admin_user, t
     gallery_item = GalleryItem(tenant_id=tenant_id, title="Ponto", category="Cat", has_detail_page=True)
     gallery_item.recommendations = [GalleryRecommendation(tenant_id=tenant_id, label="Delivery", display_order=0)]
     db.session.add(gallery_item)
+    db.session.add(PageView(tenant_id=tenant_id, path="/", session_id="11111111-1111-1111-1111-111111111111"))
     log_action("service.created", entity_type="Service", entity_id=1, tenant_id=tenant_id, description="teste")
     db.session.commit()
 
@@ -257,6 +258,7 @@ def test_superadmin_delete_tenant_removes_everything(client, super_admin_user, t
     assert Invoice.query.filter_by(tenant_id=tenant_id).count() == 0
     assert GalleryItem.query.filter_by(tenant_id=tenant_id).count() == 0
     assert GalleryRecommendation.query.filter_by(tenant_id=tenant_id).count() == 0
+    assert PageView.query.filter_by(tenant_id=tenant_id).count() == 0
 
     old_log = AuditLog.query.filter_by(action="service.created").first()
     assert old_log is not None

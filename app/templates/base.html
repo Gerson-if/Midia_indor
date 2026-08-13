@@ -29,6 +29,13 @@
 {% block content %}{% endblock %}
 <script src="{{ static_asset('js/toast.js') }}"></script>
 <script src="{{ static_asset('js/password-toggle.js') }}"></script>
+{% if page_view_id %}
+<script>
+  window.__NX_PV_ID__ = {{ page_view_id }};
+  window.__NX_PV_START__ = Date.now();
+</script>
+<script src="{{ static_asset('js/analytics-track.js') }}" defer></script>
+{% endif %}
 {% block scripts %}{% endblock %}
 </body>
 </html>

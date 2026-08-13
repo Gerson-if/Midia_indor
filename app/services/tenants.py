@@ -21,6 +21,7 @@ from app.models import (
     CustomSectionItem,
     GalleryItem,
     GalleryRecommendation,
+    PageView,
     Partner,
     Proposal,
     Service,
@@ -57,6 +58,7 @@ def delete_tenant(tenant) -> None:
     CustomSection.query.filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
     GalleryRecommendation.query.filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
     GalleryItem.query.filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
+    PageView.query.filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
     Partner.query.filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
     Proposal.query.filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
     Service.query.filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
