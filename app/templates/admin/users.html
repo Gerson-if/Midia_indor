@@ -4,9 +4,17 @@
 {% block admin_content %}
 <h2 class="font-display text-2xl mb-6">Usuários do Painel</h2>
 <div class="grid lg:grid-cols-3 gap-6">
-  <div class="card p-6">
-    <h3 class="font-display text-lg mb-4">Novo usuário</h3>
-    <form method="POST" class="space-y-4">
+  <div class="card p-6" id="form-card">
+    {% set editing_self = editing and editing.id == current_user.id %}
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-display text-lg">
+        {% if editing %}Editando {{ "seu usuário" if editing_self else "usuário" }}{% else %}Novo usuário{% endif %}
+      </h3>
+      {% if editing %}
+      <a href="{{ url_for('admin.users_manage') }}" class="text-xs text-mid hover:text-hi">Cancelar</a>
+      {% endif %}
+    </div>
+    <form method="POST" action="{{ url_for('admin.user_edit', user_id=editing.id) if editing else url_for('admin.users_manage') }}" class="space-y-4">
       {{ form.hidden_tag() }}
       <div>
         {{ form.name.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
@@ -18,15 +26,21 @@
       </div>
       <div>
         {{ form.role.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-        {{ form.role(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+        {{ form.role(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", disabled=editing_self) }}
+        {% if editing_self %}<p class="text-[11px] text-low mt-1">Peça a outro administrador para alterar seu papel.</p>{% endif %}
       </div>
       <div>
         {{ form.password.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
         {{ password_field(form.password, field_class="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
         {% for e in form.password.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
       </div>
-      <label class="flex items-center gap-2 text-xs text-mid">{{ form.is_active() }} Ativo</label>
-      <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">Criar usuário</button>
+      <label class="flex items-center gap-2 text-xs text-mid">
+        {{ form.is_active(disabled=editing_self) }} Ativo
+        {% if editing_self %}<span class="text-low">(peça a outro administrador para desativar seu usuário)</span>{% endif %}
+      </label>
+      <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">
+        {{ "Salvar alterações" if editing else "Criar usuário" }}
+      </button>
     </form>
   </div>
 
@@ -42,14 +56,17 @@
         <p class="text-xs text-mid truncate mb-1">{{ u.email }}</p>
         <div class="flex items-center justify-between gap-3 mt-2">
           <p class="text-xs text-low">Último acesso: {{ u.last_login_at.strftime('%d/%m/%Y %H:%M') if u.last_login_at else "nunca" }}</p>
-          {% if u.id != current_user.id %}
-          <form method="POST" action="{{ url_for('admin.user_delete', user_id=u.id) }}" data-confirm-message="Excluir este usuário? Esta ação não pode ser desfeita.">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="text-red-400 hover:text-red-300 text-xs shrink-0">Excluir</button>
-          </form>
-          {% else %}
-          <span class="text-low text-xs shrink-0">você</span>
-          {% endif %}
+          <div class="flex items-center gap-3 shrink-0">
+            <a href="{{ url_for('admin.user_edit', user_id=u.id) }}#form-card" class="text-xs" style="color: var(--cyan-text)">Editar</a>
+            {% if u.id != current_user.id %}
+            <form method="POST" action="{{ url_for('admin.user_delete', user_id=u.id) }}" data-confirm-message="Excluir este usuário? Esta ação não pode ser desfeita.">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="text-red-400 hover:text-red-300 text-xs">Excluir</button>
+            </form>
+            {% else %}
+            <span class="text-low text-xs">você</span>
+            {% endif %}
+          </div>
         </div>
       </div>
       {% endfor %}
@@ -75,14 +92,17 @@
           <td class="px-4 py-3 text-mid font-mono text-xs">{{ u.role.value }}</td>
           <td class="px-4 py-3 text-mid text-xs">{{ u.last_login_at.strftime('%d/%m/%Y %H:%M') if u.last_login_at else "nunca" }}</td>
           <td class="px-4 py-3 text-right">
-            {% if u.id != current_user.id %}
-            <form method="POST" action="{{ url_for('admin.user_delete', user_id=u.id) }}" data-confirm-message="Excluir este usuário? Esta ação não pode ser desfeita.">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="text-red-400 hover:text-red-300 text-xs">Excluir</button>
-            </form>
-            {% else %}
-            <span class="text-low text-xs">você</span>
-            {% endif %}
+            <div class="flex items-center justify-end gap-3">
+              <a href="{{ url_for('admin.user_edit', user_id=u.id) }}#form-card" class="text-xs hover:underline" style="color: var(--cyan-text)">Editar</a>
+              {% if u.id != current_user.id %}
+              <form method="POST" action="{{ url_for('admin.user_delete', user_id=u.id) }}" data-confirm-message="Excluir este usuário? Esta ação não pode ser desfeita.">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="text-red-400 hover:text-red-300 text-xs">Excluir</button>
+              </form>
+              {% else %}
+              <span class="text-low text-xs">você</span>
+              {% endif %}
+            </div>
           </td>
         </tr>
         {% endfor %}

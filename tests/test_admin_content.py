@@ -687,6 +687,66 @@ def test_users_list_and_delete_scoped_to_own_tenant(client, admin_user, db, tena
     assert User.query.filter_by(id=super_admin_user.id).first() is not None
 
 
+def test_admin_edits_own_credentials_but_not_own_role_or_active(client, admin_user, db):
+    """Resolve o caso de não dar pra trocar as credenciais padrão sem poder
+    excluir o próprio usuário (auto-exclusão é bloqueada): editar o próprio
+    e-mail/senha precisa funcionar, mas papel e status ficam travados no
+    servidor mesmo que alguém force esses campos no POST -- senão a pessoa
+    se rebaixa ou desativa por engano e fica trancada fora do painel."""
+    login(client, "admin@teste.com", "SenhaForte123!")
+    resp = client.post(
+        f"/admin/usuarios/{admin_user.id}/editar",
+        data={
+            "name": "Admin Teste",
+            "email": "admin-real@empresa.com",
+            "role": "viewer",
+            "password": "NovaSenhaForte456!",
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+
+    db.session.refresh(admin_user)
+    assert admin_user.email == "admin-real@empresa.com"
+    assert admin_user.role == UserRole.ADMIN
+    assert admin_user.is_active_flag is True
+    assert admin_user.check_password("NovaSenhaForte456!")
+
+
+def test_admin_edits_other_user_role_and_password(client, admin_user, editor_user, db):
+    login(client, "admin@teste.com", "SenhaForte123!")
+    resp = client.post(
+        f"/admin/usuarios/{editor_user.id}/editar",
+        data={
+            "name": "Editor Teste",
+            "email": "editor@teste.com",
+            "role": "viewer",
+            "password": "OutraSenhaForte789!",
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+
+    db.session.refresh(editor_user)
+    assert editor_user.role == UserRole.VIEWER
+    assert editor_user.check_password("OutraSenhaForte789!")
+
+
+def test_user_edit_scoped_to_own_tenant(client, admin_user, db, other_tenant, super_admin_user):
+    other_admin = User(
+        name="Admin Outra Empresa", email="outroadmin@teste.com", role=UserRole.ADMIN, tenant_id=other_tenant.id
+    )
+    other_admin.set_password("SenhaForte123!")
+    db.session.add(other_admin)
+    db.session.commit()
+
+    login(client, "admin@teste.com", "SenhaForte123!")
+    resp = client.get(f"/admin/usuarios/{other_admin.id}/editar")
+    assert resp.status_code == 404
+    resp = client.get(f"/admin/usuarios/{super_admin_user.id}/editar")
+    assert resp.status_code == 404
+
+
 def test_theme_defaults_to_dark_on_public_site_and_admin(client, admin_user, db):
     """O tema é escuro por padrão em qualquer página nova, tanto no site
     público quanto no painel — sem precisar de configuração manual."""

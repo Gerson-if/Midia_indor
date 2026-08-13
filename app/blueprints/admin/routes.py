@@ -754,6 +754,37 @@ def partners_reorder():
     return _reorder_items(Partner, "partner")
 
 
+# Campos de cada grupo da tela de Configurações, na mesma divisão exibida
+# nos cards/gaveta lateral do template -- usado só para saber automaticamente
+# qual grupo abrir quando o formulário volta com erro de validação (senão o
+# erro fica escondido dentro de uma gaveta fechada, sem o admin saber onde).
+_SETTINGS_TABS = {
+    "tab-empresa": [
+        "company_name", "company_description", "company_whatsapp", "whatsapp_default_message",
+        "company_email", "company_phone", "company_address",
+    ],
+    "tab-marca": ["favicon", "logo"],
+    "tab-hero": [
+        "hero_title", "hero_subtitle", "hero_cta_primary_label", "hero_cta_secondary_label",
+        "hero_overlay_opacity", "services_nav_label", "gallery_nav_label", "testimonials_nav_label",
+        "services_heading", "services_subtitle", "gallery_heading", "gallery_subtitle",
+        "testimonials_heading", "contact_heading", "hero_media_type", "hero_video", "hero_image",
+    ],
+    "tab-aparencia": [
+        "theme", "color_primary", "color_secondary", "whatsapp_button_color", "services_accent_color",
+        "gallery_accent_color", "testimonials_accent_color", "card_background_color", "card_border_radius",
+    ],
+    "tab-legal": ["privacy_content", "terms_content"],
+}
+
+
+def _settings_error_tab(form):
+    for tab_id, field_names in _SETTINGS_TABS.items():
+        if any(getattr(form, name).errors for name in field_names):
+            return tab_id
+    return None
+
+
 # ------------------------------------------------------------------ #
 # Configurações do site (Hero + Empresa + Cores)
 # ------------------------------------------------------------------ #
@@ -862,6 +893,7 @@ def settings_manage():
             return redirect(url_for("admin.settings_manage"))
         else:
             flash("Não foi possível salvar: verifique os campos destacados.", "danger")
+            return render_template("admin/settings.html", form=form, settings=settings, error_tab=_settings_error_tab(form))
 
     return render_template("admin/settings.html", form=form, settings=settings)
 
@@ -900,6 +932,45 @@ def users_manage():
     # página, inclusive o super admin.
     users = User.query.filter_by(tenant_id=current_user.tenant_id).order_by(User.created_at).all()
     return render_template("admin/users.html", form=form, users=users)
+
+
+@admin_bp.route("/usuarios/<int:user_id>/editar", methods=["GET", "POST"])
+@admin_required
+def user_edit(user_id):
+    # Mesmo filtro manual explicado em users_manage() -- indispensável pra
+    # não editar usuário de outra página (ou o super admin) só sabendo o id.
+    user = User.query.filter_by(id=user_id, tenant_id=current_user.tenant_id).first_or_404()
+    is_self = user.id == current_user.id
+
+    if request.method == "GET":
+        form = UserForm(obj=user, password="")
+        form.role.data = user.role.value
+    else:
+        form = UserForm()
+
+    if form.validate_on_submit():
+        existing = User.query.filter_by(email=form.email.data.lower()).first()
+        if existing and existing.id != user.id:
+            flash("Já existe um usuário com este e-mail.", "danger")
+        else:
+            # Editando o próprio usuário, papel e status ficam travados aqui
+            # (mesmo que o formulário receba outro valor) -- evita que a
+            # pessoa se rebaixe/desative por engano e fique trancada fora do
+            # próprio painel. Pra isso, é preciso pedir a outro admin.
+            if not is_self:
+                user.role = UserRole(form.role.data)
+                user.is_active_flag = form.is_active.data
+            user.name = form.name.data
+            user.email = form.email.data.lower()
+            if form.password.data:
+                user.set_password(form.password.data)
+            log_action("user.updated", entity_type="User", entity_id=user.id, description=user.email)
+            db.session.commit()
+            flash("Usuário atualizado com sucesso.", "success")
+            return redirect(url_for("admin.users_manage"))
+
+    users = User.query.filter_by(tenant_id=current_user.tenant_id).order_by(User.created_at).all()
+    return render_template("admin/users.html", form=form, users=users, editing=user)
 
 
 @admin_bp.route("/usuarios/<int:user_id>/excluir", methods=["POST"])

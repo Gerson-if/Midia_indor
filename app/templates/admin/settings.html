@@ -20,9 +20,6 @@
 
 {% block extra_head %}
 <style>
-  .tab-btn{ display:flex; align-items:center; gap:.5rem; padding:.55rem 1rem; border-radius:9px; font-size:.8rem; font-weight:600; color:var(--text-mid); white-space:nowrap; transition:background .15s,color .15s; }
-  .tab-btn:hover{ color:var(--text-hi); background:var(--overlay-soft); }
-  .tab-btn.active{ background:var(--amber); color:#1A1204; }
   .tab-panel{ display:none; }
   .tab-panel.active{ display:block; }
 
@@ -54,15 +51,6 @@
     <!-- Correção aplicada aqui: class="hidden" para esconder o campo numérico em branco -->
     {{ form.version_id(class="hidden") }}
 
-    <!-- ---- Navegação por abas: reduz a rolagem necessária ---- -->
-    <div class="card p-2 flex gap-1 overflow-x-auto">
-      <button type="button" class="tab-btn active" data-tab="tab-empresa">Empresa</button>
-      <button type="button" class="tab-btn" data-tab="tab-marca">Marca</button>
-      <button type="button" class="tab-btn" data-tab="tab-hero">Hero</button>
-      <button type="button" class="tab-btn" data-tab="tab-aparencia">Aparência</button>
-      <button type="button" class="tab-btn" data-tab="tab-legal">Páginas Legais</button>
-    </div>
-
     <!-- ---- Barra de ações fixa: sempre visível no topo, sem precisar rolar ---- -->
     <div class="save-bar card !rounded-xl px-4 py-3 flex items-center justify-between gap-3 backdrop-blur border border-line" style="background:rgba(19,26,36,.92)">
       <p class="text-[11px] text-low hidden sm:block">As alterações só entram em vigor no site após salvar.</p>
@@ -71,6 +59,68 @@
         <button type="submit" class="btn btn-primary px-6 sm:px-8 py-2.5 text-sm" style="background-color: var(--amber)">Salvar Configurações</button>
       </div>
     </div>
+
+    <!-- ---- Grupos de configuração em cards: cada um abre uma gaveta lateral
+         para editar só aquele grupo, em vez de empilhar tudo na tela junto
+         com a pré-visualização. ---- -->
+    <div class="grid sm:grid-cols-2 gap-3">
+      <button type="button" class="drawer-trigger-card" data-tab="tab-empresa">
+        <span class="drawer-trigger-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="1"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M8 10h.01"/><path d="M16 10h.01"/><path d="M8 14h.01"/><path d="M16 14h.01"/></svg>
+        </span>
+        <span>
+          <span class="drawer-trigger-card-title block">Empresa</span>
+          <span class="drawer-trigger-card-desc block">Nome, contato, WhatsApp e endereço.</span>
+        </span>
+      </button>
+      <button type="button" class="drawer-trigger-card" data-tab="tab-marca">
+        <span class="drawer-trigger-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>
+        </span>
+        <span>
+          <span class="drawer-trigger-card-title block">Marca</span>
+          <span class="drawer-trigger-card-desc block">Favicon e logo do site e do painel.</span>
+        </span>
+      </button>
+      <button type="button" class="drawer-trigger-card" data-tab="tab-hero">
+        <span class="drawer-trigger-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 15 4.5-4.5a2 2 0 0 1 2.8 0L15 15"/><path d="m14 14 1.5-1.5a2 2 0 0 1 2.8 0L21 15"/><circle cx="8.5" cy="8.5" r="1.5"/></svg>
+        </span>
+        <span>
+          <span class="drawer-trigger-card-title block">Hero</span>
+          <span class="drawer-trigger-card-desc block">Textos, nomes do menu, títulos e mídia de capa.</span>
+        </span>
+      </button>
+      <button type="button" class="drawer-trigger-card" data-tab="tab-aparencia">
+        <span class="drawer-trigger-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".6" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".6" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".6" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".6" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.6-.7 1.6-1.6 0-.4-.2-.8-.4-1.1-.3-.3-.4-.6-.4-1.1a1.6 1.6 0 0 1 1.6-1.6h2c3 0 5.5-2.5 5.5-5.5C22 6 17.5 2 12 2z"/></svg>
+        </span>
+        <span>
+          <span class="drawer-trigger-card-title block">Aparência</span>
+          <span class="drawer-trigger-card-desc block">Tema, cores da marca e estilo das seções.</span>
+        </span>
+      </button>
+      <button type="button" class="drawer-trigger-card sm:col-span-2" data-tab="tab-legal">
+        <span class="drawer-trigger-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
+        </span>
+        <span>
+          <span class="drawer-trigger-card-title block">Páginas Legais</span>
+          <span class="drawer-trigger-card-desc block">Conteúdo da Política de Privacidade e dos Termos de Uso.</span>
+        </span>
+      </button>
+    </div>
+
+    <!-- ---- Gaveta lateral: mostra só o grupo escolhido acima ---- -->
+    <div id="settings-drawer-backdrop" class="side-drawer-backdrop"></div>
+    <aside id="settings-drawer" class="side-drawer" data-error-tab="{{ error_tab or '' }}" aria-hidden="true">
+      <div class="side-drawer-header">
+        <h3 class="font-display text-lg" id="settings-drawer-title">Empresa</h3>
+        <button type="button" id="settings-drawer-close" class="side-drawer-close" title="Fechar" aria-label="Fechar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      <div class="side-drawer-body">
 
     <!-- ================= EMPRESA ================= -->
     <div class="tab-panel active space-y-6" id="tab-empresa">
@@ -381,6 +431,9 @@
         </div>
       </div>
     </div>
+
+      </div>
+    </aside>
   </form>
 
   <!-- Painel de pré-visualização ao vivo (atualiza conforme você digita) -->
@@ -460,17 +513,46 @@
 {% block scripts %}
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    // ---- Navegação por abas ----
-    const tabButtons = document.querySelectorAll('.tab-btn');
+    // ---- Cards que abrem a gaveta lateral com o grupo escolhido ----
+    const cards = document.querySelectorAll('.drawer-trigger-card');
     const panels = document.querySelectorAll('.tab-panel');
-    tabButtons.forEach((btn) => {
-      btn.addEventListener('click', () => {
-        tabButtons.forEach((b) => b.classList.remove('active'));
-        panels.forEach((p) => p.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById(btn.dataset.tab).classList.add('active');
+    const drawer = document.getElementById('settings-drawer');
+    const drawerBackdrop = document.getElementById('settings-drawer-backdrop');
+    const drawerClose = document.getElementById('settings-drawer-close');
+    const drawerTitle = document.getElementById('settings-drawer-title');
+
+    function openDrawerForTab(card) {
+      panels.forEach((p) => p.classList.remove('active'));
+      document.getElementById(card.dataset.tab).classList.add('active');
+      if (drawerTitle) drawerTitle.textContent = card.querySelector('.drawer-trigger-card-title').textContent;
+      drawer.classList.add('open');
+      drawerBackdrop.classList.add('open');
+      drawer.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeDrawer() {
+      drawer.classList.remove('open');
+      drawerBackdrop.classList.remove('open');
+      drawer.setAttribute('aria-hidden', 'true');
+    }
+
+    if (drawer && drawerBackdrop && drawerClose) {
+      cards.forEach((card) => card.addEventListener('click', () => openDrawerForTab(card)));
+      drawerClose.addEventListener('click', closeDrawer);
+      drawerBackdrop.addEventListener('click', closeDrawer);
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && drawer.classList.contains('open')) closeDrawer();
       });
-    });
+
+      // O formulário voltou com erro de validação: abre direto no grupo
+      // que tem o campo problemático, senão o erro fica escondido dentro
+      // de uma gaveta fechada e o admin não entende por que não salvou.
+      const errorTab = drawer.dataset.errorTab;
+      if (errorTab) {
+        const errorCard = document.querySelector(`.drawer-trigger-card[data-tab="${errorTab}"]`);
+        if (errorCard) openDrawerForTab(errorCard);
+      }
+    }
 
     // ---- Pré-visualização ao vivo (texto) ----
     const bind = (id, previewId, attr) => {

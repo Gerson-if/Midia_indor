@@ -261,37 +261,57 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
    suave com transição, no mesmo elemento que já anima no drag-and-drop. */
 .card-editing{ border-color:rgba(255,176,32,.55); box-shadow:0 0 0 1px rgba(255,176,32,.3); }
 
-/* ---- Formulário da galeria em gaveta lateral direita ----
-   Em vez de dividir a tela em coluna de formulário + coluna de lista
-   (apertado com muitos campos), o formulário fica numa gaveta que desliza
-   da direita, sobrepondo o conteúdo -- a lista ocupa a largura toda. */
-.gallery-drawer-backdrop{
+/* ---- Gaveta lateral direita (genérica) ----
+   Usada em qualquer tela do admin que precise editar algo sem dividir a
+   página em coluna de formulário + coluna de lista (fica apertado com
+   muitos campos). O conteúdo fica numa gaveta que desliza da direita,
+   sobrepondo a página -- o conteúdo de trás ocupa a largura toda.
+   Reaproveitada pela galeria (content_gallery.html) e por Configurações
+   (settings.html); qualquer tela nova do admin pode usar as mesmas
+   classes em vez de reinventar um padrão de gaveta próprio. */
+.side-drawer-backdrop{
   position:fixed; inset:0; z-index:90; background:var(--modal-backdrop);
   opacity:0; pointer-events:none; transition:opacity .25s ease;
 }
-.gallery-drawer-backdrop.open{ opacity:1; pointer-events:auto; }
+.side-drawer-backdrop.open{ opacity:1; pointer-events:auto; }
 
-.gallery-drawer{
+.side-drawer{
   position:fixed; top:0; right:0; bottom:0; z-index:95;
   width:100%; max-width:28rem; background:var(--panel);
   border-left:1px solid var(--line); box-shadow:-16px 0 40px var(--modal-shadow);
   transform:translateX(100%); transition:transform .28s ease;
   display:flex; flex-direction:column;
 }
-.gallery-drawer.open{ transform:translateX(0); }
-.gallery-drawer-header{
+.side-drawer.open{ transform:translateX(0); }
+.side-drawer-header{
   display:flex; align-items:center; justify-content:space-between; gap:.75rem;
   padding:1.1rem 1.25rem; border-bottom:1px solid var(--line); flex-shrink:0;
 }
-.gallery-drawer-body{ flex:1; overflow-y:auto; padding:1.25rem; }
-.gallery-drawer-close{
+.side-drawer-body{ flex:1; overflow-y:auto; padding:1.25rem; }
+.side-drawer-close{
   width:2rem; height:2rem; border-radius:8px; display:flex; align-items:center; justify-content:center;
   color:var(--text-low); flex-shrink:0; transition:background .15s ease, color .15s ease;
 }
-.gallery-drawer-close:hover{ background:var(--overlay-med); color:var(--text-hi); }
+.side-drawer-close:hover{ background:var(--overlay-med); color:var(--text-hi); }
+
+/* Cards clicáveis que abrem uma gaveta (ex.: grupos de Configurações) */
+.drawer-trigger-card{
+  display:flex; align-items:flex-start; gap:.85rem; text-align:left; width:100%;
+  padding:1.1rem; border-radius:14px; border:1px solid var(--line); background:var(--panel);
+  transition:border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+.drawer-trigger-card:hover{ border-color:rgba(255,176,32,.4); transform:translateY(-2px); box-shadow:0 10px 24px -8px rgba(0,0,0,.25); }
+.drawer-trigger-card-icon{
+  width:2.5rem; height:2.5rem; border-radius:10px; display:flex; align-items:center; justify-content:center;
+  background:rgba(255,176,32,.12); color:var(--amber-text); flex-shrink:0;
+}
+.drawer-trigger-card-icon svg{ width:20px; height:20px; }
+.drawer-trigger-card-title{ font-weight:600; color:var(--text-hi); font-size:.92rem; }
+.drawer-trigger-card-desc{ font-size:.76rem; color:var(--text-low); margin-top:.15rem; line-height:1.35; }
 
 @media (prefers-reduced-motion: reduce){
-  .gallery-drawer, .gallery-drawer-backdrop{ transition:none; }
+  .side-drawer, .side-drawer-backdrop{ transition:none; }
+  .drawer-trigger-card:hover{ transform:none; }
 }
 
 /* ---- Modal de confirmação (substitui o confirm() nativo do navegador) ----
