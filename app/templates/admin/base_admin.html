@@ -13,6 +13,12 @@
 <link rel="stylesheet" href="{{ static_asset('css/fonts.css') }}">
 <link rel="stylesheet" href="{{ static_asset('css/tailwind.min.css') }}">
 <link rel="stylesheet" href="{{ static_asset('css/style.css') }}">
+<!-- style.css liga um crossfade global entre navegações (@view-transition,
+     pensado pro site público) -- no painel administrativo, combinado com
+     tantas seções/listas grandes trocando de lugar, ficava lento e "travando"
+     em vez de suave. Desliga só aqui, sobrescrevendo a regra depois que o
+     style.css já carregou (o site público continua com a transição). -->
+<style>@view-transition{ navigation: none; }</style>
 {% block extra_head %}{% endblock %}
 <!-- Pré-renderização especulativa: ao passar o mouse sobre um link do
      painel, o Chrome/Edge já carrega a página de destino inteira (fora da
@@ -184,6 +190,7 @@
 <script src="{{ static_asset('js/admin-media-preview.js') }}"></script>
 <script src="{{ static_asset('js/admin-reorder.js') }}"></script>
 <script src="{{ static_asset('js/admin-confirm-modal.js') }}"></script>
+<script src="{{ static_asset('js/admin-crud-drawer.js') }}"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

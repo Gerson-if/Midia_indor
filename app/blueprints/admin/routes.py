@@ -12,7 +12,7 @@ from app.blueprints.admin.forms import (
     PartnerForm,
     ProposalStatusForm,
     ServiceForm,
-    SiteSettingsForm,
+    SETTINGS_GROUPS,
     TestimonialForm,
     UserForm,
 )
@@ -820,35 +820,98 @@ def partners_reorder():
     return _reorder_items(Partner, "partner")
 
 
-# Campos de cada grupo da tela de Configurações, na mesma divisão exibida
-# nos cards/gaveta lateral do template -- usado só para saber automaticamente
-# qual grupo abrir quando o formulário volta com erro de validação (senão o
-# erro fica escondido dentro de uma gaveta fechada, sem o admin saber onde).
-_SETTINGS_TABS = {
-    "tab-empresa": [
-        "company_name", "company_description", "company_whatsapp", "whatsapp_default_message",
-        "company_email", "company_phone", "company_address",
-    ],
-    "tab-marca": ["favicon", "logo"],
-    "tab-hero": [
-        "hero_title", "hero_subtitle", "hero_cta_primary_label", "hero_cta_secondary_label",
-        "hero_overlay_opacity", "services_nav_label", "gallery_nav_label", "testimonials_nav_label",
-        "services_heading", "services_subtitle", "gallery_heading", "gallery_subtitle",
-        "testimonials_heading", "contact_heading", "hero_media_type", "hero_video", "hero_image",
-    ],
-    "tab-aparencia": [
-        "theme", "color_primary", "color_secondary", "whatsapp_button_color", "services_accent_color",
-        "gallery_accent_color", "testimonials_accent_color", "card_background_color", "card_border_radius",
-    ],
-    "tab-legal": ["privacy_content", "terms_content"],
+# Cada grupo da tela de Configurações salva de forma independente (form e
+# botão Salvar próprios na gaveta lateral -- ver SETTINGS_GROUPS em
+# blueprints/admin/forms.py e templates/admin/settings.html). Uma função de
+# aplicação por grupo, só grava os campos daquele grupo especificamente.
+def _apply_settings_company(form, settings):
+    settings.company_name = form.company_name.data
+    settings.company_description = form.company_description.data
+    settings.company_whatsapp = form.company_whatsapp.data
+    settings.whatsapp_default_message = (form.whatsapp_default_message.data or "").strip() or None
+    settings.company_email = form.company_email.data
+    settings.company_phone = form.company_phone.data
+    settings.company_address = form.company_address.data
+
+
+def _apply_settings_brand(form, settings):
+    if form.remove_favicon.data and settings.favicon_path:
+        delete_upload(settings.favicon_path)
+        settings.favicon_path = None
+    if form.remove_logo.data and settings.logo_path:
+        delete_upload(settings.logo_path)
+        settings.logo_path = None
+    if form.favicon.data:
+        old_favicon = settings.favicon_path
+        settings.favicon_path = save_favicon(form.favicon.data)
+        delete_upload(old_favicon)
+    if form.logo.data:
+        old_logo = settings.logo_path
+        settings.logo_path = save_image(form.logo.data, subfolder="brand/logo")
+        delete_upload(old_logo)
+
+
+def _apply_settings_hero(form, settings):
+    settings.hero_title = form.hero_title.data
+    settings.hero_subtitle = form.hero_subtitle.data
+    settings.hero_media_type = form.hero_media_type.data
+    if form.hero_overlay_opacity.data is not None:
+        settings.hero_overlay_opacity = form.hero_overlay_opacity.data
+    settings.hero_cta_primary_label = form.hero_cta_primary_label.data
+    settings.hero_cta_secondary_label = form.hero_cta_secondary_label.data
+
+    settings.services_heading = form.services_heading.data
+    settings.services_subtitle = form.services_subtitle.data
+    settings.gallery_heading = form.gallery_heading.data
+    settings.gallery_subtitle = form.gallery_subtitle.data
+    settings.testimonials_heading = form.testimonials_heading.data
+    settings.contact_heading = form.contact_heading.data
+
+    settings.services_nav_label = form.services_nav_label.data
+    settings.gallery_nav_label = form.gallery_nav_label.data
+    settings.testimonials_nav_label = form.testimonials_nav_label.data
+
+    if form.remove_hero_video.data and settings.hero_video_path:
+        delete_upload(settings.hero_video_path)
+        settings.hero_video_path = None
+    if form.remove_hero_image.data and settings.hero_image_path:
+        delete_upload(settings.hero_image_path)
+        settings.hero_image_path = None
+    if form.hero_video.data:
+        old_video = settings.hero_video_path
+        settings.hero_video_path = save_video(form.hero_video.data)
+        delete_upload(old_video)
+    if form.hero_image.data:
+        old_image = settings.hero_image_path
+        settings.hero_image_path = save_image(form.hero_image.data, subfolder="hero")
+        delete_upload(old_image)
+
+
+def _apply_settings_appearance(form, settings):
+    settings.theme = form.theme.data
+    settings.color_primary = form.color_primary.data
+    settings.color_secondary = form.color_secondary.data
+    settings.whatsapp_button_color = form.whatsapp_button_color.data
+    settings.services_accent_color = form.services_accent_color.data
+    settings.gallery_accent_color = form.gallery_accent_color.data
+    settings.testimonials_accent_color = form.testimonials_accent_color.data
+    settings.card_background_color = form.card_background_color.data
+    if form.card_border_radius.data is not None:
+        settings.card_border_radius = form.card_border_radius.data
+
+
+def _apply_settings_legal(form, settings):
+    settings.privacy_content = normalize_newlines(form.privacy_content.data)
+    settings.terms_content = normalize_newlines(form.terms_content.data)
+
+
+_SETTINGS_GROUP_APPLIERS = {
+    "empresa": _apply_settings_company,
+    "marca": _apply_settings_brand,
+    "hero": _apply_settings_hero,
+    "aparencia": _apply_settings_appearance,
+    "legal": _apply_settings_legal,
 }
-
-
-def _settings_error_tab(form):
-    for tab_id, field_names in _SETTINGS_TABS.items():
-        if any(getattr(form, name).errors for name in field_names):
-            return tab_id
-    return None
 
 
 # ------------------------------------------------------------------ #
@@ -858,110 +921,46 @@ def _settings_error_tab(form):
 @roles_required(*EDIT_ROLES)
 def settings_manage():
     settings = SiteSettings.get_solo()
-    form = SiteSettingsForm(obj=settings)
+
+    # Um form por grupo -- em GET, todos partem dos valores atuais salvos.
+    # O grupo enviado no POST (se houver) substitui o seu abaixo, mantendo
+    # o que a pessoa digitou (inclusive se a validação falhar).
+    forms = {group: cls(obj=settings) for group, cls in SETTINGS_GROUPS.items()}
+    open_group = request.args.get("aberto") if request.args.get("aberto") in SETTINGS_GROUPS else None
 
     if request.method == "POST":
-        form = SiteSettingsForm()
+        group = request.form.get("group")
+        FormClass = SETTINGS_GROUPS.get(group)
+        if FormClass is None:
+            abort(400)
+
+        form = FormClass()
+        forms[group] = form
+        open_group = group
+
         if form.version_id.data is not None and form.version_id.data != settings.version_id:
             flash("As configurações foram alteradas por outro usuário. Recarregue e tente novamente.", "warning")
             return redirect(url_for("admin.settings_manage"))
 
         if form.validate_on_submit():
-            settings.company_name = form.company_name.data
-            settings.company_description = form.company_description.data
-            settings.company_whatsapp = form.company_whatsapp.data
-            settings.whatsapp_default_message = (form.whatsapp_default_message.data or "").strip() or None
-            settings.company_email = form.company_email.data
-            settings.company_phone = form.company_phone.data
-            settings.company_address = form.company_address.data
-            settings.color_primary = form.color_primary.data
-            settings.color_secondary = form.color_secondary.data
-            settings.whatsapp_button_color = form.whatsapp_button_color.data
-            settings.hero_title = form.hero_title.data
-            settings.hero_subtitle = form.hero_subtitle.data
-            settings.hero_media_type = form.hero_media_type.data
-            if form.hero_overlay_opacity.data is not None:
-                settings.hero_overlay_opacity = form.hero_overlay_opacity.data
-            settings.hero_cta_primary_label = form.hero_cta_primary_label.data
-            settings.hero_cta_secondary_label = form.hero_cta_secondary_label.data
-
-            settings.services_heading = form.services_heading.data
-            settings.services_subtitle = form.services_subtitle.data
-            settings.gallery_heading = form.gallery_heading.data
-            settings.gallery_subtitle = form.gallery_subtitle.data
-            settings.testimonials_heading = form.testimonials_heading.data
-            settings.contact_heading = form.contact_heading.data
-
-            settings.services_nav_label = form.services_nav_label.data
-            settings.gallery_nav_label = form.gallery_nav_label.data
-            settings.testimonials_nav_label = form.testimonials_nav_label.data
-
-            settings.services_accent_color = form.services_accent_color.data
-            settings.gallery_accent_color = form.gallery_accent_color.data
-            settings.testimonials_accent_color = form.testimonials_accent_color.data
-            settings.card_background_color = form.card_background_color.data
-            if form.card_border_radius.data is not None:
-                settings.card_border_radius = form.card_border_radius.data
-            settings.theme = form.theme.data
-
-            settings.privacy_content = normalize_newlines(form.privacy_content.data)
-            settings.terms_content = normalize_newlines(form.terms_content.data)
-
-            # ---- Gerenciamento de mídia do Hero: remover, substituir ----
             try:
-                if form.remove_hero_video.data and settings.hero_video_path:
-                    delete_upload(settings.hero_video_path)
-                    settings.hero_video_path = None
-
-                if form.remove_hero_image.data and settings.hero_image_path:
-                    delete_upload(settings.hero_image_path)
-                    settings.hero_image_path = None
-
-                if form.hero_video.data:
-                    old_video = settings.hero_video_path
-                    settings.hero_video_path = save_video(form.hero_video.data)
-                    delete_upload(old_video)
-
-                if form.hero_image.data:
-                    old_image = settings.hero_image_path
-                    settings.hero_image_path = save_image(form.hero_image.data, subfolder="hero")
-                    delete_upload(old_image)
-
-                # ---- Identidade visual: favicon e logo ----
-                if form.remove_favicon.data and settings.favicon_path:
-                    delete_upload(settings.favicon_path)
-                    settings.favicon_path = None
-
-                if form.remove_logo.data and settings.logo_path:
-                    delete_upload(settings.logo_path)
-                    settings.logo_path = None
-
-                if form.favicon.data:
-                    old_favicon = settings.favicon_path
-                    settings.favicon_path = save_favicon(form.favicon.data)
-                    delete_upload(old_favicon)
-
-                if form.logo.data:
-                    old_logo = settings.logo_path
-                    settings.logo_path = save_image(form.logo.data, subfolder="brand/logo")
-                    delete_upload(old_logo)
+                _SETTINGS_GROUP_APPLIERS[group](form, settings)
             except UploadError as exc:
                 flash(str(exc), "danger")
-                return render_template("admin/settings.html", form=form, settings=settings)
+                return render_template("admin/settings.html", forms=forms, settings=settings, open_group=open_group)
 
             try:
-                log_action("settings.updated", entity_type="SiteSettings", entity_id=settings.id)
+                log_action("settings.updated", entity_type="SiteSettings", entity_id=settings.id, description=group)
                 db.session.commit()
                 flash("Configurações salvas com sucesso.", "success")
             except StaleDataError:
                 db.session.rollback()
                 flash("Conflito de edição detectado. Tente novamente.", "warning")
-            return redirect(url_for("admin.settings_manage"))
+            return redirect(url_for("admin.settings_manage", aberto=group))
         else:
             flash("Não foi possível salvar: verifique os campos destacados.", "danger")
-            return render_template("admin/settings.html", form=form, settings=settings, error_tab=_settings_error_tab(form))
 
-    return render_template("admin/settings.html", form=form, settings=settings)
+    return render_template("admin/settings.html", forms=forms, settings=settings, open_group=open_group)
 
 
 # ------------------------------------------------------------------ #

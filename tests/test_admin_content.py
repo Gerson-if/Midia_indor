@@ -167,26 +167,9 @@ def test_settings_update(client, admin_user, db):
     resp = client.post(
         "/admin/configuracoes",
         data={
+            "group": "empresa",
             "company_name": "Nova Empresa",
             "company_whatsapp": "5567900001111",
-            "color_primary": "#FFB020",
-            "color_secondary": "#37D6C7",
-            "whatsapp_button_color": "#37D6C7",
-            "hero_overlay_opacity": "0.5",
-            "hero_media_type": "video",
-            "services_heading": "Por que anunciar conosco?",
-            "gallery_heading": "Nossos Pontos",
-            "testimonials_heading": "Marcas que confiam",
-            "contact_heading": "Pronto para anunciar?",
-            "services_nav_label": "Vantagens",
-            "gallery_nav_label": "Telas",
-            "testimonials_nav_label": "Clientes",
-            "services_accent_color": "#FFB020",
-            "gallery_accent_color": "#FFB020",
-            "testimonials_accent_color": "#37D6C7",
-            "card_background_color": "#131A24",
-            "card_border_radius": "12",
-            "theme": "dark",
             "version_id": settings.version_id,
         },
         follow_redirects=True,
@@ -194,6 +177,43 @@ def test_settings_update(client, admin_user, db):
     assert resp.status_code == 200
     db.session.refresh(settings)
     assert settings.company_name == "Nova Empresa"
+
+
+def test_settings_group_save_does_not_clobber_other_groups(client, admin_user, db):
+    """Cada grupo da tela de Configurações salva de forma independente
+    (form e botão Salvar próprios) -- salvar "Empresa" não pode apagar/
+    resetar valores de "Hero" ou "Aparência", já que aquele POST nem
+    inclui os campos dos outros grupos."""
+    from app.models import SiteSettings
+
+    login(client, "admin@teste.com", "SenhaForte123!")
+    settings = SiteSettings.get_solo()
+    settings.hero_title = "Título Original do Hero"
+    settings.color_primary = "#123456"
+    db.session.commit()
+
+    resp = client.post(
+        "/admin/configuracoes",
+        data={
+            "group": "empresa",
+            "company_name": "Empresa Atualizada",
+            "company_whatsapp": settings.company_whatsapp,
+            "version_id": settings.version_id,
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+
+    db.session.refresh(settings)
+    assert settings.company_name == "Empresa Atualizada"
+    assert settings.hero_title == "Título Original do Hero"
+    assert settings.color_primary == "#123456"
+
+
+def test_settings_rejects_unknown_group(client, admin_user, db):
+    login(client, "admin@teste.com", "SenhaForte123!")
+    resp = client.post("/admin/configuracoes", data={"group": "nao-existe"})
+    assert resp.status_code == 400
 
 
 def test_settings_update_whatsapp_button_color(client, admin_user, db):
@@ -208,26 +228,16 @@ def test_settings_update_whatsapp_button_color(client, admin_user, db):
     resp = client.post(
         "/admin/configuracoes",
         data={
-            "company_name": settings.company_name,
-            "company_whatsapp": settings.company_whatsapp,
+            "group": "aparencia",
+            "theme": "dark",
             "color_primary": settings.color_primary,
             "color_secondary": settings.color_secondary,
             "whatsapp_button_color": "#123ABC",
-            "hero_overlay_opacity": "0.5",
-            "hero_media_type": "video",
-            "services_heading": "Por que anunciar conosco?",
-            "gallery_heading": "Nossos Pontos",
-            "testimonials_heading": "Marcas que confiam",
-            "contact_heading": "Pronto para anunciar?",
-            "services_nav_label": "Vantagens",
-            "gallery_nav_label": "Telas",
-            "testimonials_nav_label": "Clientes",
             "services_accent_color": "#FFB020",
             "gallery_accent_color": "#FFB020",
             "testimonials_accent_color": "#37D6C7",
             "card_background_color": "#131A24",
             "card_border_radius": "12",
-            "theme": "dark",
             "version_id": settings.version_id,
         },
         follow_redirects=True,
@@ -251,26 +261,16 @@ def test_settings_update_rejects_invalid_hex_color(client, admin_user, db):
     resp = client.post(
         "/admin/configuracoes",
         data={
-            "company_name": settings.company_name,
-            "company_whatsapp": settings.company_whatsapp,
+            "group": "aparencia",
+            "theme": "dark",
             "color_primary": "red; background:url(javascript:alert(1))",
             "color_secondary": settings.color_secondary,
             "whatsapp_button_color": settings.whatsapp_button_color,
-            "hero_overlay_opacity": "0.5",
-            "hero_media_type": "video",
-            "services_heading": "Por que anunciar conosco?",
-            "gallery_heading": "Nossos Pontos",
-            "testimonials_heading": "Marcas que confiam",
-            "contact_heading": "Pronto para anunciar?",
-            "services_nav_label": "Vantagens",
-            "gallery_nav_label": "Telas",
-            "testimonials_nav_label": "Clientes",
             "services_accent_color": "#FFB020",
             "gallery_accent_color": "#FFB020",
             "testimonials_accent_color": "#37D6C7",
             "card_background_color": "#131A24",
             "card_border_radius": "12",
-            "theme": "dark",
             "version_id": settings.version_id,
         },
         follow_redirects=True,
@@ -294,27 +294,10 @@ def test_settings_update_whatsapp_default_message(client, admin_user, db):
     resp = client.post(
         "/admin/configuracoes",
         data={
+            "group": "empresa",
             "company_name": settings.company_name,
             "company_whatsapp": "5567900001111",
             "whatsapp_default_message": "Olá! Quero anunciar em telas.",
-            "color_primary": settings.color_primary,
-            "color_secondary": settings.color_secondary,
-            "whatsapp_button_color": settings.whatsapp_button_color,
-            "hero_overlay_opacity": "0.5",
-            "hero_media_type": "video",
-            "services_heading": "Por que anunciar conosco?",
-            "gallery_heading": "Nossos Pontos",
-            "testimonials_heading": "Marcas que confiam",
-            "contact_heading": "Pronto para anunciar?",
-            "services_nav_label": "Vantagens",
-            "gallery_nav_label": "Telas",
-            "testimonials_nav_label": "Clientes",
-            "services_accent_color": "#FFB020",
-            "gallery_accent_color": "#FFB020",
-            "testimonials_accent_color": "#37D6C7",
-            "card_background_color": "#131A24",
-            "card_border_radius": "12",
-            "theme": "dark",
             "version_id": settings.version_id,
         },
         follow_redirects=True,
@@ -345,11 +328,7 @@ def test_settings_hero_media_toggle_and_removal(client, admin_user, db):
     db.session.commit()
 
     base_data = {
-        "company_name": settings.company_name,
-        "company_whatsapp": settings.company_whatsapp,
-        "color_primary": settings.color_primary,
-        "color_secondary": settings.color_secondary,
-        "whatsapp_button_color": settings.whatsapp_button_color,
+        "group": "hero",
         "hero_overlay_opacity": "0.5",
         "hero_media_type": "image",
         "services_heading": "Por que anunciar conosco?",
@@ -359,12 +338,6 @@ def test_settings_hero_media_toggle_and_removal(client, admin_user, db):
         "services_nav_label": "Vantagens",
         "gallery_nav_label": "Telas",
         "testimonials_nav_label": "Clientes",
-        "services_accent_color": "#FFB020",
-        "gallery_accent_color": "#FFB020",
-        "testimonials_accent_color": "#37D6C7",
-        "card_background_color": "#131A24",
-        "card_border_radius": "12",
-        "theme": "dark",
         "version_id": settings.version_id,
         "remove_hero_video": "y",
     }
@@ -385,26 +358,7 @@ def test_privacy_and_terms_content_editable_and_rendered(client, admin_user, db)
     resp = client.post(
         "/admin/configuracoes",
         data={
-            "company_name": settings.company_name,
-            "company_whatsapp": settings.company_whatsapp,
-            "color_primary": settings.color_primary,
-            "color_secondary": settings.color_secondary,
-            "whatsapp_button_color": settings.whatsapp_button_color,
-            "hero_overlay_opacity": "0.5",
-            "hero_media_type": "video",
-            "services_heading": "Por que anunciar conosco?",
-            "gallery_heading": "Nossos Pontos",
-            "testimonials_heading": "Marcas que confiam",
-            "contact_heading": "Pronto para anunciar?",
-            "services_nav_label": "Vantagens",
-            "gallery_nav_label": "Telas",
-            "testimonials_nav_label": "Clientes",
-            "services_accent_color": "#FFB020",
-            "gallery_accent_color": "#FFB020",
-            "testimonials_accent_color": "#37D6C7",
-            "card_background_color": "#131A24",
-            "card_border_radius": "12",
-            "theme": "dark",
+            "group": "legal",
             "version_id": settings.version_id,
             "privacy_content": "## Título Customizado\nTexto customizado de privacidade.",
             "terms_content": "## Regras Customizadas\nTexto customizado de termos.",
@@ -771,20 +725,10 @@ def test_changing_theme_to_light_reflects_on_public_site_and_admin(client, admin
     resp = client.post(
         "/admin/configuracoes",
         data={
-            "company_name": settings.company_name,
-            "company_whatsapp": settings.company_whatsapp,
+            "group": "aparencia",
             "color_primary": settings.color_primary,
             "color_secondary": settings.color_secondary,
             "whatsapp_button_color": settings.whatsapp_button_color,
-            "hero_overlay_opacity": "0.5",
-            "hero_media_type": "video",
-            "services_heading": "Por que anunciar conosco?",
-            "gallery_heading": "Nossos Pontos",
-            "testimonials_heading": "Marcas que confiam",
-            "contact_heading": "Pronto para anunciar?",
-            "services_nav_label": "Vantagens",
-            "gallery_nav_label": "Telas",
-            "testimonials_nav_label": "Clientes",
             "services_accent_color": "#FFB020",
             "gallery_accent_color": "#FFB020",
             "testimonials_accent_color": "#37D6C7",

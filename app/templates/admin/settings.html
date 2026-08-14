@@ -18,543 +18,537 @@
 </div>
 {% endmacro %}
 
+{# Gaveta lateral de um grupo de Configurações: cabeçalho + botão fechar
+   ficam sempre iguais, só o conteúdo (via {% call %}) muda por grupo. #}
+{% macro drawer(group, title) %}
+<aside id="settings-drawer-{{ group }}" class="side-drawer" data-group="{{ group }}" aria-hidden="true">
+  <div class="side-drawer-header">
+    <h3 class="font-display text-lg">{{ title }}</h3>
+    <button type="button" class="side-drawer-close" data-close-drawer title="Fechar" aria-label="Fechar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+  </div>
+  <div class="side-drawer-body">
+    {{ caller() }}
+  </div>
+</aside>
+{% endmacro %}
+
 {% block extra_head %}
 <style>
-  .tab-panel{ display:none; }
-  .tab-panel.active{ display:block; }
-
-  /* Barra de ações fixa: o botão "Salvar" fica sempre acessível no topo
-     da página, sem precisar rolar até o final do formulário. */
-  .save-bar{ position:sticky; top:0; z-index:30; }
-
   /* Réplica em miniatura do início do site público (header + hero),
-     escalada para caber no painel de pré-visualização — mesmas classes
-     do template público (index.html), garantindo fidelidade visual. */
-  .pv-scale-wrap{ position:relative; width:100%; aspect-ratio:16/11; overflow:hidden; background:#000; }
+     escalada para caber na gaveta do Hero — mesmas classes do template
+     público (index.html), garantindo fidelidade visual. */
+  .pv-scale-wrap{ position:relative; width:100%; aspect-ratio:16/11; overflow:hidden; background:#000; border-radius:12px; }
   .pv-scale{ position:absolute; top:0; left:0; width:200%; transform:scale(.5); transform-origin:top left; }
 </style>
 {% endblock %}
 
 {% block admin_content %}
-<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+<div class="flex flex-wrap items-center justify-between gap-3 mb-6" data-open-group="{{ open_group or '' }}">
   <div>
     <h2 class="font-display text-2xl">Configurações do Site</h2>
-    <p class="text-xs text-low mt-1">Altere os dados, o hero e a aparência do site público.</p>
+    <p class="text-xs text-low mt-1">Altere os dados, o hero e a aparência do site público. Cada grupo abaixo é salvo separadamente.</p>
   </div>
   <a href="{{ url_for('main.index') }}" target="_blank" class="btn btn-ghost !py-2 !px-4 text-xs shrink-0">Abrir site em nova aba &rarr;</a>
 </div>
 
-<div class="grid lg:grid-cols-5 gap-6 items-start">
-  <form method="POST" enctype="multipart/form-data" class="lg:col-span-3 flex flex-col gap-6" id="settings-form">
-    {{ form.hidden_tag() }}
-    
-    <!-- Correção aplicada aqui: class="hidden" para esconder o campo numérico em branco -->
-    {{ form.version_id(class="hidden") }}
+<!-- ---- Grupos de configuração em cards: cada um abre sua própria gaveta
+     lateral, com formulário e botão Salvar independentes dos demais. ---- -->
+<div class="grid sm:grid-cols-2 gap-3 mb-6">
+  <button type="button" class="drawer-trigger-card" data-group="empresa">
+    <span class="drawer-trigger-card-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="1"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M8 10h.01"/><path d="M16 10h.01"/><path d="M8 14h.01"/><path d="M16 14h.01"/></svg>
+    </span>
+    <span>
+      <span class="drawer-trigger-card-title block">Empresa</span>
+      <span class="drawer-trigger-card-desc block">Nome, contato, WhatsApp e endereço.</span>
+    </span>
+  </button>
+  <button type="button" class="drawer-trigger-card" data-group="marca">
+    <span class="drawer-trigger-card-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>
+    </span>
+    <span>
+      <span class="drawer-trigger-card-title block">Marca</span>
+      <span class="drawer-trigger-card-desc block">Favicon e logo do site e do painel.</span>
+    </span>
+  </button>
+  <button type="button" class="drawer-trigger-card" data-group="hero">
+    <span class="drawer-trigger-card-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 15 4.5-4.5a2 2 0 0 1 2.8 0L15 15"/><path d="m14 14 1.5-1.5a2 2 0 0 1 2.8 0L21 15"/><circle cx="8.5" cy="8.5" r="1.5"/></svg>
+    </span>
+    <span>
+      <span class="drawer-trigger-card-title block">Hero</span>
+      <span class="drawer-trigger-card-desc block">Textos, nomes do menu, títulos e mídia de capa (com prévia ao vivo).</span>
+    </span>
+  </button>
+  <button type="button" class="drawer-trigger-card" data-group="aparencia">
+    <span class="drawer-trigger-card-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".6" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".6" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".6" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".6" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.6-.7 1.6-1.6 0-.4-.2-.8-.4-1.1-.3-.3-.4-.6-.4-1.1a1.6 1.6 0 0 1 1.6-1.6h2c3 0 5.5-2.5 5.5-5.5C22 6 17.5 2 12 2z"/></svg>
+    </span>
+    <span>
+      <span class="drawer-trigger-card-title block">Aparência</span>
+      <span class="drawer-trigger-card-desc block">Tema, cores da marca e estilo das seções.</span>
+    </span>
+  </button>
+  <button type="button" class="drawer-trigger-card sm:col-span-2" data-group="legal">
+    <span class="drawer-trigger-card-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
+    </span>
+    <span>
+      <span class="drawer-trigger-card-title block">Páginas Legais</span>
+      <span class="drawer-trigger-card-desc block">Conteúdo da Política de Privacidade e dos Termos de Uso.</span>
+    </span>
+  </button>
+</div>
 
-    <!-- ---- Barra de ações fixa: sempre visível no topo, sem precisar rolar ---- -->
-    <div class="save-bar card !rounded-xl px-4 py-3 flex items-center justify-between gap-3 backdrop-blur border border-line" style="background:rgba(19,26,36,.92)">
-      <p class="text-[11px] text-low hidden sm:block">As alterações só entram em vigor no site após salvar.</p>
-      <div class="flex items-center gap-3 ml-auto">
-        <span class="text-xs text-low" id="save-hint">&nbsp;</span>
-        <button type="submit" class="btn btn-primary px-6 sm:px-8 py-2.5 text-sm" style="background-color: var(--amber)">Salvar Configurações</button>
-      </div>
+<div id="settings-drawer-backdrop" class="side-drawer-backdrop"></div>
+
+<!-- ================= EMPRESA ================= -->
+{% call drawer('empresa', 'Empresa') %}
+<form method="POST" enctype="multipart/form-data" class="space-y-6">
+  {{ forms.empresa.hidden_tag() }}
+  {{ forms.empresa.version_id(class="hidden") }}
+  <input type="hidden" name="group" value="empresa">
+  <div class="card p-6 space-y-4">
+    <div>
+      {{ forms.empresa.company_name.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ forms.empresa.company_name(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", required=true, id="f_company_name") }}
+      {% for e in forms.empresa.company_name.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
     </div>
-
-    <!-- ---- Grupos de configuração em cards: cada um abre uma gaveta lateral
-         para editar só aquele grupo, em vez de empilhar tudo na tela junto
-         com a pré-visualização. ---- -->
+    <div>
+      {{ forms.empresa.company_description.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ forms.empresa.company_description(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", rows="2") }}
+    </div>
+    <div>
+      {{ forms.empresa.company_whatsapp.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ forms.empresa.company_whatsapp(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", placeholder="Ex.: 5567999990000", required=true) }}
+      <p class="text-[11px] text-low mt-1">Somente números, com DDI 55 e DDD.</p>
+      {% for e in forms.empresa.company_whatsapp.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+    </div>
+    <div>
+      {{ forms.empresa.whatsapp_default_message.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ forms.empresa.whatsapp_default_message(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", rows="2", placeholder="Ex.: Olá! Vi o site e gostaria de saber mais sobre anunciar em telas de mídia indoor.") }}
+      <p class="text-[11px] text-low mt-1">Texto que já vem preenchido quando o visitante clica em "Chamar no WhatsApp" no site. Deixe em branco para abrir a conversa sem mensagem.</p>
+      {% for e in forms.empresa.whatsapp_default_message.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+    </div>
     <div class="grid sm:grid-cols-2 gap-3">
-      <button type="button" class="drawer-trigger-card" data-tab="tab-empresa">
-        <span class="drawer-trigger-card-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="1"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M8 10h.01"/><path d="M16 10h.01"/><path d="M8 14h.01"/><path d="M16 14h.01"/></svg>
-        </span>
-        <span>
-          <span class="drawer-trigger-card-title block">Empresa</span>
-          <span class="drawer-trigger-card-desc block">Nome, contato, WhatsApp e endereço.</span>
-        </span>
-      </button>
-      <button type="button" class="drawer-trigger-card" data-tab="tab-marca">
-        <span class="drawer-trigger-card-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>
-        </span>
-        <span>
-          <span class="drawer-trigger-card-title block">Marca</span>
-          <span class="drawer-trigger-card-desc block">Favicon e logo do site e do painel.</span>
-        </span>
-      </button>
-      <button type="button" class="drawer-trigger-card" data-tab="tab-hero">
-        <span class="drawer-trigger-card-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 15 4.5-4.5a2 2 0 0 1 2.8 0L15 15"/><path d="m14 14 1.5-1.5a2 2 0 0 1 2.8 0L21 15"/><circle cx="8.5" cy="8.5" r="1.5"/></svg>
-        </span>
-        <span>
-          <span class="drawer-trigger-card-title block">Hero</span>
-          <span class="drawer-trigger-card-desc block">Textos, nomes do menu, títulos e mídia de capa.</span>
-        </span>
-      </button>
-      <button type="button" class="drawer-trigger-card" data-tab="tab-aparencia">
-        <span class="drawer-trigger-card-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".6" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".6" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".6" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".6" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.6-.7 1.6-1.6 0-.4-.2-.8-.4-1.1-.3-.3-.4-.6-.4-1.1a1.6 1.6 0 0 1 1.6-1.6h2c3 0 5.5-2.5 5.5-5.5C22 6 17.5 2 12 2z"/></svg>
-        </span>
-        <span>
-          <span class="drawer-trigger-card-title block">Aparência</span>
-          <span class="drawer-trigger-card-desc block">Tema, cores da marca e estilo das seções.</span>
-        </span>
-      </button>
-      <button type="button" class="drawer-trigger-card sm:col-span-2" data-tab="tab-legal">
-        <span class="drawer-trigger-card-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
-        </span>
-        <span>
-          <span class="drawer-trigger-card-title block">Páginas Legais</span>
-          <span class="drawer-trigger-card-desc block">Conteúdo da Política de Privacidade e dos Termos de Uso.</span>
-        </span>
-      </button>
-    </div>
-
-    <!-- ---- Gaveta lateral: mostra só o grupo escolhido acima ---- -->
-    <div id="settings-drawer-backdrop" class="side-drawer-backdrop"></div>
-    <aside id="settings-drawer" class="side-drawer" data-error-tab="{{ error_tab or '' }}" aria-hidden="true">
-      <div class="side-drawer-header">
-        <h3 class="font-display text-lg" id="settings-drawer-title">Empresa</h3>
-        <button type="button" id="settings-drawer-close" class="side-drawer-close" title="Fechar" aria-label="Fechar">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-        </button>
+      <div>
+        {{ forms.empresa.company_email.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ forms.empresa.company_email(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", type="email") }}
+        {% for e in forms.empresa.company_email.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
       </div>
-      <div class="side-drawer-body">
-
-    <!-- ================= EMPRESA ================= -->
-    <div class="tab-panel active space-y-6" id="tab-empresa">
-      <div class="card p-6 space-y-4">
-        <h3 class="font-display text-lg text-hi mb-2">Dados da Empresa</h3>
-        <div>
-          {{ form.company_name.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-          {{ form.company_name(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", required=true, id="f_company_name") }}
-          {% for e in form.company_name.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
-        </div>
-        <div>
-          {{ form.company_description.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-          {{ form.company_description(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", rows="2") }}
-        </div>
-        <div>
-          {{ form.company_whatsapp.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-          {{ form.company_whatsapp(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", placeholder="Ex.: 5567999990000", required=true) }}
-          <p class="text-[11px] text-low mt-1">Somente números, com DDI 55 e DDD.</p>
-          {% for e in form.company_whatsapp.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
-        </div>
-        <div>
-          {{ form.whatsapp_default_message.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-          {{ form.whatsapp_default_message(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", rows="2", placeholder="Ex.: Olá! Vi o site e gostaria de saber mais sobre anunciar em telas de mídia indoor.") }}
-          <p class="text-[11px] text-low mt-1">Texto que já vem preenchido quando o visitante clica em "Chamar no WhatsApp" no site. Deixe em branco para abrir a conversa sem mensagem.</p>
-          {% for e in form.whatsapp_default_message.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
-        </div>
-        <div class="grid sm:grid-cols-2 gap-3">
-          <div>
-            {{ form.company_email.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-            {{ form.company_email(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", type="email") }}
-            {% for e in form.company_email.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
-          </div>
-          <div>
-            {{ form.company_phone.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-            {{ form.company_phone(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
-          </div>
-        </div>
-        <div>
-          {{ form.company_address.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-          {{ form.company_address(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
-        </div>
+      <div>
+        {{ forms.empresa.company_phone.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ forms.empresa.company_phone(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
       </div>
     </div>
-
-    <!-- ================= MARCA (favicon / logo) ================= -->
-    <div class="tab-panel space-y-6" id="tab-marca">
-      <div class="card p-6 space-y-4">
-        <h3 class="font-display text-lg text-hi mb-2">Identidade Visual</h3>
-        <p class="text-xs text-low -mt-2">Favicon (ícone da aba do navegador) e logo exibida no cabeçalho do site e do painel.</p>
-        <div class="grid sm:grid-cols-2 gap-6">
-          <div class="border border-line rounded-lg p-4 space-y-3" data-media-group>
-            <p class="text-sm font-semibold text-hi">Favicon</p>
-            <div class="flex items-center gap-3">
-              <div class="relative w-12 h-12 rounded-lg border border-line bg-panel2 flex items-center justify-center overflow-hidden shrink-0">
-                <img data-media-preview="image" class="w-8 h-8 object-contain {{ '' if settings.favicon_path else 'hidden' }}" {% if settings.favicon_path %}src="{{ url_for('static', filename=settings.favicon_path) }}"{% endif %}>
-                <span data-media-placeholder class="text-[10px] text-low text-center px-1 {{ 'hidden' if settings.favicon_path else '' }}">Padrão</span>
-              </div>
-              <div class="min-w-0 flex-1 text-xs text-low">
-                {% if settings.favicon_path %}Favicon personalizado ativo.{% else %}Nenhum favicon enviado — usando o ícone padrão.{% endif %}
-              </div>
-            </div>
-            {% if settings.favicon_path %}
-            <label class="flex items-center gap-2 text-xs text-red-400">{{ form.remove_favicon() }} Remover favicon atual ao salvar</label>
-            {% endif %}
-            <div>
-              {{ form.favicon.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-              <div class="flex items-center gap-2 mb-1">
-                <span data-media-filename class="media-filename-badge hidden"></span>
-                <button type="button" data-media-clear class="media-preview-remove hidden">✕ Cancelar seleção</button>
-              </div>
-              {{ form.favicon(class_="w-full text-xs text-mid") }}
-              <p class="text-[11px] text-low mt-1">.png, .ico ou .webp. Redimensionado para até 256×256. A prévia aparece assim que você escolher o arquivo.</p>
-              {% for e in form.favicon.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
-            </div>
-          </div>
-
-          <div class="border border-line rounded-lg p-4 space-y-3" data-media-group>
-            <p class="text-sm font-semibold text-hi">Logo da empresa</p>
-            <div class="flex items-center gap-3">
-              <div class="relative w-12 h-12 rounded-lg border border-line bg-panel2 flex items-center justify-center overflow-hidden shrink-0">
-                <img data-media-preview="image" class="w-full h-full object-contain {{ '' if settings.logo_path else 'hidden' }}" {% if settings.logo_path %}src="{{ url_for('static', filename=settings.logo_path) }}"{% endif %}>
-                <span data-media-placeholder class="text-[10px] text-low text-center px-1 {{ 'hidden' if settings.logo_path else '' }}">Inicial</span>
-              </div>
-              <div class="min-w-0 flex-1 text-xs text-low">
-                {% if settings.logo_path %}Logo personalizada ativa.{% else %}Nenhuma logo enviada — exibindo a inicial do nome da empresa.{% endif %}
-              </div>
-            </div>
-            {% if settings.logo_path %}
-            <label class="flex items-center gap-2 text-xs text-red-400">{{ form.remove_logo() }} Remover logo atual ao salvar</label>
-            {% endif %}
-            <div>
-              {{ form.logo.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-              <div class="flex items-center gap-2 mb-1">
-                <span data-media-filename class="media-filename-badge hidden"></span>
-                <button type="button" data-media-clear class="media-preview-remove hidden">✕ Cancelar seleção</button>
-              </div>
-              {{ form.logo(class_="w-full text-xs text-mid") }}
-              <p class="text-[11px] text-low mt-1">Opcional. Otimizada automaticamente (WEBP). A prévia aparece assim que você escolher o arquivo.</p>
-              {% for e in form.logo.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
-            </div>
-          </div>
-        </div>
-      </div>
+    <div>
+      {{ forms.empresa.company_address.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ forms.empresa.company_address(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
     </div>
+  </div>
+  <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">Salvar Empresa</button>
+</form>
+{% endcall %}
 
-    <!-- ================= HERO ================= -->
-    <div class="tab-panel space-y-6" id="tab-hero">
-      <div class="card p-6 space-y-4">
-        <h3 class="font-display text-lg text-hi mb-2">Textos do Hero</h3>
+<!-- ================= MARCA (favicon / logo) ================= -->
+{% call drawer('marca', 'Marca') %}
+<form method="POST" enctype="multipart/form-data" class="space-y-6">
+  {{ forms.marca.hidden_tag() }}
+  {{ forms.marca.version_id(class="hidden") }}
+  <input type="hidden" name="group" value="marca">
+  <div class="card p-6 space-y-4">
+    <p class="text-xs text-low -mt-1">Favicon (ícone da aba do navegador) e logo exibida no cabeçalho do site e do painel.</p>
+    <div class="space-y-6">
+      <div class="border border-line rounded-lg p-4 space-y-3" data-media-group>
+        <p class="text-sm font-semibold text-hi">Favicon</p>
+        <div class="flex items-center gap-3">
+          <div class="relative w-12 h-12 rounded-lg border border-line bg-panel2 flex items-center justify-center overflow-hidden shrink-0">
+            <img data-media-preview="image" class="w-8 h-8 object-contain {{ '' if settings.favicon_path else 'hidden' }}" {% if settings.favicon_path %}src="{{ url_for('static', filename=settings.favicon_path) }}"{% endif %}>
+            <span data-media-placeholder class="text-[10px] text-low text-center px-1 {{ 'hidden' if settings.favicon_path else '' }}">Padrão</span>
+          </div>
+          <div class="min-w-0 flex-1 text-xs text-low">
+            {% if settings.favicon_path %}Favicon personalizado ativo.{% else %}Nenhum favicon enviado — usando o ícone padrão.{% endif %}
+          </div>
+        </div>
+        {% if settings.favicon_path %}
+        <label class="flex items-center gap-2 text-xs text-red-400">{{ forms.marca.remove_favicon() }} Remover favicon atual ao salvar</label>
+        {% endif %}
         <div>
-          {{ form.hero_title.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-          {{ form.hero_title(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", id="f_hero_title") }}
+          {{ forms.marca.favicon.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+          <div class="flex items-center gap-2 mb-1">
+            <span data-media-filename class="media-filename-badge hidden"></span>
+            <button type="button" data-media-clear class="media-preview-remove hidden">✕ Cancelar seleção</button>
+          </div>
+          {{ forms.marca.favicon(class_="w-full text-xs text-mid") }}
+          <p class="text-[11px] text-low mt-1">.png, .ico ou .webp. Redimensionado para até 256×256. A prévia aparece assim que você escolher o arquivo.</p>
+          {% for e in forms.marca.favicon.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
         </div>
+      </div>
+
+      <div class="border border-line rounded-lg p-4 space-y-3" data-media-group>
+        <p class="text-sm font-semibold text-hi">Logo da empresa</p>
+        <div class="flex items-center gap-3">
+          <div class="relative w-12 h-12 rounded-lg border border-line bg-panel2 flex items-center justify-center overflow-hidden shrink-0">
+            <img data-media-preview="image" class="w-full h-full object-contain {{ '' if settings.logo_path else 'hidden' }}" {% if settings.logo_path %}src="{{ url_for('static', filename=settings.logo_path) }}"{% endif %}>
+            <span data-media-placeholder class="text-[10px] text-low text-center px-1 {{ 'hidden' if settings.logo_path else '' }}">Inicial</span>
+          </div>
+          <div class="min-w-0 flex-1 text-xs text-low">
+            {% if settings.logo_path %}Logo personalizada ativa.{% else %}Nenhuma logo enviada — exibindo a inicial do nome da empresa.{% endif %}
+          </div>
+        </div>
+        {% if settings.logo_path %}
+        <label class="flex items-center gap-2 text-xs text-red-400">{{ forms.marca.remove_logo() }} Remover logo atual ao salvar</label>
+        {% endif %}
         <div>
-          {{ form.hero_subtitle.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-          {{ form.hero_subtitle(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", rows="2", id="f_hero_subtitle") }}
+          {{ forms.marca.logo.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+          <div class="flex items-center gap-2 mb-1">
+            <span data-media-filename class="media-filename-badge hidden"></span>
+            <button type="button" data-media-clear class="media-preview-remove hidden">✕ Cancelar seleção</button>
+          </div>
+          {{ forms.marca.logo(class_="w-full text-xs text-mid") }}
+          <p class="text-[11px] text-low mt-1">Opcional. Otimizada automaticamente (WEBP). A prévia aparece assim que você escolher o arquivo.</p>
+          {% for e in forms.marca.logo.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
         </div>
-        <div class="grid sm:grid-cols-2 gap-3">
-          <div>
-            {{ form.hero_cta_primary_label.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-            {{ form.hero_cta_primary_label(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", id="f_cta_primary") }}
-          </div>
-          <div>
-            {{ form.hero_cta_secondary_label.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-            {{ form.hero_cta_secondary_label(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", id="f_cta_secondary") }}
-          </div>
-        </div>
-        <div class="max-w-xs">
-          {{ form.hero_overlay_opacity.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-          {{ form.hero_overlay_opacity(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", step="0.05", min="0", max="1", id="f_overlay") }}
-        </div>
-      </div>
-
-      <div class="card p-6 space-y-4">
-        <h3 class="font-display text-lg text-hi mb-2">Nomes no Menu</h3>
-        <p class="text-xs text-low -mt-2">Texto curto exibido no menu do cabeçalho e no rodapé do site (diferente do título mostrado dentro de cada seção, logo abaixo).</p>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            {{ form.services_nav_label.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-            {{ form.services_nav_label(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
-            {% for e in form.services_nav_label.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
-          </div>
-          <div>
-            {{ form.gallery_nav_label.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-            {{ form.gallery_nav_label(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
-            {% for e in form.gallery_nav_label.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
-          </div>
-          <div>
-            {{ form.testimonials_nav_label.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-            {{ form.testimonials_nav_label(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
-            {% for e in form.testimonials_nav_label.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
-          </div>
-        </div>
-      </div>
-
-      <div class="card p-6 space-y-4">
-        <h3 class="font-display text-lg text-hi mb-2">Títulos das Seções</h3>
-        <p class="text-xs text-low -mt-2">Textos exibidos acima de cada seção fixa do site (Vantagens, Galeria, Depoimentos e a chamada final antes do formulário de contato).</p>
-        <div class="grid sm:grid-cols-2 gap-4">
-          <div>
-            {{ form.services_heading.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-            {{ form.services_heading(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
-          </div>
-          <div>
-            {{ form.services_subtitle.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-            {{ form.services_subtitle(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
-          </div>
-          <div>
-            {{ form.gallery_heading.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-            {{ form.gallery_heading(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
-          </div>
-          <div>
-            {{ form.gallery_subtitle.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-            {{ form.gallery_subtitle(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
-          </div>
-          <div>
-            {{ form.testimonials_heading.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-            {{ form.testimonials_heading(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
-          </div>
-          <div>
-            {{ form.contact_heading.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-            {{ form.contact_heading(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
-          </div>
-        </div>
-      </div>
-
-      <div class="card p-6 space-y-4">
-        <h3 class="font-display text-lg text-hi mb-2">Mídia de Capa do Hero</h3>
-        <div>
-          <label class="block text-xs font-mono uppercase text-low mb-2">Tipo de capa exibida no site</label>
-          <div class="flex gap-4">
-            {% for subfield in form.hero_media_type %}
-            <label class="flex items-center gap-2 text-sm text-mid cursor-pointer">
-              {{ subfield(class_="hero-media-toggle") }} {{ subfield.label.text }}
-            </label>
-            {% endfor %}
-          </div>
-        </div>
-
-        <div class="grid sm:grid-cols-2 gap-6 pt-2">
-          <div class="border border-line rounded-lg p-4 space-y-3" data-media-group>
-            <p class="text-sm font-semibold text-hi">Vídeo de fundo</p>
-            <video data-media-preview="video" class="w-full rounded-lg aspect-video object-cover bg-black {{ '' if settings.hero_video_path else 'hidden' }}" {% if settings.hero_video_path %}src="{{ url_for('static', filename=settings.hero_video_path) }}"{% endif %} muted loop autoplay playsinline></video>
-            <p data-media-placeholder class="text-xs text-low {{ 'hidden' if settings.hero_video_path else '' }}">Nenhum vídeo enviado ainda.</p>
-            {% if settings.hero_video_path %}
-            <label class="flex items-center gap-2 text-xs text-red-400">
-              {{ form.remove_hero_video() }} Remover vídeo atual ao salvar
-            </label>
-            {% endif %}
-            <div>
-              {{ form.hero_video.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-              <div class="flex items-center gap-2 mb-1">
-                <span data-media-filename class="media-filename-badge hidden"></span>
-                <button type="button" data-media-clear class="media-preview-remove hidden">✕ Cancelar seleção</button>
-              </div>
-              {{ form.hero_video(class_="w-full text-xs text-mid") }}
-              <p class="text-[11px] text-low mt-1">Otimizado automaticamente (máx. 1920×1080, sem áudio, .mp4). Aceita .mp4 e .webm. A prévia aparece assim que você escolher o arquivo.</p>
-              {% for e in form.hero_video.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
-            </div>
-          </div>
-
-          <div class="border border-line rounded-lg p-4 space-y-3" data-media-group>
-            <p class="text-sm font-semibold text-hi">Imagem de capa (alternativa ao vídeo)</p>
-            <img data-media-preview="image" class="w-full rounded-lg aspect-video object-cover bg-black {{ '' if settings.hero_image_path else 'hidden' }}" {% if settings.hero_image_path %}src="{{ url_for('static', filename=settings.hero_image_path) }}"{% endif %}>
-            <p data-media-placeholder class="text-xs text-low {{ 'hidden' if settings.hero_image_path else '' }}">Nenhuma imagem enviada ainda.</p>
-            {% if settings.hero_image_path %}
-            <label class="flex items-center gap-2 text-xs text-red-400">
-              {{ form.remove_hero_image() }} Remover imagem atual ao salvar
-            </label>
-            {% endif %}
-            <div>
-              {{ form.hero_image.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-              <div class="flex items-center gap-2 mb-1">
-                <span data-media-filename class="media-filename-badge hidden"></span>
-                <button type="button" data-media-clear class="media-preview-remove hidden">✕ Cancelar seleção</button>
-              </div>
-              {{ form.hero_image(class_="w-full text-xs text-mid") }}
-              <p class="text-[11px] text-low mt-1">Otimizada e redimensionada automaticamente (WEBP). A prévia aparece assim que você escolher o arquivo.</p>
-              {% for e in form.hero_image.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ================= APARÊNCIA ================= -->
-    <div class="tab-panel space-y-6" id="tab-aparencia">
-      <div class="card p-6 space-y-4">
-        <h3 class="font-display text-lg text-hi mb-2">Tema do sistema</h3>
-        <p class="text-xs text-low -mt-2">
-          Vale para o site público e para o painel, para todo mundo que acessar — não é uma preferência do navegador de cada visitante.
-        </p>
-        <div class="flex gap-3">
-          {% for subfield in form.theme %}
-          <label class="theme-choice flex items-center gap-2 text-sm text-mid cursor-pointer border border-line rounded-lg px-4 py-2.5 {{ 'theme-choice-active' if subfield.checked }}">
-            {{ subfield(class_="theme-choice-input") }} {{ subfield.label.text }}
-          </label>
-          {% endfor %}
-        </div>
-      </div>
-
-      <div class="card p-6 space-y-4">
-        <h3 class="font-display text-lg text-hi mb-2">Cores da Marca</h3>
-        <p class="text-xs text-low -mt-2">Escolha visualmente ou digite/cole o hexadecimal direto no campo ao lado (ex.: #FFB020).</p>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-md">
-          {{ color_field(form.color_primary, "f_color_primary") }}
-          {{ color_field(form.color_secondary, "f_color_secondary") }}
-          {{ color_field(form.whatsapp_button_color, "f_whatsapp_button_color") }}
-        </div>
-      </div>
-
-      <div class="card p-6 space-y-4">
-        <h3 class="font-display text-lg text-hi mb-2">Aparência das Seções</h3>
-        <p class="text-xs text-low -mt-2">Personalize as cores de destaque e o estilo dos cards nas seções de Vantagens, Galeria e Depoimentos, sem precisar editar código.</p>
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-          {{ color_field(form.services_accent_color, "f_services_accent_color") }}
-          {{ color_field(form.gallery_accent_color, "f_gallery_accent_color") }}
-          {{ color_field(form.testimonials_accent_color, "f_testimonials_accent_color") }}
-          {{ color_field(form.card_background_color, "f_card_background_color") }}
-        </div>
-        <div class="max-w-xs">
-          {{ form.card_border_radius.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-          {{ form.card_border_radius(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
-          <p class="text-[11px] text-low mt-1">0 = cantos retos, 40 = bem arredondado.</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- ================= PÁGINAS LEGAIS ================= -->
-    <div class="tab-panel space-y-6" id="tab-legal">
-      <div class="card p-6 space-y-4">
-        <h3 class="font-display text-lg text-hi mb-2">Páginas Legais</h3>
-        <p class="text-xs text-low -mt-2">
-          Use linhas iniciadas com <code class="text-cyan-300">## </code> para criar títulos de seção,
-          e linhas iniciadas com <code class="text-cyan-300">- </code> para criar listas. Separe parágrafos com uma linha em branco.
-        </p>
-        <div>
-          {{ form.privacy_content.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-          {{ form.privacy_content(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none font-mono", rows="8") }}
-        </div>
-        <div>
-          {{ form.terms_content.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
-          {{ form.terms_content(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none font-mono", rows="8") }}
-        </div>
-        <div class="flex gap-4 text-xs">
-          <a href="{{ url_for('main.privacidade') }}" target="_blank" class="hover:underline" style="color: var(--cyan-text)">Ver política publicada &rarr;</a>
-          <a href="{{ url_for('main.termos') }}" target="_blank" class="hover:underline" style="color: var(--cyan-text)">Ver termos publicados &rarr;</a>
-        </div>
-      </div>
-    </div>
-
-      </div>
-    </aside>
-  </form>
-
-  <!-- Painel de pré-visualização ao vivo (atualiza conforme você digita) -->
-  <div class="lg:col-span-2">
-    <div class="card overflow-hidden sticky top-20">
-      <div class="px-4 py-3 border-b border-line bg-panel2 flex items-center justify-between">
-        <h3 class="font-display text-sm text-hi">Pré-visualização — início do site</h3>
-        <span class="text-[10px] font-mono text-low">atualiza ao digitar</span>
-      </div>
-
-      <div class="pv-scale-wrap">
-        <div class="pv-scale font-body" id="hero-preview">
-          <!-- Cabeçalho: réplica fiel do header público (base.html/index.html) -->
-          <div class="flex items-center justify-between px-6 py-4 glass border-b border-line">
-            <div class="flex items-center gap-2 font-display font-semibold text-lg text-hi">
-              {% if settings.logo_path %}
-              <img src="{{ url_for('static', filename=settings.logo_path) }}" class="w-8 h-8 rounded-md object-contain">
-              {% else %}
-              <span class="w-8 h-8 rounded-md flex items-center justify-center text-onbrand font-bold" id="preview-logo-fallback" style="background-color: {{ settings.color_primary }}">{{ (settings.company_name or 'N')[0] }}</span>
-              {% endif %}
-              <span id="preview-company-header">{{ settings.company_name }}</span>
-            </div>
-            <div class="hidden md:flex items-center gap-8 font-mono text-xs uppercase tracking-wider text-mid">
-              <span>{{ settings.services_nav_label }}</span><span>{{ settings.gallery_nav_label }}</span><span>{{ settings.testimonials_nav_label }}</span>
-              <span class="btn btn-primary !py-1.5 !px-4 text-xs" id="preview-cta-header" style="background-color: {{ settings.color_primary }}">Anunciar</span>
-            </div>
-          </div>
-
-          <!-- Hero: mesmas classes do index.html, em escala reduzida -->
-          {% set preview_has_media = (settings.hero_media_type == 'video' and settings.hero_video_path) or (settings.hero_media_type == 'image' and settings.hero_image_path) %}
-          <div class="relative flex items-center justify-center overflow-hidden bg-ink" style="min-height:560px; padding:60px 24px;">
-            <div class="absolute inset-0 w-full h-full z-0 pointer-events-none">
-              <div id="preview-bg" class="absolute inset-0" style="background: linear-gradient(160deg, {{ settings.color_primary }}22, {{ settings.color_secondary }}22), var(--ink);"></div>
-              <video id="preview-video" src="{{ url_for('static', filename=settings.hero_video_path) if settings.hero_video_path else '' }}"
-                     autoplay loop muted playsinline
-                     class="absolute inset-0 w-full h-full object-cover"
-                     style="display: {{ 'block' if settings.hero_media_type == 'video' and settings.hero_video_path else 'none' }};"></video>
-              <img id="preview-image" src="{{ url_for('static', filename=settings.hero_image_path) if settings.hero_image_path else '' }}"
-                   class="absolute inset-0 w-full h-full object-cover"
-                   style="display: {{ 'block' if settings.hero_media_type == 'image' and settings.hero_image_path else 'none' }};">
-            </div>
-            <div id="preview-overlay" class="absolute inset-0 z-10 bg-black" style="opacity: {{ settings.hero_overlay_opacity if preview_has_media else 0 }};"></div>
-
-            <div class="container-nx relative z-20 text-center max-w-4xl mx-auto">
-              <span class="pill-live mb-6 mx-auto" style="{{ 'color:rgba(255,255,255,.85); border-color:rgba(255,255,255,.25);' if preview_has_media }}"><span class="dot" style="background-color: {{ settings.color_primary }}"></span>Telas ao vivo</span>
-              <h1 id="preview-title" class="font-display text-5xl md:text-6xl font-bold leading-[1.1] mb-6" style="color:{{ '#fff' if preview_has_media else 'var(--text-hi)' }}">{{ settings.hero_title or "Título do Hero" }}</h1>
-              <p id="preview-subtitle" class="text-lg md:text-xl mb-10 max-w-2xl mx-auto" style="color:{{ 'rgba(255,255,255,.78)' if preview_has_media else 'var(--text-mid)' }}">{{ settings.hero_subtitle or "Subtítulo do Hero" }}</p>
-              <div class="flex flex-wrap justify-center gap-4">
-                <span id="preview-cta-primary" class="btn btn-primary px-8 py-4 text-lg" style="background-color: {{ settings.color_primary }};">{{ settings.hero_cta_primary_label or "Anuncie Conosco" }}</span>
-                <span id="preview-cta-secondary" class="btn btn-ghost px-8 py-4 text-lg bg-black/30 backdrop-blur-md" style="{{ 'color:#fff; border-color:rgba(255,255,255,.3);' if preview_has_media }}">{{ settings.hero_cta_secondary_label or "Conhecer Locais" }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="p-4 space-y-2 text-xs text-mid border-t border-line">
-        <p><span class="text-low font-mono uppercase text-[10px]">Empresa:</span> <span id="preview-company">{{ settings.company_name }}</span></p>
-        <p class="flex items-center gap-2">
-          <span class="text-low font-mono uppercase text-[10px]">Cores:</span>
-          <span id="preview-swatch-primary" class="w-4 h-4 rounded-full inline-block border border-line" style="background-color: {{ settings.color_primary }};"></span>
-          <span id="preview-swatch-secondary" class="w-4 h-4 rounded-full inline-block border border-line" style="background-color: {{ settings.color_secondary }};"></span>
-        </p>
-        <p id="preview-media-hint" class="text-low">
-          {% if settings.hero_media_type == 'video' and not settings.hero_video_path %}
-            Tipo definido como "Vídeo", mas nenhum vídeo foi enviado ainda — o site exibirá apenas o gradiente de cores.
-          {% elif settings.hero_media_type == 'image' and not settings.hero_image_path %}
-            Tipo definido como "Imagem", mas nenhuma imagem foi enviada ainda — o site exibirá apenas o gradiente de cores.
-          {% endif %}
-        </p>
       </div>
     </div>
   </div>
+  <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">Salvar Marca</button>
+</form>
+{% endcall %}
+
+<!-- ================= HERO (com prévia ao vivo) ================= -->
+{% call drawer('hero', 'Hero') %}
+<!-- Prévia ao vivo do início do site -- atualiza conforme os campos deste
+     mesmo formulário são digitados (ver bloco de script no fim da página). -->
+<div class="card overflow-hidden mb-6">
+  <div class="px-4 py-3 border-b border-line bg-panel2 flex items-center justify-between">
+    <h3 class="font-display text-sm text-hi">Pré-visualização</h3>
+    <span class="text-[10px] font-mono text-low">atualiza ao digitar</span>
+  </div>
+  <div class="pv-scale-wrap">
+    <div class="pv-scale font-body" id="hero-preview">
+      <div class="flex items-center justify-between px-6 py-4 glass border-b border-line">
+        <div class="flex items-center gap-2 font-display font-semibold text-lg text-hi">
+          {% if settings.logo_path %}
+          <img src="{{ url_for('static', filename=settings.logo_path) }}" class="w-8 h-8 rounded-md object-contain">
+          {% else %}
+          <span class="w-8 h-8 rounded-md flex items-center justify-center text-onbrand font-bold" id="preview-logo-fallback" style="background-color: {{ settings.color_primary }}">{{ (settings.company_name or 'N')[0] }}</span>
+          {% endif %}
+          <span id="preview-company-header">{{ settings.company_name }}</span>
+        </div>
+        <div class="hidden md:flex items-center gap-8 font-mono text-xs uppercase tracking-wider text-mid">
+          <span>{{ settings.services_nav_label }}</span><span>{{ settings.gallery_nav_label }}</span><span>{{ settings.testimonials_nav_label }}</span>
+          <span class="btn btn-primary !py-1.5 !px-4 text-xs" id="preview-cta-header" style="background-color: {{ settings.color_primary }}">Anunciar</span>
+        </div>
+      </div>
+
+      {% set preview_has_media = (settings.hero_media_type == 'video' and settings.hero_video_path) or (settings.hero_media_type == 'image' and settings.hero_image_path) %}
+      <div class="relative flex items-center justify-center overflow-hidden bg-ink" style="min-height:560px; padding:60px 24px;">
+        <div class="absolute inset-0 w-full h-full z-0 pointer-events-none">
+          <div id="preview-bg" class="absolute inset-0" style="background: linear-gradient(160deg, {{ settings.color_primary }}22, {{ settings.color_secondary }}22), var(--ink);"></div>
+          <video id="preview-video" src="{{ url_for('static', filename=settings.hero_video_path) if settings.hero_video_path else '' }}"
+                 autoplay loop muted playsinline
+                 class="absolute inset-0 w-full h-full object-cover"
+                 style="display: {{ 'block' if settings.hero_media_type == 'video' and settings.hero_video_path else 'none' }};"></video>
+          <img id="preview-image" src="{{ url_for('static', filename=settings.hero_image_path) if settings.hero_image_path else '' }}"
+               class="absolute inset-0 w-full h-full object-cover"
+               style="display: {{ 'block' if settings.hero_media_type == 'image' and settings.hero_image_path else 'none' }};">
+        </div>
+        <div id="preview-overlay" class="absolute inset-0 z-10 bg-black" style="opacity: {{ settings.hero_overlay_opacity if preview_has_media else 0 }};"></div>
+
+        <div class="container-nx relative z-20 text-center max-w-4xl mx-auto">
+          <span class="pill-live mb-6 mx-auto" style="{{ 'color:rgba(255,255,255,.85); border-color:rgba(255,255,255,.25);' if preview_has_media }}"><span class="dot" style="background-color: {{ settings.color_primary }}"></span>Telas ao vivo</span>
+          <h1 id="preview-title" class="font-display text-5xl md:text-6xl font-bold leading-[1.1] mb-6" style="color:{{ '#fff' if preview_has_media else 'var(--text-hi)' }}">{{ settings.hero_title or "Título do Hero" }}</h1>
+          <p id="preview-subtitle" class="text-lg md:text-xl mb-10 max-w-2xl mx-auto" style="color:{{ 'rgba(255,255,255,.78)' if preview_has_media else 'var(--text-mid)' }}">{{ settings.hero_subtitle or "Subtítulo do Hero" }}</p>
+          <div class="flex flex-wrap justify-center gap-4">
+            <span id="preview-cta-primary" class="btn btn-primary px-8 py-4 text-lg" style="background-color: {{ settings.color_primary }};">{{ settings.hero_cta_primary_label or "Anuncie Conosco" }}</span>
+            <span id="preview-cta-secondary" class="btn btn-ghost px-8 py-4 text-lg bg-black/30 backdrop-blur-md" style="{{ 'color:#fff; border-color:rgba(255,255,255,.3);' if preview_has_media }}">{{ settings.hero_cta_secondary_label or "Conhecer Locais" }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="p-4 space-y-1 text-xs text-mid border-t border-line">
+    <p id="preview-media-hint" class="text-low">
+      {% if settings.hero_media_type == 'video' and not settings.hero_video_path %}
+        Tipo definido como "Vídeo", mas nenhum vídeo foi enviado ainda — o site exibirá apenas o gradiente de cores.
+      {% elif settings.hero_media_type == 'image' and not settings.hero_image_path %}
+        Tipo definido como "Imagem", mas nenhuma imagem foi enviada ainda — o site exibirá apenas o gradiente de cores.
+      {% endif %}
+    </p>
+  </div>
 </div>
+
+<form method="POST" enctype="multipart/form-data" class="space-y-6">
+  {{ forms.hero.hidden_tag() }}
+  {{ forms.hero.version_id(class="hidden") }}
+  <input type="hidden" name="group" value="hero">
+
+  <div class="card p-6 space-y-4">
+    <h3 class="font-display text-lg text-hi mb-2">Textos do Hero</h3>
+    <div>
+      {{ forms.hero.hero_title.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ forms.hero.hero_title(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", id="f_hero_title") }}
+    </div>
+    <div>
+      {{ forms.hero.hero_subtitle.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ forms.hero.hero_subtitle(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", rows="2", id="f_hero_subtitle") }}
+    </div>
+    <div class="grid sm:grid-cols-2 gap-3">
+      <div>
+        {{ forms.hero.hero_cta_primary_label.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ forms.hero.hero_cta_primary_label(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", id="f_cta_primary") }}
+      </div>
+      <div>
+        {{ forms.hero.hero_cta_secondary_label.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ forms.hero.hero_cta_secondary_label(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", id="f_cta_secondary") }}
+      </div>
+    </div>
+    <div class="max-w-xs">
+      {{ forms.hero.hero_overlay_opacity.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ forms.hero.hero_overlay_opacity(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none", step="0.05", min="0", max="1", id="f_overlay") }}
+    </div>
+  </div>
+
+  <div class="card p-6 space-y-4">
+    <h3 class="font-display text-lg text-hi mb-2">Nomes no Menu</h3>
+    <p class="text-xs text-low -mt-2">Texto curto exibido no menu do cabeçalho e no rodapé do site (diferente do título mostrado dentro de cada seção, logo abaixo).</p>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div>
+        {{ forms.hero.services_nav_label.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ forms.hero.services_nav_label(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+        {% for e in forms.hero.services_nav_label.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+      </div>
+      <div>
+        {{ forms.hero.gallery_nav_label.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ forms.hero.gallery_nav_label(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+        {% for e in forms.hero.gallery_nav_label.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+      </div>
+      <div>
+        {{ forms.hero.testimonials_nav_label.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ forms.hero.testimonials_nav_label(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+        {% for e in forms.hero.testimonials_nav_label.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card p-6 space-y-4">
+    <h3 class="font-display text-lg text-hi mb-2">Títulos das Seções</h3>
+    <p class="text-xs text-low -mt-2">Textos exibidos acima de cada seção fixa do site (Vantagens, Galeria, Depoimentos e a chamada final antes do formulário de contato).</p>
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div>
+        {{ forms.hero.services_heading.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ forms.hero.services_heading(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+      </div>
+      <div>
+        {{ forms.hero.services_subtitle.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ forms.hero.services_subtitle(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+      </div>
+      <div>
+        {{ forms.hero.gallery_heading.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ forms.hero.gallery_heading(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+      </div>
+      <div>
+        {{ forms.hero.gallery_subtitle.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ forms.hero.gallery_subtitle(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+      </div>
+      <div>
+        {{ forms.hero.testimonials_heading.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ forms.hero.testimonials_heading(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+      </div>
+      <div>
+        {{ forms.hero.contact_heading.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+        {{ forms.hero.contact_heading(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+      </div>
+    </div>
+  </div>
+
+  <div class="card p-6 space-y-4">
+    <h3 class="font-display text-lg text-hi mb-2">Mídia de Capa do Hero</h3>
+    <div>
+      <label class="block text-xs font-mono uppercase text-low mb-2">Tipo de capa exibida no site</label>
+      <div class="flex gap-4">
+        {% for subfield in forms.hero.hero_media_type %}
+        <label class="flex items-center gap-2 text-sm text-mid cursor-pointer">
+          {{ subfield(class_="hero-media-toggle") }} {{ subfield.label.text }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="grid sm:grid-cols-2 gap-6 pt-2">
+      <div class="border border-line rounded-lg p-4 space-y-3" data-media-group>
+        <p class="text-sm font-semibold text-hi">Vídeo de fundo</p>
+        <video data-media-preview="video" class="w-full rounded-lg aspect-video object-cover bg-black {{ '' if settings.hero_video_path else 'hidden' }}" {% if settings.hero_video_path %}src="{{ url_for('static', filename=settings.hero_video_path) }}"{% endif %} muted loop autoplay playsinline></video>
+        <p data-media-placeholder class="text-xs text-low {{ 'hidden' if settings.hero_video_path else '' }}">Nenhum vídeo enviado ainda.</p>
+        {% if settings.hero_video_path %}
+        <label class="flex items-center gap-2 text-xs text-red-400">
+          {{ forms.hero.remove_hero_video() }} Remover vídeo atual ao salvar
+        </label>
+        {% endif %}
+        <div>
+          {{ forms.hero.hero_video.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+          <div class="flex items-center gap-2 mb-1">
+            <span data-media-filename class="media-filename-badge hidden"></span>
+            <button type="button" data-media-clear class="media-preview-remove hidden">✕ Cancelar seleção</button>
+          </div>
+          {{ forms.hero.hero_video(class_="w-full text-xs text-mid") }}
+          <p class="text-[11px] text-low mt-1">Otimizado automaticamente (máx. 1920×1080, sem áudio, .mp4). Aceita .mp4 e .webm. A prévia aparece assim que você escolher o arquivo.</p>
+          {% for e in forms.hero.hero_video.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+
+      <div class="border border-line rounded-lg p-4 space-y-3" data-media-group>
+        <p class="text-sm font-semibold text-hi">Imagem de capa (alternativa ao vídeo)</p>
+        <img data-media-preview="image" class="w-full rounded-lg aspect-video object-cover bg-black {{ '' if settings.hero_image_path else 'hidden' }}" {% if settings.hero_image_path %}src="{{ url_for('static', filename=settings.hero_image_path) }}"{% endif %}>
+        <p data-media-placeholder class="text-xs text-low {{ 'hidden' if settings.hero_image_path else '' }}">Nenhuma imagem enviada ainda.</p>
+        {% if settings.hero_image_path %}
+        <label class="flex items-center gap-2 text-xs text-red-400">
+          {{ forms.hero.remove_hero_image() }} Remover imagem atual ao salvar
+        </label>
+        {% endif %}
+        <div>
+          {{ forms.hero.hero_image.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+          <div class="flex items-center gap-2 mb-1">
+            <span data-media-filename class="media-filename-badge hidden"></span>
+            <button type="button" data-media-clear class="media-preview-remove hidden">✕ Cancelar seleção</button>
+          </div>
+          {{ forms.hero.hero_image(class_="w-full text-xs text-mid") }}
+          <p class="text-[11px] text-low mt-1">Otimizada e redimensionada automaticamente (WEBP). A prévia aparece assim que você escolher o arquivo.</p>
+          {% for e in forms.hero.hero_image.errors %}<p class="text-red-400 text-xs mt-1">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">Salvar Hero</button>
+</form>
+{% endcall %}
+
+<!-- ================= APARÊNCIA ================= -->
+{% call drawer('aparencia', 'Aparência') %}
+<form method="POST" enctype="multipart/form-data" class="space-y-6">
+  {{ forms.aparencia.hidden_tag() }}
+  {{ forms.aparencia.version_id(class="hidden") }}
+  <input type="hidden" name="group" value="aparencia">
+
+  <div class="card p-6 space-y-4">
+    <h3 class="font-display text-lg text-hi mb-2">Tema do sistema</h3>
+    <p class="text-xs text-low -mt-2">
+      Vale para o site público e para o painel, para todo mundo que acessar — não é uma preferência do navegador de cada visitante.
+    </p>
+    <div class="flex gap-3">
+      {% for subfield in forms.aparencia.theme %}
+      <label class="theme-choice flex items-center gap-2 text-sm text-mid cursor-pointer border border-line rounded-lg px-4 py-2.5 {{ 'theme-choice-active' if subfield.checked }}">
+        {{ subfield(class_="theme-choice-input") }} {{ subfield.label.text }}
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card p-6 space-y-4">
+    <h3 class="font-display text-lg text-hi mb-2">Cores da Marca</h3>
+    <p class="text-xs text-low -mt-2">Escolha visualmente ou digite/cole o hexadecimal direto no campo ao lado (ex.: #FFB020).</p>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-md">
+      {{ color_field(forms.aparencia.color_primary, "f_color_primary") }}
+      {{ color_field(forms.aparencia.color_secondary, "f_color_secondary") }}
+      {{ color_field(forms.aparencia.whatsapp_button_color, "f_whatsapp_button_color") }}
+    </div>
+  </div>
+
+  <div class="card p-6 space-y-4">
+    <h3 class="font-display text-lg text-hi mb-2">Aparência das Seções</h3>
+    <p class="text-xs text-low -mt-2">Personalize as cores de destaque e o estilo dos cards nas seções de Vantagens, Galeria e Depoimentos, sem precisar editar código.</p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+      {{ color_field(forms.aparencia.services_accent_color, "f_services_accent_color") }}
+      {{ color_field(forms.aparencia.gallery_accent_color, "f_gallery_accent_color") }}
+      {{ color_field(forms.aparencia.testimonials_accent_color, "f_testimonials_accent_color") }}
+      {{ color_field(forms.aparencia.card_background_color, "f_card_background_color") }}
+    </div>
+    <div class="max-w-xs">
+      {{ forms.aparencia.card_border_radius.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ forms.aparencia.card_border_radius(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none") }}
+      <p class="text-[11px] text-low mt-1">0 = cantos retos, 40 = bem arredondado.</p>
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">Salvar Aparência</button>
+</form>
+{% endcall %}
+
+<!-- ================= PÁGINAS LEGAIS ================= -->
+{% call drawer('legal', 'Páginas Legais') %}
+<form method="POST" enctype="multipart/form-data" class="space-y-6">
+  {{ forms.legal.hidden_tag() }}
+  {{ forms.legal.version_id(class="hidden") }}
+  <input type="hidden" name="group" value="legal">
+
+  <div class="card p-6 space-y-4">
+    <p class="text-xs text-low">
+      Use linhas iniciadas com <code class="text-cyan-300">## </code> para criar títulos de seção,
+      e linhas iniciadas com <code class="text-cyan-300">- </code> para criar listas. Separe parágrafos com uma linha em branco.
+    </p>
+    <div>
+      {{ forms.legal.privacy_content.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ forms.legal.privacy_content(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none font-mono", rows="8") }}
+    </div>
+    <div>
+      {{ forms.legal.terms_content.label(class_="block text-xs font-mono uppercase text-low mb-1") }}
+      {{ forms.legal.terms_content(class_="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none font-mono", rows="8") }}
+    </div>
+    <div class="flex gap-4 text-xs">
+      <a href="{{ url_for('main.privacidade') }}" target="_blank" class="hover:underline" style="color: var(--cyan-text)">Ver política publicada &rarr;</a>
+      <a href="{{ url_for('main.termos') }}" target="_blank" class="hover:underline" style="color: var(--cyan-text)">Ver termos publicados &rarr;</a>
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-primary w-full justify-center py-2.5 text-sm" style="background-color: var(--amber)">Salvar Páginas Legais</button>
+</form>
+{% endcall %}
 {% endblock %}
 
 {% block scripts %}
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    // ---- Cards que abrem a gaveta lateral com o grupo escolhido ----
+    // ---- Cards que abrem a gaveta do grupo escolhido (uma por vez) ----
     const cards = document.querySelectorAll('.drawer-trigger-card');
-    const panels = document.querySelectorAll('.tab-panel');
-    const drawer = document.getElementById('settings-drawer');
-    const drawerBackdrop = document.getElementById('settings-drawer-backdrop');
-    const drawerClose = document.getElementById('settings-drawer-close');
-    const drawerTitle = document.getElementById('settings-drawer-title');
+    const drawers = document.querySelectorAll('.side-drawer[data-group]');
+    const backdrop = document.getElementById('settings-drawer-backdrop');
 
-    function openDrawerForTab(card) {
-      panels.forEach((p) => p.classList.remove('active'));
-      document.getElementById(card.dataset.tab).classList.add('active');
-      if (drawerTitle) drawerTitle.textContent = card.querySelector('.drawer-trigger-card-title').textContent;
-      drawer.classList.add('open');
-      drawerBackdrop.classList.add('open');
-      drawer.setAttribute('aria-hidden', 'false');
-    }
-
-    function closeDrawer() {
-      drawer.classList.remove('open');
-      drawerBackdrop.classList.remove('open');
-      drawer.setAttribute('aria-hidden', 'true');
-    }
-
-    if (drawer && drawerBackdrop && drawerClose) {
-      cards.forEach((card) => card.addEventListener('click', () => openDrawerForTab(card)));
-      drawerClose.addEventListener('click', closeDrawer);
-      drawerBackdrop.addEventListener('click', closeDrawer);
-      document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && drawer.classList.contains('open')) closeDrawer();
+    function openDrawer(group) {
+      drawers.forEach((d) => {
+        const isTarget = d.dataset.group === group;
+        d.classList.toggle('open', isTarget);
+        d.setAttribute('aria-hidden', isTarget ? 'false' : 'true');
       });
-
-      // O formulário voltou com erro de validação: abre direto no grupo
-      // que tem o campo problemático, senão o erro fica escondido dentro
-      // de uma gaveta fechada e o admin não entende por que não salvou.
-      const errorTab = drawer.dataset.errorTab;
-      if (errorTab) {
-        const errorCard = document.querySelector(`.drawer-trigger-card[data-tab="${errorTab}"]`);
-        if (errorCard) openDrawerForTab(errorCard);
-      }
+      if (backdrop) backdrop.classList.add('open');
     }
 
-    // ---- Pré-visualização ao vivo (texto) ----
+    function closeDrawers() {
+      drawers.forEach((d) => {
+        d.classList.remove('open');
+        d.setAttribute('aria-hidden', 'true');
+      });
+      if (backdrop) backdrop.classList.remove('open');
+    }
+
+    cards.forEach((card) => card.addEventListener('click', () => openDrawer(card.dataset.group)));
+    document.querySelectorAll('[data-close-drawer]').forEach((btn) => btn.addEventListener('click', closeDrawers));
+    if (backdrop) backdrop.addEventListener('click', closeDrawers);
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeDrawers();
+    });
+
+    // Reabre automaticamente o grupo certo depois de salvar (redirect com
+    // ?aberto=<grupo>) ou quando o formulário volta com erro de validação.
+    const openGroupHolder = document.querySelector('[data-open-group]');
+    const openGroup = openGroupHolder ? openGroupHolder.dataset.openGroup : '';
+    if (openGroup) openDrawer(openGroup);
+
+    // ---- Pré-visualização ao vivo (texto, dentro da gaveta Hero) ----
     const bind = (id, previewId, attr) => {
       const input = document.getElementById(id);
       const preview = document.getElementById(previewId);
@@ -570,8 +564,6 @@
     bind('f_hero_subtitle', 'preview-subtitle', 'text');
     bind('f_cta_primary', 'preview-cta-primary', 'text');
     bind('f_cta_secondary', 'preview-cta-secondary', 'text');
-    bind('f_company_name', 'preview-company', 'text');
-    bind('f_company_name', 'preview-company-header', 'text');
 
     // ---- Campos de hexadecimal pareados com os seletores de cor ----
     // Cada input[type=color] (id="f_..._color" ou similar) ganha um campo
@@ -614,8 +606,6 @@
     const ctaPrimary = document.getElementById('preview-cta-primary');
     const ctaHeader = document.getElementById('preview-cta-header');
     const logoFallback = document.getElementById('preview-logo-fallback');
-    const swatchPrimary = document.getElementById('preview-swatch-primary');
-    const swatchSecondary = document.getElementById('preview-swatch-secondary');
 
     function updateColors() {
       const p = primaryInput ? primaryInput.value : null;
@@ -624,8 +614,6 @@
       if (ctaPrimary && p) ctaPrimary.style.backgroundColor = p;
       if (ctaHeader && p) ctaHeader.style.backgroundColor = p;
       if (logoFallback && p) logoFallback.style.backgroundColor = p;
-      if (swatchPrimary && p) swatchPrimary.style.backgroundColor = p;
-      if (swatchSecondary && s) swatchSecondary.style.backgroundColor = s;
     }
     if (primaryInput) primaryInput.addEventListener('input', updateColors);
     if (secondaryInput) secondaryInput.addEventListener('input', updateColors);

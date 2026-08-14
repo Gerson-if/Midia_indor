@@ -3,7 +3,7 @@
 {% block admin_content %}
 <div class="flex items-center justify-between gap-3 mb-6 flex-wrap">
   <h2 class="font-display text-2xl">Galeria (Seção "Nossos Pontos")</h2>
-  <a href="{{ url_for('admin.gallery_manage') }}#form-card" id="gallery-add-btn" class="btn btn-primary !py-2 !px-4 text-sm shrink-0" style="background-color: var(--amber)">
+  <a href="{{ url_for('admin.gallery_manage') }}#form-card" data-crud-drawer-add class="btn btn-primary !py-2 !px-4 text-sm shrink-0" style="background-color: var(--amber)">
     + Novo ponto
   </a>
 </div>
@@ -67,11 +67,11 @@
      sempre no DOM (server-rendered, com os dados do item em edição já
      preenchidos quando for o caso) -- o JS só controla abrir/fechar. Isso
      evita ter que reimplementar o formulário em JS puro. -->
-<div id="gallery-drawer-backdrop" class="side-drawer-backdrop"></div>
-<aside id="gallery-drawer" class="side-drawer" data-editing="{{ 'true' if editing else 'false' }}" aria-hidden="true">
+<div data-crud-drawer-backdrop class="side-drawer-backdrop"></div>
+<aside data-crud-drawer class="side-drawer" data-editing="{{ 'true' if editing else 'false' }}" aria-hidden="true">
   <div class="side-drawer-header">
     <h3 class="font-display text-lg" id="form-card">{{ "Editando ponto" if editing else "Novo ponto" }}</h3>
-    <a href="{{ url_for('admin.gallery_manage') }}" id="gallery-drawer-close" class="side-drawer-close" title="Fechar" aria-label="Fechar">
+    <a href="{{ url_for('admin.gallery_manage') }}" data-crud-drawer-close class="side-drawer-close" title="Fechar" aria-label="Fechar">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
     </a>
   </div>
@@ -189,5 +189,4 @@
 
 {% block scripts %}
 <script src="{{ static_asset('js/admin-gallery-recommendations.js') }}"></script>
-<script src="{{ static_asset('js/admin-gallery-drawer.js') }}"></script>
 {% endblock %}

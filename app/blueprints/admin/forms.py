@@ -129,7 +129,10 @@ class PartnerForm(FlaskForm):
     remove_logo = BooleanField("Remover logo atual")
 
 
-class SiteSettingsForm(FlaskForm):
+class SettingsCompanyForm(FlaskForm):
+    """Grupo "Empresa" da tela de Configurações -- salvo de forma independente
+    dos outros grupos (cada um tem seu próprio botão Salvar na gaveta)."""
+
     company_name = StringField("Nome da empresa", validators=[DataRequired(), Length(max=120)])
     company_description = TextAreaField("Descrição", validators=[Optional(), Length(max=400)])
     company_whatsapp = StringField("WhatsApp (somente números, com DDI)", validators=[DataRequired(), Length(max=20)])
@@ -140,13 +143,12 @@ class SiteSettingsForm(FlaskForm):
     company_email = StringField("E-mail", validators=[Optional(), Email(), Length(max=190)])
     company_phone = StringField("Telefone", validators=[Optional(), Length(max=30)])
     company_address = StringField("Endereço", validators=[Optional(), Length(max=255)])
-    color_primary = StringField("Cor primária", validators=[DataRequired(), Length(max=9), HEX_COLOR_RE])
-    color_secondary = StringField("Cor secundária", validators=[DataRequired(), Length(max=9), HEX_COLOR_RE])
-    whatsapp_button_color = StringField(
-        "Cor do botão do WhatsApp", validators=[DataRequired(), Length(max=9), HEX_COLOR_RE]
-    )
+    version_id = IntegerField("version", validators=[Optional()])
 
-    # ---- Identidade visual ----
+
+class SettingsBrandForm(FlaskForm):
+    """Grupo "Marca" (favicon/logo)."""
+
     favicon = FileField(
         "Favicon (ícone da aba)",
         validators=[Optional(), FileAllowed(["png", "jpg", "jpeg", "ico", "webp"], "Envie um .png, .ico, .jpg ou .webp.")],
@@ -157,6 +159,11 @@ class SiteSettingsForm(FlaskForm):
         validators=[Optional(), FileAllowed(["jpg", "jpeg", "png", "webp", "gif"], "Envie uma imagem válida.")],
     )
     remove_logo = BooleanField("Remover logo atual")
+    version_id = IntegerField("version", validators=[Optional()])
+
+
+class SettingsHeroForm(FlaskForm):
+    """Grupo "Hero" (textos/mídia do hero, nomes do menu e títulos das seções)."""
 
     hero_title = StringField("Título do Hero", validators=[Optional(), Length(max=200)])
     hero_subtitle = TextAreaField("Subtítulo do Hero", validators=[Optional(), Length(max=400)])
@@ -189,7 +196,22 @@ class SiteSettingsForm(FlaskForm):
     gallery_nav_label = StringField("Menu — Galeria", validators=[DataRequired(), Length(max=40)])
     testimonials_nav_label = StringField("Menu — Depoimentos", validators=[DataRequired(), Length(max=40)])
 
-    # ---- Aparência das demais seções ----
+    version_id = IntegerField("version", validators=[Optional()])
+
+
+class SettingsAppearanceForm(FlaskForm):
+    """Grupo "Aparência" (tema, cores, estilo dos cards)."""
+
+    theme = RadioField(
+        "Tema do sistema",
+        choices=[("dark", "Escuro"), ("light", "Claro")],
+        validators=[DataRequired()],
+    )
+    color_primary = StringField("Cor primária", validators=[DataRequired(), Length(max=9), HEX_COLOR_RE])
+    color_secondary = StringField("Cor secundária", validators=[DataRequired(), Length(max=9), HEX_COLOR_RE])
+    whatsapp_button_color = StringField(
+        "Cor do botão do WhatsApp", validators=[DataRequired(), Length(max=9), HEX_COLOR_RE]
+    )
     services_accent_color = StringField("Destaque — Vantagens", validators=[DataRequired(), Length(max=9), HEX_COLOR_RE])
     gallery_accent_color = StringField("Destaque — Galeria", validators=[DataRequired(), Length(max=9), HEX_COLOR_RE])
     testimonials_accent_color = StringField(
@@ -197,17 +219,28 @@ class SiteSettingsForm(FlaskForm):
     )
     card_background_color = StringField("Fundo dos cards", validators=[DataRequired(), Length(max=9), HEX_COLOR_RE])
     card_border_radius = IntegerField("Arredondamento dos cards (px)", validators=[Optional(), NumberRange(min=0, max=40)])
-    theme = RadioField(
-        "Tema do sistema",
-        choices=[("dark", "Escuro"), ("light", "Claro")],
-        validators=[DataRequired()],
-    )
+    version_id = IntegerField("version", validators=[Optional()])
 
-    # ---- Páginas legais ----
+
+class SettingsLegalForm(FlaskForm):
+    """Grupo "Páginas Legais"."""
+
     privacy_content = TextAreaField("Conteúdo — Política de Privacidade", validators=[Optional(), Length(max=20000)])
     terms_content = TextAreaField("Conteúdo — Termos de Uso", validators=[Optional(), Length(max=20000)])
-
     version_id = IntegerField("version", validators=[Optional()])
+
+
+# Grupos disponíveis na tela de Configurações -- cada um é uma gaveta lateral
+# com formulário e botão Salvar próprios (ver settings_manage() e
+# templates/admin/settings.html). A ordem aqui é a ordem de exibição dos
+# cards.
+SETTINGS_GROUPS = {
+    "empresa": SettingsCompanyForm,
+    "marca": SettingsBrandForm,
+    "hero": SettingsHeroForm,
+    "aparencia": SettingsAppearanceForm,
+    "legal": SettingsLegalForm,
+}
 
 
 class UserForm(FlaskForm):
